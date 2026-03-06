@@ -1,6 +1,7 @@
 "use client"
 
 import { useTheme } from "next-themes"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { User, Sun, Moon, Monitor, Settings, LogOut } from "lucide-react"
 import {
@@ -18,6 +19,27 @@ import { toast } from "sonner"
 export function TopBar() {
   const { setTheme, theme } = useTheme()
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const themeIcon = useMemo(() => {
+    if (!mounted) {
+      return <Monitor className="mr-2 h-4 w-4" />
+    }
+
+    if (theme === "dark") {
+      return <Moon className="mr-2 h-4 w-4" />
+    }
+
+    if (theme === "light") {
+      return <Sun className="mr-2 h-4 w-4" />
+    }
+
+    return <Monitor className="mr-2 h-4 w-4" />
+  }, [mounted, theme])
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
@@ -34,13 +56,7 @@ export function TopBar() {
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
-              {theme === "dark" ? (
-                <Moon className="mr-2 h-4 w-4" />
-              ) : theme === "light" ? (
-                <Sun className="mr-2 h-4 w-4" />
-              ) : (
-                <Monitor className="mr-2 h-4 w-4" />
-              )}
+              {themeIcon}
               Theme
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>

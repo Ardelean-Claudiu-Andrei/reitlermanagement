@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
+import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -32,33 +33,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, MoreHorizontal, Eye, Pencil, Trash2, Copy } from "lucide-react"
+import { Plus, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import type { UserWithInfo } from "@/lib/types"
 
 export default function UsersPage() {
   const router = useRouter()
-  const { usersWithInfo, deleteUser, duplicateUser } = useAppData()
+  const { usersWithInfo, deleteUser } = useAppData()
+  const { t } = useLocale()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const employees = usersWithInfo.filter((u) => u.additionalInformation.type === "employee")
-  const admins = usersWithInfo.filter((u) => u.additionalInformation.type === "admin")
+  const safeUsers = usersWithInfo ?? []
+
+  const employees = safeUsers.filter((u) => u.additionalInformation.type === "employee")
+  const admins = safeUsers.filter((u) => u.additionalInformation.type === "admin")
 
   function handleDelete() {
     if (deleteTarget) {
       deleteUser(deleteTarget)
-      toast.success("User deleted")
+      toast.success(t("users.deleted"))
       setDeleteTarget(null)
     }
   }
 
-  function handleDuplicate(id: string) {
-    duplicateUser(id)
-    toast.success("User duplicated")
-  }
-
   function handleInvite() {
-    toast.success("Invite sent (mock)")
+    toast.success(t("users.inviteSent"))
   }
 
   const roleBadgeClass: Record<string, string> = {
@@ -72,11 +71,11 @@ export default function UsersPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="w-[60px]">Actions</TableHead>
+            <TableHead>{t("common.name")}</TableHead>
+            <TableHead>{t("common.email")}</TableHead>
+            <TableHead>{t("users.role")}</TableHead>
+            <TableHead>{t("common.status")}</TableHead>
+            <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -106,21 +105,17 @@ export default function UsersPage() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t("common.actions")}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}`)}>
                       <Eye className="mr-2 h-4 w-4" />
-                      View
+                      {t("common.view")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}/edit`)}>
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDuplicate(item.user.id)}>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Duplicate
+                      {t("common.edit")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -128,7 +123,7 @@ export default function UsersPage() {
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
+                      {t("common.delete")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -138,7 +133,7 @@ export default function UsersPage() {
           {data.length === 0 && (
             <TableRow>
               <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                No users found.
+                {t("users.noUsersFound")}
               </TableCell>
             </TableRow>
           )}
@@ -151,26 +146,26 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Users</h2>
-          <p className="text-sm text-muted-foreground">Manage team members and roles</p>
+          <h2 className="text-2xl font-semibold text-foreground">{t("nav.users")}</h2>
+          <p className="text-sm text-muted-foreground">{t("users.subtitle")}</p>
         </div>
         <Button onClick={handleInvite}>
           <Plus className="mr-2 h-4 w-4" />
-          Invite User
+          {t("users.inviteUser")}
         </Button>
       </div>
 
       <Tabs defaultValue="employees">
         <TabsList>
-          <TabsTrigger value="employees">Employees ({employees.length})</TabsTrigger>
-          <TabsTrigger value="admins">Admins ({admins.length})</TabsTrigger>
+          <TabsTrigger value="employees">{t("users.employees")} ({employees.length})</TabsTrigger>
+          <TabsTrigger value="admins">{t("users.admins")} ({admins.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="employees" className="mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Employees</CardTitle>
-                <p className="text-sm text-muted-foreground">{employees.length} users</p>
+                <CardTitle className="text-base">{t("users.employees")}</CardTitle>
+                <p className="text-sm text-muted-foreground">{employees.length} {t("users.usersCount")}</p>
               </div>
             </CardHeader>
             <CardContent>
@@ -182,8 +177,8 @@ export default function UsersPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Admins & Managers</CardTitle>
-                <p className="text-sm text-muted-foreground">{admins.length} users</p>
+                <CardTitle className="text-base">{t("users.adminsManagers")}</CardTitle>
+                <p className="text-sm text-muted-foreground">{admins.length} {t("users.usersCount")}</p>
               </div>
             </CardHeader>
             <CardContent>
@@ -196,15 +191,15 @@ export default function UsersPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>{t("users.deleteUser")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this user? This action cannot be undone.
+              {t("users.deleteConfirm")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

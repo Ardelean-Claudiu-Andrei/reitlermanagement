@@ -1,9 +1,11 @@
 "use client"
 
+// Dashboard page for SMS Reitler
 import { useAppData } from "@/lib/app-context"
+import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/status-badge"
-import { FileText, Package, Factory, CheckCircle2, Clock } from "lucide-react"
+import { FileText, Building2, FolderKanban, CheckCircle2, Clock, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import {
   Table,
@@ -15,73 +17,103 @@ import {
 } from "@/components/ui/table"
 
 export default function DashboardPage() {
-  const { templates, products, productionOffers } = useAppData()
+  const { quotes, projects, companies } = useAppData()
+  const { t } = useLocale()
 
-  const activeProduction = productionOffers.filter((o) => o.status === "in-production")
-  const doneThisWeek = productionOffers.filter((o) => o.status === "done")
+  const safeQuotes = quotes ?? []
+  const safeProjects = projects ?? []
+  const safeCompanies = companies ?? []
+
+  const activeProjects = safeProjects.filter((p) => p.status === "in-progress")
+  const doneProjects = safeProjects.filter((p) => p.status === "completed")
+  const projectsWithIssues = safeProjects.filter((p) => p.issues?.some((i) => i.status === "open"))
 
   const recentActivity = [
-    { text: "Production offer PO-2026-003 marked as Done", time: "2 days ago" },
-    { text: "New template 'Aluminum Enclosure' created", time: "4 days ago" },
-    { text: "Hydraulic Press production started", time: "5 days ago" },
-    { text: "Steel Frame checklist updated (3/7)", time: "1 week ago" },
-    { text: "New product 'Hydraulic Pump Unit' added", time: "1 week ago" },
+    { text: t("dashboard.activity1"), time: t("dashboard.daysAgo", { days: "2" }) },
+    { text: t("dashboard.activity2"), time: t("dashboard.daysAgo", { days: "4" }) },
+    { text: t("dashboard.activity3"), time: t("dashboard.daysAgo", { days: "5" }) },
+    { text: t("dashboard.activity4"), time: t("dashboard.weekAgo") },
+    { text: t("dashboard.activity5"), time: t("dashboard.weekAgo") },
   ]
 
-  const topProduction = productionOffers
-    .filter((o) => o.status !== "cancelled")
+  const topProjects = safeProjects
+    .filter((p) => p.status !== "cancelled")
     .slice(0, 5)
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Welcome to SMS Reitler - Offers & Production</p>
+        <h2 className="text-2xl font-semibold text-foreground">{t("nav.dashboard")}</h2>
+        <p className="text-sm text-muted-foreground">{t("dashboard.welcome")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Templates</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.totalQuotes")}</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{templates.length}</p>
+            <p className="text-3xl font-bold text-foreground">{safeQuotes.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.totalCompanies")}</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{products.length}</p>
+            <p className="text-3xl font-bold text-foreground">{safeCompanies.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Production</CardTitle>
-            <Factory className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.activeProjects")}</CardTitle>
+            <FolderKanban className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{activeProduction.length}</p>
+            <p className="text-3xl font-bold text-foreground">{activeProjects.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Done This Week</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.completedProjects")}</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{doneThisWeek.length}</p>
+            <p className="text-3xl font-bold text-foreground">{doneProjects.length}</p>
           </CardContent>
         </Card>
       </div>
 
+      {projectsWithIssues.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4" />
+              {t("dashboard.projectsWithIssues")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {projectsWithIssues.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.id}`}
+                  className="rounded-md bg-amber-100 px-2 py-1 text-sm text-amber-800 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:hover:bg-amber-900"
+                >
+                  {p.code}
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Recent Activity</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.recentActivity")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -100,32 +132,33 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Production Overview</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.projectsOverview")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Progress</TableHead>
+                  <TableHead>{t("common.code")}</TableHead>
+                  <TableHead>{t("common.name")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  <TableHead className="text-right">{t("common.progress")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topProduction.map((offer) => {
-                  const done = offer.checklist.filter((c) => c.done).length
-                  const total = offer.checklist.length
+                {topProjects.map((project) => {
+                  const checklist = project.checklist ?? []
+                  const done = checklist.filter((c) => c.done).length
+                  const total = checklist.length
                   return (
-                    <TableRow key={offer.id}>
+                    <TableRow key={project.id}>
                       <TableCell className="font-mono text-xs">
-                        <Link href={`/production-offers/${offer.id}`} className="text-foreground hover:underline">
-                          {offer.code}
+                        <Link href={`/projects/${project.id}`} className="text-foreground hover:underline">
+                          {project.code}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm">{offer.name}</TableCell>
+                      <TableCell className="text-sm">{project.name}</TableCell>
                       <TableCell>
-                        <StatusBadge status={offer.status} />
+                        <StatusBadge status={project.status} />
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {total > 0 ? `${done}/${total}` : "--"}

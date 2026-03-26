@@ -1,15 +1,27 @@
-import { Badge } from "@/components/ui/badge"
-import type { ProductionStatus } from "@/lib/types"
+"use client"
 
-const statusConfig: Record<ProductionStatus, { label: string; className: string }> = {
+import { Badge } from "@/components/ui/badge"
+import type { ProjectStatus, QuoteStatus } from "@/lib/types"
+
+const projectStatusConfig: Record<ProjectStatus, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground hover:bg-muted" },
-  "in-production": { label: "In Production", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800" },
+  "in-progress": { label: "In Progress", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800" },
   done: { label: "Done", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800" },
   cancelled: { label: "Cancelled", className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-800" },
 }
 
-export function StatusBadge({ status }: { status: ProductionStatus }) {
-  const config = statusConfig[status]
+const quoteStatusConfig: Record<QuoteStatus, { label: string; className: string }> = {
+  draft: { label: "Draft", className: "bg-muted text-muted-foreground hover:bg-muted" },
+  pending: { label: "Pending", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-200 dark:border-amber-800" },
+  approved: { label: "Approved", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800" },
+  rejected: { label: "Rejected", className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-800" },
+}
+
+export function StatusBadge({ status }: { status: ProjectStatus | QuoteStatus }) {
+  const config = projectStatusConfig[status as ProjectStatus] ?? quoteStatusConfig[status as QuoteStatus]
+  if (!config) {
+    return <Badge variant="outline">{status}</Badge>
+  }
   return (
     <Badge variant="outline" className={config.className}>
       {config.label}

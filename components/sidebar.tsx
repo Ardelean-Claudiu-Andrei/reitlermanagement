@@ -5,42 +5,46 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
+  Building2,
+  FolderKanban,
   FileText,
   Package,
-  Factory,
-  BarChart3,
-  Users,
-  ChevronDown,
+  Boxes,
+  Wrench,
   Settings,
+  ChevronDown,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-
-const managementLinks = [
-  { href: "/templates", label: "Templates", icon: FileText },
-  { href: "/products", label: "Products", icon: Package },
-]
-
-const productionLinks = [
-  { href: "/production-offers", label: "Production Offers", icon: Factory },
-]
-
-const reportLinks = [
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/users", label: "Users", icon: Users },
-]
+import { useLocale } from "@/lib/locale-context"
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { t } = useLocale()
   const [managementOpen, setManagementOpen] = useState(true)
-  const [productionOpen, setProductionOpen] = useState(true)
-  const [reportsOpen, setReportsOpen] = useState(true)
+  const [materialsOpen, setMaterialsOpen] = useState(true)
+
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard"
+    if (href === "/management/companies") return pathname.startsWith("/management")
+    if (href === "/projects") return pathname === "/projects" || pathname.startsWith("/projects/")
+    if (href === "/quotes") return pathname === "/quotes" || pathname.startsWith("/quotes/")
+    if (href === "/products") return pathname === "/products" || pathname.startsWith("/products/")
+    if (href === "/materials/assemblies") return pathname.startsWith("/materials/assemblies")
+    if (href === "/materials/inventory") return pathname.startsWith("/materials/inventory")
+    if (href === "/settings") return pathname === "/settings"
+    return pathname === href || pathname.startsWith(href + "/")
+  }
+
+  const isManagementActive = pathname.startsWith("/management")
+  const isMaterialsActive = pathname.startsWith("/materials")
 
   return (
     <aside className="flex h-full w-[220px] flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
         <Image
-          src="/branding/sms-reitler-dark.png"
+          src="/branding/sms-reitler.png"
           alt="SMS Reitler logo"
           width={32}
           height={32}
@@ -53,118 +57,157 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
+        {/* Dashboard */}
         <Link
           href="/dashboard"
           className={cn(
             "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-            pathname === "/dashboard"
+            isActive("/dashboard")
               ? "bg-secondary text-foreground"
               : "text-muted-foreground hover:bg-secondary hover:text-foreground"
           )}
         >
           <LayoutDashboard className="h-4 w-4" />
-          Dashboard
+          {t("dashboard")}
         </Link>
 
-        <div className="mt-5">
+        {/* Management Section (Dropdown) */}
+        <div className="mt-4">
           <button
             onClick={() => setManagementOpen(!managementOpen)}
-            className="flex w-full items-center justify-between px-2.5 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            className={cn(
+              "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+              isManagementActive
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
           >
-            Management
+            <span className="flex items-center gap-2.5">
+              <Building2 className="h-4 w-4" />
+              {t("management")}
+            </span>
             <ChevronDown className={cn("h-3 w-3 transition-transform", !managementOpen && "-rotate-90")} />
           </button>
           {managementOpen && (
-            <div className="mt-1 flex flex-col gap-0.5">
-              {managementLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                    pathname.startsWith(link.href)
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              ))}
+            <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
+              <Link
+                href="/management"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/management/companies")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <Users className="h-4 w-4" />
+                {t("companies")}
+              </Link>
             </div>
           )}
         </div>
 
-        <div className="mt-5">
+        {/* Projects */}
+        <Link
+          href="/projects"
+          className={cn(
+            "mt-1 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+            isActive("/projects")
+              ? "bg-secondary text-foreground"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+          )}
+        >
+          <FolderKanban className="h-4 w-4" />
+          {t("projects")}
+        </Link>
+
+        {/* Quotes */}
+        <Link
+          href="/quotes"
+          className={cn(
+            "mt-1 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+            isActive("/quotes")
+              ? "bg-secondary text-foreground"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+          )}
+        >
+          <FileText className="h-4 w-4" />
+          {t("quotes")}
+        </Link>
+
+        {/* Products */}
+        <Link
+          href="/products"
+          className={cn(
+            "mt-1 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+            isActive("/products")
+              ? "bg-secondary text-foreground"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+          )}
+        >
+          <Package className="h-4 w-4" />
+          {t("products")}
+        </Link>
+
+        {/* Materials Section (Dropdown with Assemblies + Inventory) */}
+        <div className="mt-4">
           <button
-            onClick={() => setProductionOpen(!productionOpen)}
-            className="flex w-full items-center justify-between px-2.5 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            onClick={() => setMaterialsOpen(!materialsOpen)}
+            className={cn(
+              "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+              isMaterialsActive
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
           >
-            Production
-            <ChevronDown className={cn("h-3 w-3 transition-transform", !productionOpen && "-rotate-90")} />
+            <span className="flex items-center gap-2.5">
+              <Boxes className="h-4 w-4" />
+              {t("materials")}
+            </span>
+            <ChevronDown className={cn("h-3 w-3 transition-transform", !materialsOpen && "-rotate-90")} />
           </button>
-          {productionOpen && (
-            <div className="mt-1 flex flex-col gap-0.5">
-              {productionLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                    pathname.startsWith(link.href)
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              ))}
+          {materialsOpen && (
+            <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
+              <Link
+                href="/materials/assemblies"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/materials/assemblies")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <Boxes className="h-4 w-4" />
+                {t("assemblies")}
+              </Link>
+              <Link
+                href="/materials/inventory"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/materials/inventory")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <Wrench className="h-4 w-4" />
+                {t("inventory")}
+              </Link>
             </div>
           )}
         </div>
 
-        <div className="mt-5">
-          <button
-            onClick={() => setReportsOpen(!reportsOpen)}
-            className="flex w-full items-center justify-between px-2.5 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          >
-            Reports
-            <ChevronDown className={cn("h-3 w-3 transition-transform", !reportsOpen && "-rotate-90")} />
-          </button>
-          {reportsOpen && (
-            <div className="mt-1 flex flex-col gap-0.5">
-              {reportLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                    pathname.startsWith(link.href)
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-5">
+        {/* Settings at bottom */}
+        <div className="mt-4">
           <Link
             href="/settings"
             className={cn(
               "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-              pathname === "/settings"
+              isActive("/settings")
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}
           >
             <Settings className="h-4 w-4" />
-            Settings
+            {t("settings")}
           </Link>
         </div>
       </nav>

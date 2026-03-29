@@ -26,9 +26,9 @@ export default function UserEditPage({ params }: { params: Promise<{ id: string 
 
   const [name, setName] = useState(entry?.user.name ?? "")
   const [email, setEmail] = useState(entry?.user.email ?? "")
-  const [status, setStatus] = useState(entry?.user.status ?? "active")
-  const [role, setRole] = useState(entry?.additionalInformation.role ?? "viewer")
-  const [type, setType] = useState(entry?.additionalInformation.type ?? "employee")
+  const [status, setStatus] = useState<"active" | "inactive">(entry?.user.status ?? "active")
+  const [role, setRole] = useState<"admin" | "employee">(entry?.additionalInformation.role ?? "employee")
+  const [type, setType] = useState<"admin" | "employee">(entry?.additionalInformation.type ?? "employee")
 
   if (!entry) {
     return (
@@ -39,12 +39,20 @@ export default function UserEditPage({ params }: { params: Promise<{ id: string 
   }
 
   function handleSave() {
+    const nameParts = name.trim().split(" ")
     updateUser({
-      user: { id, name, email, status: status as "active" | "inactive" },
+      user: {
+        id,
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        name,
+        email,
+        status: status as "active" | "inactive",
+      },
       additionalInformation: {
         userId: id,
-        role: role as "admin" | "manager" | "viewer",
-        type: type as "employee" | "admin",
+        role,
+        type,
       },
     })
     toast.success("User updated")
@@ -82,7 +90,7 @@ export default function UserEditPage({ params }: { params: Promise<{ id: string 
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(v) => setStatus(v as "active" | "inactive")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -93,21 +101,20 @@ export default function UserEditPage({ params }: { params: Promise<{ id: string 
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Role (AdditionalInformation)</Label>
-              <Select value={role} onValueChange={setRole}>
+              <Label>Role</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as "admin" | "employee")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
+                  <SelectItem value="employee">Employee</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Type (Employee / Admin)</Label>
-              <Select value={type} onValueChange={setType}>
+              <Label>Type</Label>
+              <Select value={type} onValueChange={(v) => setType(v as "admin" | "employee")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

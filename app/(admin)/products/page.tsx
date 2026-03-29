@@ -127,10 +127,10 @@ export default function ProductsPage() {
                     <Badge variant="outline">{product.category}</Badge>
                   </TableCell>
                   <TableCell className="text-center text-muted-foreground">
-                    {product.steps?.length ?? 0}
+                    {product.assemblySteps?.length ?? 0}
                   </TableCell>
                   <TableCell className="text-center text-muted-foreground">
-                    {product.parts?.length ?? 0}
+                    {product.partIds?.length ?? 0}
                   </TableCell>
                   <TableCell className="text-right font-mono">{product.basePrice.toFixed(2)}</TableCell>
                   <TableCell>

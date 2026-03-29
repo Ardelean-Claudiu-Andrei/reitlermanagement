@@ -324,7 +324,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // For now, accept the shape components pass and create via a cast
     const payload = userWithInfo as UserWithInfo & { password?: string }
     const created = await usersApi.create({
-      name: payload.user.name,
+      firstName: payload.user.firstName || payload.user.name?.split(' ')[0] || '',
+      lastName: payload.user.lastName || payload.user.name?.split(' ').slice(1).join(' ') || '',
       email: payload.user.email,
       password: (payload as { password?: string }).password || 'changeme',
       role: payload.additionalInformation.role,
@@ -335,7 +336,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateUser = useCallback(async (userWithInfo: UserWithInfo) => {
     const payload = userWithInfo as UserWithInfo & { password?: string }
     const updated = await usersApi.update(payload.user.id, {
-      name: payload.user.name,
+      firstName: payload.user.firstName,
+      lastName: payload.user.lastName,
       email: payload.user.email,
       role: payload.additionalInformation.role,
       status: payload.user.status,

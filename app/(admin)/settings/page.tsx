@@ -16,20 +16,75 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { usersApi, getCurrentUser } from "@/lib/api"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const { t, locale, setLocale } = useLocale()
   const [mounted, setMounted] = useState(false)
-  const [name] = useState("Claudiu Ardelean")
-  const [email] = useState("claudiu.ardelean@codeindustry.net")
+
+  // Profile form state
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    // Load from localStorage first (fast)
+    const cached = getCurrentUser()
+    if (cached) {
+      setFirstName(cached.firstName || "")
+      setLastName(cached.lastName || "")
+      setEmail(cached.email || "")
+    }
+    // Then fetch fresh from API
+    usersApi.getProfile().then((data) => {
+      setFirstName(data.user.firstName || "")
+      setLastName(data.user.lastName || "")
+      setEmail(data.user.email || "")
+    }).catch(() => {/* not logged in or error */})
   }, [])
 
-  function handleSave() {
-    toast.success(t("common.saved"))
+  async function handleSaveProfile() {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error(t("settings.nameRequired"))
+      return
+    }
+    setIsSaving(true)
+    try {
+      const payload: Parameters<typeof usersApi.updateProfile>[0] = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+      }
+      if (newPassword) {
+        payload.currentPassword = currentPassword
+        payload.newPassword = newPassword
+      }
+      const updated = await usersApi.updateProfile(payload)
+      // Update localStorage
+      const raw = getCurrentUser()
+      if (raw) {
+        localStorage.setItem('user', JSON.stringify({
+          ...raw,
+          firstName: updated.user.firstName,
+          lastName: updated.user.lastName,
+          name: updated.user.name,
+          email: updated.user.email,
+        }))
+      }
+      setCurrentPassword("")
+      setNewPassword("")
+      toast.success(t("common.savedSuccessfully"))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      toast.error(message || t("common.errorOccurred"))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -47,13 +102,61 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>{t("common.name")}</Label>
-              <Input value={name} readOnly className="bg-muted" />
+              <Label htmlFor="firstName">{t("settings.firstName")}</Label>
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder={t("settings.firstNamePlaceholder")}
+              />
             </div>
             <div className="space-y-2">
-              <Label>{t("common.email")}</Label>
-              <Input value={email} readOnly className="bg-muted" />
+              <Label htmlFor="lastName">{t("settings.lastName")}</Label>
+              <Input
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder={t("settings.lastNamePlaceholder")}
+              />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">{t("common.email")}</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <Separator />
+          <p className="text-sm font-medium text-foreground">{t("settings.changePassword")}</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">{t("settings.currentPassword")}</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">{t("settings.newPassword")}</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleSaveProfile} disabled={isSaving}>
+              {isSaving ? t("common.saving") : t("common.save")}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -84,37 +187,20 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <Label>{t("settings.language")}</Label>
-            <Select value={locale} onValueChange={(v) => setLocale(v as "en" | "ro" | "hu" | "de")}>
+            <Select value={locale} onValueChange={(v) => setLocale(v as "en" | "ro" | "hu")}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English</SelectItem>
-                <SelectItem value="ro">Romana</SelectItem>
+                <SelectItem value="ro">Română</SelectItem>
                 <SelectItem value="hu">Magyar</SelectItem>
-                <SelectItem value="de">Deutsch</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">{t("settings.languageHint")}</p>
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("settings.organization")}</CardTitle>
-          <CardDescription>{t("settings.organizationDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{t("settings.organizationPlaceholder")}</p>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave}>{t("common.save")}</Button>
-      </div>
     </div>
   )
 }

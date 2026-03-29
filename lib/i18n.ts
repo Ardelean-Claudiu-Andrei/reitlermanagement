@@ -354,9 +354,50 @@ type TranslationKeys = {
   "reports.exportReport": string
   "reports.exportStarted": string
   "reports.allProjects": string
+
+  // Top-level nav (new)
+  "parts": string
+  "theme": string
+  "logout": string
+
+  // Common (new)
+  "common.saving": string
+  "common.errorOccurred": string
+
+  // Settings (new)
+  "settings.firstName": string
+  "settings.lastName": string
+  "settings.firstNamePlaceholder": string
+  "settings.lastNamePlaceholder": string
+  "settings.changePassword": string
+  "settings.currentPassword": string
+  "settings.newPassword": string
+  "settings.nameRequired": string
+
+  // Parts page
+  "parts.title": string
+  "parts.subtitle": string
+  "parts.addPart": string
+  "parts.totalParts": string
+  "parts.totalQuantity": string
+  "parts.lowStock": string
+  "parts.inStock": string
+  "parts.unit": string
+  "parts.minimumStock": string
+  "parts.location": string
+  "parts.basePrice": string
+  "parts.searchPlaceholder": string
+  "parts.noParts": string
+  "parts.namePlaceholder": string
+  "parts.nameRequired": string
+  "parts.categoryPlaceholder": string
+  "parts.locationPlaceholder": string
+  "parts.formDesc": string
+  "parts.deletePart": string
+  "parts.deleteConfirm": string
 }
 
-const translations: Record<Locale, TranslationKeys> = {
+const translations: Record<Locale | "de", TranslationKeys> = {
   en: {
     // Simple Navigation Keys
     "dashboard": "Dashboard",
@@ -689,6 +730,47 @@ const translations: Record<Locale, TranslationKeys> = {
     "reports.exportReport": "Export Report",
     "reports.exportStarted": "Export started",
     "reports.allProjects": "All Projects",
+
+    // Top-level nav (new)
+    "parts": "Parts",
+    "theme": "Theme",
+    "logout": "Logout",
+
+    // Common (new)
+    "common.saving": "Saving...",
+    "common.errorOccurred": "An error occurred",
+
+    // Settings (new)
+    "settings.firstName": "First Name",
+    "settings.lastName": "Last Name",
+    "settings.firstNamePlaceholder": "Enter first name",
+    "settings.lastNamePlaceholder": "Enter last name",
+    "settings.changePassword": "Change Password",
+    "settings.currentPassword": "Current Password",
+    "settings.newPassword": "New Password",
+    "settings.nameRequired": "First name and last name are required",
+
+    // Parts page
+    "parts.title": "Parts",
+    "parts.subtitle": "Manage parts and stock levels",
+    "parts.addPart": "Add Part",
+    "parts.totalParts": "Total Parts",
+    "parts.totalQuantity": "Total Quantity",
+    "parts.lowStock": "Low Stock",
+    "parts.inStock": "In Stock",
+    "parts.unit": "Unit",
+    "parts.minimumStock": "Min. Stock",
+    "parts.location": "Location",
+    "parts.basePrice": "Base Price",
+    "parts.searchPlaceholder": "Search parts...",
+    "parts.noParts": "No parts found",
+    "parts.namePlaceholder": "Enter part name",
+    "parts.nameRequired": "Part name is required",
+    "parts.categoryPlaceholder": "e.g. Mechanical",
+    "parts.locationPlaceholder": "e.g. Shelf A3",
+    "parts.formDesc": "Fill in the part details",
+    "parts.deletePart": "Delete Part",
+    "parts.deleteConfirm": "Are you sure you want to delete this part? This action cannot be undone.",
   },
   ro: {
     // Simple Navigation Keys
@@ -866,6 +948,7 @@ const translations: Record<Locale, TranslationKeys> = {
     "projects.fromQuote": "Din Oferta",
     "projects.selectQuote": "Selecteaza Oferta",
     "projects.selectProducts": "Selecteaza Produse",
+    "projects.selectCompany": "Selecteaza Companie",
 
     // Products
     "products.title": "Produse",
@@ -957,6 +1040,117 @@ const translations: Record<Locale, TranslationKeys> = {
     "reports.exportReport": "Exporta Raport",
     "reports.exportStarted": "Export inceput",
     "reports.allProjects": "Toate Proiectele",
+
+    // Missing projects keys
+    "projects.generateProject": "Genereaza Proiect",
+    "projects.warrantyExpiration": "Garantie Pana La",
+    "projects.warrantyNote": "2 ani garantie de la data finalizarii",
+    "projects.activeIssues": "Probleme Active",
+    "projects.activeIssue": "Problema Activa",
+    "projects.noActiveIssue": "Niciuna",
+    "projects.solve": "Rezolvat",
+    "projects.solved": "Rezolvat",
+    "projects.reportIssue": "Raporteaza Problema",
+    "projects.issueReported": "Problema raportata",
+    "projects.issueResolved": "Problema rezolvata",
+    "projects.issuePlaceholder": "Descrieti problema...",
+    "projects.finishProjectDesc": "Marcheaza proiectul ca finalizat. Aceasta va seta data finalizarii si expirarea garantiei.",
+    "projects.confirmFinish": "Confirma Finalizarea",
+    "projects.projectFinished": "Proiect finalizat cu succes",
+    "projects.selectQuotePlaceholder": "Selecteaza o oferta...",
+    "projects.noQuote": "Fara Oferta",
+    "projects.quoteOptionalNote": "Ofertele sunt optionale. Proiectele personale pot funciona fara oferte.",
+    "projects.selectCompanyPlaceholder": "Selecteaza o companie...",
+    "projects.personalProject": "Proiect Personal",
+    "projects.personalProjectDesc": "Proiecte fara companie atribuita",
+    "projects.personal": "Personal",
+    "projects.companyProjects": "Proiecte Companie",
+    "projects.personalProjects": "Proiecte Personale",
+    "projects.projectType": "Tip Proiect",
+    "projects.wizardStep": "Pas",
+    "projects.createProject": "Creeaza Proiect",
+    "projects.projectName": "Nume Proiect",
+    "projects.projectNamePlaceholder": "Introduceti numele proiectului...",
+    "projects.summary": "Sumar",
+    "projects.inStock": "In Stoc",
+    "projects.fromInventory": "Din Inventar",
+    "projects.needsProduction": "Necesita Productie",
+    "projects.source": "Sursa",
+    "projects.noProjectsFound": "Niciun proiect gasit",
+    "projects.linkedQuote": "Oferta Asociata",
+    "projects.noProductsAdded": "Niciun produs adaugat",
+    "projects.noChecklistItems": "Niciun element in lista",
+    "projects.addChecklistItem": "Adauga Element Lista",
+    "projects.itemTitle": "Titlu Element",
+    "projects.checklistPlaceholder": "Introduceti elementul...",
+    "common.optional": "optional",
+    "common.next": "Urmatorul",
+
+    // Missing products keys
+    "products.productName": "Nume Produs",
+    "products.assemblyStepsDesc": "Pasii necesari pentru asamblarea acestui produs",
+    "products.notFound": "Produs negasit",
+    "products.subassemblies": "Subansambluri",
+    "products.totalParts": "Total Piese",
+    "products.structure": "Structura",
+    "products.generatedParts": "Piese Generate",
+    "products.generatedPartsTable": "Tabel Piese Generate",
+    "products.generatedPartsDesc": "Toate piesele necesare pentru acest produs, calculate recursiv din ansambluri",
+    "products.directPart": "Piesa Directa",
+    "products.directParts": "Piese Directe",
+    "products.directPartsDesc": "Piese atribuite direct acestui produs (nu in ansambluri)",
+    "products.noSubassemblies": "Niciun subansamblu definit",
+    "products.noParts": "Nicio piesa necesara",
+    "products.noSteps": "Niciun pas de asamblare definit",
+    "products.viewParts": "Vezi Piese",
+    "products.source": "Sursa",
+    "products.productionSteps": "Pasi de Productie",
+    "products.requiredParts": "Piese Necesare",
+
+    // Missing materials keys
+    "materials.fileName": "Nume Fisier",
+    "materials.fileLocation": "Locatie Fisier",
+
+    // Top-level nav (new)
+    "parts": "Piese",
+    "theme": "Tema",
+    "logout": "Deconectare",
+
+    // Common (new)
+    "common.saving": "Se salveaza...",
+    "common.errorOccurred": "A aparut o eroare",
+
+    // Settings (new)
+    "settings.firstName": "Prenume",
+    "settings.lastName": "Nume de familie",
+    "settings.firstNamePlaceholder": "Introduceti prenumele",
+    "settings.lastNamePlaceholder": "Introduceti numele de familie",
+    "settings.changePassword": "Schimba Parola",
+    "settings.currentPassword": "Parola Curenta",
+    "settings.newPassword": "Parola Noua",
+    "settings.nameRequired": "Prenumele si numele de familie sunt obligatorii",
+
+    // Parts page
+    "parts.title": "Piese",
+    "parts.subtitle": "Gestioneaza piesele si nivelurile de stoc",
+    "parts.addPart": "Adauga Piesa",
+    "parts.totalParts": "Total Piese",
+    "parts.totalQuantity": "Cantitate Totala",
+    "parts.lowStock": "Stoc Redus",
+    "parts.inStock": "In Stoc",
+    "parts.unit": "Unitate",
+    "parts.minimumStock": "Stoc Minim",
+    "parts.location": "Locatie",
+    "parts.basePrice": "Pret de Baza",
+    "parts.searchPlaceholder": "Cauta piese...",
+    "parts.noParts": "Nicio piesa gasita",
+    "parts.namePlaceholder": "Introduceti numele piesei",
+    "parts.nameRequired": "Numele piesei este obligatoriu",
+    "parts.categoryPlaceholder": "ex. Mecanic",
+    "parts.locationPlaceholder": "ex. Raft A3",
+    "parts.formDesc": "Completati detaliile piesei",
+    "parts.deletePart": "Sterge Piesa",
+    "parts.deleteConfirm": "Esti sigur ca vrei sa stergi aceasta piesa? Aceasta actiune nu poate fi anulata.",
   },
   hu: {
     // Simple Navigation Keys
@@ -1134,6 +1328,7 @@ const translations: Record<Locale, TranslationKeys> = {
     "projects.fromQuote": "Arajanlat Alapjan",
     "projects.selectQuote": "Arajanlat Kivalasztasa",
     "projects.selectProducts": "Termekek Kivalasztasa",
+    "projects.selectCompany": "Ceg Kivalasztasa",
 
     // Products
     "products.title": "Termekek",
@@ -1225,6 +1420,117 @@ const translations: Record<Locale, TranslationKeys> = {
     "reports.exportReport": "Jelentes Exportalasa",
     "reports.exportStarted": "Export elkezdodott",
     "reports.allProjects": "Osszes Projekt",
+
+    // Missing projects keys
+    "projects.generateProject": "Projekt Generalasa",
+    "projects.warrantyExpiration": "Garancia Lejarat",
+    "projects.warrantyNote": "2 ev garancia a befejezes datumtol",
+    "projects.activeIssues": "Aktiv Problemak",
+    "projects.activeIssue": "Aktiv Problema",
+    "projects.noActiveIssue": "Nincs",
+    "projects.solve": "Megoldva",
+    "projects.solved": "Megoldva",
+    "projects.reportIssue": "Problema Jelentese",
+    "projects.issueReported": "Problema bejelentve",
+    "projects.issueResolved": "Problema megoldva",
+    "projects.issuePlaceholder": "Irja le a problemat...",
+    "projects.finishProjectDesc": "Projekt befejezettnek jelolese. Ez beallitja a befejezes datumot es a garancia lejarat.",
+    "projects.confirmFinish": "Befejezes Megerositese",
+    "projects.projectFinished": "Projekt sikeresen befejezve",
+    "projects.selectQuotePlaceholder": "Arajanlat kivalasztasa...",
+    "projects.noQuote": "Nincs Arajanlat",
+    "projects.quoteOptionalNote": "Az arajanlatok opcionalisak. A szemelyes projektek arajanlat nelkul is mukodhetnek.",
+    "projects.selectCompanyPlaceholder": "Ceg kivalasztasa...",
+    "projects.personalProject": "Szemelyes Projekt",
+    "projects.personalProjectDesc": "Ceg nelkuli projektek",
+    "projects.personal": "Szemelyes",
+    "projects.companyProjects": "Ceges Projektek",
+    "projects.personalProjects": "Szemelyes Projektek",
+    "projects.projectType": "Projekt Tipusa",
+    "projects.wizardStep": "Lepes",
+    "projects.createProject": "Projekt Letrehozasa",
+    "projects.projectName": "Projekt Neve",
+    "projects.projectNamePlaceholder": "Adja meg a projekt nevet...",
+    "projects.summary": "Osszefoglalo",
+    "projects.inStock": "Keszleten",
+    "projects.fromInventory": "Keszletbol",
+    "projects.needsProduction": "Gyartas Szukseges",
+    "projects.source": "Forras",
+    "projects.noProjectsFound": "Nem talalhato projekt",
+    "projects.linkedQuote": "Kapcsolodo Arajanlat",
+    "projects.noProductsAdded": "Meg nem adtak hozza termekett",
+    "projects.noChecklistItems": "Nincs lista elem",
+    "projects.addChecklistItem": "Lista Elem Hozzaadasa",
+    "projects.itemTitle": "Elem Cime",
+    "projects.checklistPlaceholder": "Adja meg az elem cimett...",
+    "common.optional": "opcionalis",
+    "common.next": "Kovetkezo",
+
+    // Missing products keys
+    "products.productName": "Termek Neve",
+    "products.assemblyStepsDesc": "Az osszerakashoz szukseges lepesek",
+    "products.notFound": "Termek nem talalhato",
+    "products.subassemblies": "Reszszerelvenyek",
+    "products.totalParts": "Osszes Alkatresz",
+    "products.structure": "Szerkezet",
+    "products.generatedParts": "Generalt Alkatreszek",
+    "products.generatedPartsTable": "Generalt Alkatreszek Tablazata",
+    "products.generatedPartsDesc": "Az osszes szukseges alkatresz ehhez a termekhez, rekurzivan kiszamitva a szerelvenyek alapjan",
+    "products.directPart": "Kozvetien Alkatresz",
+    "products.directParts": "Kozvetlen Alkatreszek",
+    "products.directPartsDesc": "Kozvetlenul ehhez a termekhez rendelt alkatreszek (nem szerelvenyen belul)",
+    "products.noSubassemblies": "Nincs reszszerelveny megadva",
+    "products.noParts": "Nem szukseges alkatresz",
+    "products.noSteps": "Nincs osszerakasi lepes megadva",
+    "products.viewParts": "Alkatreszek Megtekintese",
+    "products.source": "Forras",
+    "products.productionSteps": "Gyartasi Lepesek",
+    "products.requiredParts": "Szukseges Alkatreszek",
+
+    // Missing materials keys
+    "materials.fileName": "Fajlnev",
+    "materials.fileLocation": "Fajl Helye",
+
+    // Top-level nav (new)
+    "parts": "Alkatreszek",
+    "theme": "Tema",
+    "logout": "Kijelentkezes",
+
+    // Common (new)
+    "common.saving": "Mentés...",
+    "common.errorOccurred": "Hiba tortent",
+
+    // Settings (new)
+    "settings.firstName": "Keresztnev",
+    "settings.lastName": "Vezeteknev",
+    "settings.firstNamePlaceholder": "Adja meg a keresztnevet",
+    "settings.lastNamePlaceholder": "Adja meg a vezetéknevet",
+    "settings.changePassword": "Jelszo Megvaltoztatasa",
+    "settings.currentPassword": "Jelenlegi Jelszo",
+    "settings.newPassword": "Uj Jelszo",
+    "settings.nameRequired": "Keresztnev es vezeteknev megadasa kotelozo",
+
+    // Parts page
+    "parts.title": "Alkatreszek",
+    "parts.subtitle": "Alkatreszek es keszletszintek kezelese",
+    "parts.addPart": "Alkatresz Hozzaadasa",
+    "parts.totalParts": "Osszes Alkatresz",
+    "parts.totalQuantity": "Osszes Mennyiseg",
+    "parts.lowStock": "Alacsony Keszlet",
+    "parts.inStock": "Keszleten",
+    "parts.unit": "Egyseg",
+    "parts.minimumStock": "Min. Keszlet",
+    "parts.location": "Helyszin",
+    "parts.basePrice": "Alapar",
+    "parts.searchPlaceholder": "Alkatreszek keresese...",
+    "parts.noParts": "Nem talalhato alkatresz",
+    "parts.namePlaceholder": "Adja meg az alkatresz nevet",
+    "parts.nameRequired": "Az alkatresz neve kotelozo",
+    "parts.categoryPlaceholder": "pl. Mechanikai",
+    "parts.locationPlaceholder": "pl. A3 polc",
+    "parts.formDesc": "Toltse ki az alkatresz adatait",
+    "parts.deletePart": "Alkatresz Torlese",
+    "parts.deleteConfirm": "Biztosan torolni szeretned ezt az alkatreszt? Ez a muvelet nem vonhato vissza.",
   },
   de: {
     // Simple Navigation Keys
@@ -1402,6 +1708,7 @@ const translations: Record<Locale, TranslationKeys> = {
     "projects.fromQuote": "Aus Angebot",
     "projects.selectQuote": "Angebot Wahlen",
     "projects.selectProducts": "Produkte Wahlen",
+    "projects.selectCompany": "Unternehmen Wahlen",
 
     // Products
     "products.title": "Produkte",
@@ -1493,6 +1800,117 @@ const translations: Record<Locale, TranslationKeys> = {
     "reports.exportReport": "Bericht Exportieren",
     "reports.exportStarted": "Export gestartet",
     "reports.allProjects": "Alle Projekte",
+
+    // Missing projects keys
+    "projects.generateProject": "Projekt Generieren",
+    "projects.warrantyExpiration": "Garantie Bis",
+    "projects.warrantyNote": "2 Jahre Garantie ab Fertigstellungsdatum",
+    "projects.activeIssues": "Aktive Probleme",
+    "projects.activeIssue": "Aktives Problem",
+    "projects.noActiveIssue": "Keine",
+    "projects.solve": "Gelost",
+    "projects.solved": "Gelost",
+    "projects.reportIssue": "Problem Melden",
+    "projects.issueReported": "Problem gemeldet",
+    "projects.issueResolved": "Problem gelost",
+    "projects.issuePlaceholder": "Problem beschreiben...",
+    "projects.finishProjectDesc": "Projekt als abgeschlossen markieren. Dies setzt das Fertigstellungsdatum und den Garantieablauf.",
+    "projects.confirmFinish": "Abschluss Bestatigen",
+    "projects.projectFinished": "Projekt erfolgreich abgeschlossen",
+    "projects.selectQuotePlaceholder": "Angebot wahlen...",
+    "projects.noQuote": "Kein Angebot",
+    "projects.quoteOptionalNote": "Angebote sind optional. Personliche Projekte konnen ohne Angebote funktionieren.",
+    "projects.selectCompanyPlaceholder": "Unternehmen wahlen...",
+    "projects.personalProject": "Personliches Projekt",
+    "projects.personalProjectDesc": "Projekte ohne Unternehmensauftrag",
+    "projects.personal": "Personlich",
+    "projects.companyProjects": "Unternehmensprojekte",
+    "projects.personalProjects": "Personliche Projekte",
+    "projects.projectType": "Projekttyp",
+    "projects.wizardStep": "Schritt",
+    "projects.createProject": "Projekt Erstellen",
+    "projects.projectName": "Projektname",
+    "projects.projectNamePlaceholder": "Projektname eingeben...",
+    "projects.summary": "Zusammenfassung",
+    "projects.inStock": "Auf Lager",
+    "projects.fromInventory": "Aus dem Inventar",
+    "projects.needsProduction": "Produktion Benotigt",
+    "projects.source": "Quelle",
+    "projects.noProjectsFound": "Keine Projekte gefunden",
+    "projects.linkedQuote": "Verknupftes Angebot",
+    "projects.noProductsAdded": "Keine Produkte hinzugefugt",
+    "projects.noChecklistItems": "Keine Checklistenpunkte",
+    "projects.addChecklistItem": "Checklistenpunkt Hinzufugen",
+    "projects.itemTitle": "Punkttitel",
+    "projects.checklistPlaceholder": "Checklistenpunkt eingeben...",
+    "common.optional": "optional",
+    "common.next": "Weiter",
+
+    // Missing products keys
+    "products.productName": "Produktname",
+    "products.assemblyStepsDesc": "Schritte fur die Montage dieses Produkts",
+    "products.notFound": "Produkt nicht gefunden",
+    "products.subassemblies": "Unterbaugruppen",
+    "products.totalParts": "Teile Gesamt",
+    "products.structure": "Struktur",
+    "products.generatedParts": "Generierte Teile",
+    "products.generatedPartsTable": "Generierte Teile Tabelle",
+    "products.generatedPartsDesc": "Alle benotigten Teile fur dieses Produkt, rekursiv aus Baugruppen berechnet",
+    "products.directPart": "Direktes Teil",
+    "products.directParts": "Direkte Teile",
+    "products.directPartsDesc": "Direkt diesem Produkt zugewiesene Teile (nicht in Baugruppen)",
+    "products.noSubassemblies": "Keine Unterbaugruppen definiert",
+    "products.noParts": "Keine Teile benotigt",
+    "products.noSteps": "Keine Montageschritte definiert",
+    "products.viewParts": "Teile Ansehen",
+    "products.source": "Quelle",
+    "products.productionSteps": "Produktionsschritte",
+    "products.requiredParts": "Benotige Teile",
+
+    // Missing materials keys
+    "materials.fileName": "Dateiname",
+    "materials.fileLocation": "Dateispeicherort",
+
+    // Top-level nav (new)
+    "parts": "Teile",
+    "theme": "Design",
+    "logout": "Abmelden",
+
+    // Common (new)
+    "common.saving": "Wird gespeichert...",
+    "common.errorOccurred": "Ein Fehler ist aufgetreten",
+
+    // Settings (new)
+    "settings.firstName": "Vorname",
+    "settings.lastName": "Nachname",
+    "settings.firstNamePlaceholder": "Vornamen eingeben",
+    "settings.lastNamePlaceholder": "Nachnamen eingeben",
+    "settings.changePassword": "Passwort Andern",
+    "settings.currentPassword": "Aktuelles Passwort",
+    "settings.newPassword": "Neues Passwort",
+    "settings.nameRequired": "Vor- und Nachname sind erforderlich",
+
+    // Parts page
+    "parts.title": "Teile",
+    "parts.subtitle": "Teile und Lagerbestande verwalten",
+    "parts.addPart": "Teil Hinzufugen",
+    "parts.totalParts": "Teile Gesamt",
+    "parts.totalQuantity": "Gesamtmenge",
+    "parts.lowStock": "Niedriger Bestand",
+    "parts.inStock": "Auf Lager",
+    "parts.unit": "Einheit",
+    "parts.minimumStock": "Mindestbestand",
+    "parts.location": "Standort",
+    "parts.basePrice": "Grundpreis",
+    "parts.searchPlaceholder": "Teile suchen...",
+    "parts.noParts": "Keine Teile gefunden",
+    "parts.namePlaceholder": "Teilename eingeben",
+    "parts.nameRequired": "Teilename ist erforderlich",
+    "parts.categoryPlaceholder": "z.B. Mechanisch",
+    "parts.locationPlaceholder": "z.B. Regal A3",
+    "parts.formDesc": "Teiledetails ausfullen",
+    "parts.deletePart": "Teil Loschen",
+    "parts.deleteConfirm": "Sind Sie sicher, dass Sie dieses Teil loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
   },
 }
 

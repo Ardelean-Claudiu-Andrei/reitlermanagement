@@ -7,6 +7,8 @@ import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -16,6 +18,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,9 +55,12 @@ import type { UserWithInfo } from "@/lib/types"
 
 export default function UsersPage() {
   const router = useRouter()
-  const { usersWithInfo, deleteUser } = useAppData()
+  const { usersWithInfo, deleteUser, addUser } = useAppData()
   const { t } = useLocale()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "employee" })
 
   const safeUsers = usersWithInfo ?? []
 
@@ -56,8 +75,38 @@ export default function UsersPage() {
     }
   }
 
-  function handleInvite() {
-    toast.success(t("users.inviteSent"))
+  async function handleCreate() {
+    if (!newUser.firstName.trim() || !newUser.lastName.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+      toast.error("Toate câmpurile sunt obligatorii")
+      return
+    }
+    setIsSaving(true)
+    try {
+      const draft = {
+        user: {
+          id: "",
+          firstName: newUser.firstName.trim(),
+          lastName: newUser.lastName.trim(),
+          name: `${newUser.firstName.trim()} ${newUser.lastName.trim()}`,
+          email: newUser.email.trim(),
+          status: "active" as const,
+        },
+        additionalInformation: {
+          userId: "",
+          role: newUser.role as "admin" | "employee",
+          type: newUser.role as "admin" | "employee",
+        },
+        password: newUser.password,
+      }
+      await addUser(draft)
+      toast.success(t("common.savedSuccessfully"))
+      setCreateOpen(false)
+      setNewUser({ firstName: "", lastName: "", email: "", password: "", role: "employee" })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("common.errorOccurred"))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const roleBadgeClass: Record<string, string> = {
@@ -149,9 +198,9 @@ export default function UsersPage() {
           <h2 className="text-2xl font-semibold text-foreground">{t("nav.users")}</h2>
           <p className="text-sm text-muted-foreground">{t("users.subtitle")}</p>
         </div>
-        <Button onClick={handleInvite}>
+        <Button onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          {t("users.inviteUser")}
+          {t("users.addUser")}
         </Button>
       </div>
 
@@ -204,6 +253,70 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("users.addUser")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("settings.firstName")}</Label>
+                <Input
+                  value={newUser.firstName}
+                  onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                  placeholder="Ion"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("settings.lastName")}</Label>
+                <Input
+                  value={newUser.lastName}
+                  onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                  placeholder="Popescu"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("common.email")}</Label>
+              <Input
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="ion.popescu@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Parola</Label>
+              <Input
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("users.role")}</Label>
+              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">{t("users.employees")}</SelectItem>
+                  <SelectItem value="admin">{t("users.admins")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleCreate} disabled={isSaving}>
+              {isSaving ? t("common.saving") : t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

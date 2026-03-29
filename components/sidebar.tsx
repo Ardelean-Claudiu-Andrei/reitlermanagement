@@ -14,6 +14,7 @@ import {
   Settings,
   ChevronDown,
   Users,
+  Puzzle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -27,17 +28,17 @@ export function Sidebar() {
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard"
-    if (href === "/management/companies") return pathname.startsWith("/management")
-    if (href === "/projects") return pathname === "/projects" || pathname.startsWith("/projects/")
-    if (href === "/quotes") return pathname === "/quotes" || pathname.startsWith("/quotes/")
-    if (href === "/products") return pathname === "/products" || pathname.startsWith("/products/")
-    if (href === "/materials/assemblies") return pathname.startsWith("/materials/assemblies")
-    if (href === "/materials/inventory") return pathname.startsWith("/materials/inventory")
     if (href === "/settings") return pathname === "/settings"
     return pathname === href || pathname.startsWith(href + "/")
   }
 
-  const isManagementActive = pathname.startsWith("/management")
+  const isManagementActive =
+    pathname.startsWith("/management") ||
+    pathname.startsWith("/users") ||
+    pathname.startsWith("/projects") ||
+    pathname.startsWith("/quotes") ||
+    pathname.startsWith("/products")
+
   const isMaterialsActive = pathname.startsWith("/materials")
 
   return (
@@ -94,61 +95,67 @@ export function Sidebar() {
                 href="/management"
                 className={cn(
                   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/management/companies")
+                  isActive("/management")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <Building2 className="h-4 w-4" />
+                {t("companies")}
+              </Link>
+              <Link
+                href="/users"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/users")
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
                 <Users className="h-4 w-4" />
-                {t("companies")}
+                {t("users")}
+              </Link>
+              <Link
+                href="/projects"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/projects")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <FolderKanban className="h-4 w-4" />
+                {t("projects")}
+              </Link>
+              <Link
+                href="/quotes"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/quotes")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <FileText className="h-4 w-4" />
+                {t("quotes")}
+              </Link>
+              <Link
+                href="/products"
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  isActive("/products")
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <Package className="h-4 w-4" />
+                {t("products")}
               </Link>
             </div>
           )}
         </div>
 
-        {/* Projects */}
-        <Link
-          href="/projects"
-          className={cn(
-            "mt-1 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-            isActive("/projects")
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-          )}
-        >
-          <FolderKanban className="h-4 w-4" />
-          {t("projects")}
-        </Link>
-
-        {/* Quotes */}
-        <Link
-          href="/quotes"
-          className={cn(
-            "mt-1 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-            isActive("/quotes")
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-          )}
-        >
-          <FileText className="h-4 w-4" />
-          {t("quotes")}
-        </Link>
-
-        {/* Products */}
-        <Link
-          href="/products"
-          className={cn(
-            "mt-1 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-            isActive("/products")
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-          )}
-        >
-          <Package className="h-4 w-4" />
-          {t("products")}
-        </Link>
-
-        {/* Materials Section (Dropdown with Assemblies + Inventory) */}
+        {/* Materials Section (Dropdown with Assemblies + Parts/Piese) */}
         <div className="mt-4">
           <button
             onClick={() => setMaterialsOpen(!materialsOpen)}
@@ -180,16 +187,16 @@ export function Sidebar() {
                 {t("assemblies")}
               </Link>
               <Link
-                href="/materials/inventory"
+                href="/materials/parts"
                 className={cn(
                   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/materials/inventory")
+                  isActive("/materials/parts")
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
-                <Wrench className="h-4 w-4" />
-                {t("inventory")}
+                <Puzzle className="h-4 w-4" />
+                {t("parts")}
               </Link>
             </div>
           )}

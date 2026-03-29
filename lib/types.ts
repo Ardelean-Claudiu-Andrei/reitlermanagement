@@ -6,8 +6,10 @@ export interface Company {
   id: string
   name: string
   contactPerson: string
+  email: string
   phone: string
   address: string
+  cui: string
   createdAt: string
   updatedAt: string
 }
@@ -52,10 +54,15 @@ export interface Part {
   id: string
   name: string
   description: MultiLangText
-  fileName: string
-  fileLocation: string
+  category: string
   unit: string
   basePrice: number
+  minimumStock: number
+  quantity: number
+  location: string
+  notes: string
+  fileName: string
+  fileLocation: string
   createdAt: string
   updatedAt: string
 }
@@ -197,6 +204,8 @@ export interface Project {
 
 export interface User {
   id: string
+  firstName: string
+  lastName: string
   name: string
   email: string
   status: "active" | "inactive"

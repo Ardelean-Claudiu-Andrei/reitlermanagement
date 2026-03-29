@@ -54,8 +54,10 @@ export default function ManagementPage() {
   const [formData, setFormData] = useState({
     name: "",
     contactPerson: "",
+    email: "",
     phone: "",
     address: "",
+    cui: "",
   })
 
   const safeCompanies = companies ?? []
@@ -77,7 +79,7 @@ export default function ManagementPage() {
 
   const openNewDialog = () => {
     setEditingCompany(null)
-    setFormData({ name: "", contactPerson: "", phone: "", address: "" })
+    setFormData({ name: "", contactPerson: "", email: "", phone: "", address: "", cui: "" })
     setDialogOpen(true)
   }
 
@@ -86,8 +88,10 @@ export default function ManagementPage() {
     setFormData({
       name: company.name,
       contactPerson: company.contactPerson,
+      email: company.email,
       phone: company.phone,
       address: company.address,
+      cui: company.cui,
     })
     setDialogOpen(true)
   }
@@ -251,6 +255,15 @@ export default function ManagementPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="email">{t("common.email")}</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="phone">{t("common.phone")}</Label>
               <Input
                 id="phone"
@@ -264,6 +277,14 @@ export default function ManagementPage() {
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cui">CUI</Label>
+              <Input
+                id="cui"
+                value={formData.cui}
+                onChange={(e) => setFormData({ ...formData, cui: e.target.value })}
               />
             </div>
           </div>

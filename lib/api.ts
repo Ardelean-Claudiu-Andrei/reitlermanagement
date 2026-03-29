@@ -194,9 +194,18 @@ export const projectsApi = {
 export const usersApi = {
   list: (): Promise<UserWithInfo[]> => request('/api/users'),
   get: (id: string): Promise<UserWithInfo> => request(`/api/users/${id}`),
-  create: (data: { name: string; email: string; password: string; role: string }): Promise<UserWithInfo> =>
+  getProfile: (): Promise<UserWithInfo> => request('/api/users/profile'),
+  updateProfile: (data: {
+    firstName?: string
+    lastName?: string
+    email?: string
+    currentPassword?: string
+    newPassword?: string
+  }): Promise<UserWithInfo> =>
+    request('/api/users/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  create: (data: { firstName: string; lastName: string; email: string; password: string; role: string }): Promise<UserWithInfo> =>
     request('/api/users', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: { name?: string; email?: string; password?: string; role?: string; status?: string }): Promise<UserWithInfo> =>
+  update: (id: string, data: { firstName?: string; lastName?: string; email?: string; password?: string; role?: string; status?: string }): Promise<UserWithInfo> =>
     request(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string): Promise<void> =>
     request(`/api/users/${id}`, { method: 'DELETE' }),

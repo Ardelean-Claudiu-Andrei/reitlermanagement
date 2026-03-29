@@ -91,8 +91,8 @@ export default function QuotesPage() {
     toast.success(t("common.duplicate"))
   }
 
-  const handleCreateProject = (quoteId: string) => {
-    const project = createProjectFromQuote(quoteId)
+  const handleCreateProject = async (quoteId: string) => {
+    const project = await createProjectFromQuote(quoteId)
     if (project) {
       toast.success(t("quotes.createProject"))
     } else {
@@ -203,7 +203,7 @@ export default function QuotesPage() {
                               {t("common.duplicate")}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleCreateProject(quote.id)}>
+                            <DropdownMenuItem onClick={async () => await handleCreateProject(quote.id)}>
                               <FolderPlus className="mr-2 h-4 w-4" />
                               {t("quotes.createProject")}
                             </DropdownMenuItem>

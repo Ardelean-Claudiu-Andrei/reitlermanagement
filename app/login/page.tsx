@@ -17,12 +17,7 @@ import {
 } from "@/components/ui/select"
 import { Loader2, LogIn } from "lucide-react"
 import { toast } from "sonner"
-
-// Mock users for demo
-const MOCK_USERS = [
-  { email: "admin@smsreitler.com", password: "admin123", role: "admin", name: "Claudiu Ardelean" },
-  { email: "employee@smsreitler.com", password: "emp123", role: "employee", name: "Maria Ionescu" },
-]
+import { apiLogin } from "@/lib/api"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,28 +30,14 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const user = MOCK_USERS.find((u) => u.email === email && u.password === password)
-
-    if (user) {
-      // Store user info in localStorage for demo purposes
-      localStorage.setItem("currentUser", JSON.stringify(user))
+    try {
+      await apiLogin(email, password)
       toast.success(t("login.success"))
       router.push("/dashboard")
-    } else {
+    } catch {
       toast.error(t("login.invalidCredentials"))
-    }
-
-    setIsLoading(false)
-  }
-
-  function handleDemoLogin(role: "admin" | "employee") {
-    const user = MOCK_USERS.find((u) => u.role === role)
-    if (user) {
-      setEmail(user.email)
-      setPassword(user.password)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -132,38 +113,6 @@ export default function LoginPage() {
               {t("login.signIn")}
             </Button>
           </form>
-
-          <div className="mt-6 space-y-3">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">{t("login.demoAccounts")}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin("admin")}
-                className="text-xs"
-              >
-                {t("login.loginAsAdmin")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin("employee")}
-                className="text-xs"
-              >
-                {t("login.loginAsEmployee")}
-              </Button>
-            </div>
-            <p className="text-center text-xs text-muted-foreground">
-              {t("login.demoNote")}
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

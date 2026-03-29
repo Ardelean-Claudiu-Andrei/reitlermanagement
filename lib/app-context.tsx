@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback } from "react"
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 import type {
   Company,
   Part,
@@ -16,17 +16,20 @@ import type {
   ProjectIssue,
 } from "./types"
 import {
-  companies as initialCompanies,
-  parts as initialParts,
-  assemblies as initialAssemblies,
-  products as initialProducts,
-  inventoryItems as initialInventory,
-  quotes as initialQuotes,
-  projects as initialProjects,
-  usersWithInfo as initialUsersWithInfo,
-} from "./mock-data"
+  companiesApi,
+  partsApi,
+  assembliesApi,
+  productsApi,
+  inventoryApi,
+  quotesApi,
+  projectsApi,
+  usersApi,
+} from "./api"
 
 interface AppState {
+  // Loading state
+  isLoading: boolean
+
   // Data
   companies: Company[]
   parts: Part[]
@@ -37,376 +40,319 @@ interface AppState {
   projects: Project[]
   usersWithInfo: UserWithInfo[]
 
+  // Reload helpers
+  reloadAll: () => Promise<void>
+
   // Company CRUD
-  addCompany: (company: Company) => void
-  updateCompany: (company: Company) => void
-  deleteCompany: (id: string) => void
+  addCompany: (company: Company) => Promise<void>
+  updateCompany: (company: Company) => Promise<void>
+  deleteCompany: (id: string) => Promise<void>
 
   // Part CRUD
-  addPart: (part: Part) => void
-  updatePart: (part: Part) => void
-  deletePart: (id: string) => void
+  addPart: (part: Part) => Promise<void>
+  updatePart: (part: Part) => Promise<void>
+  deletePart: (id: string) => Promise<void>
 
   // Assembly CRUD
-  addAssembly: (assembly: Assembly) => void
-  updateAssembly: (assembly: Assembly) => void
-  deleteAssembly: (id: string) => void
+  addAssembly: (assembly: Assembly) => Promise<void>
+  updateAssembly: (assembly: Assembly) => Promise<void>
+  deleteAssembly: (id: string) => Promise<void>
 
   // Product CRUD
-  addProduct: (product: Product) => void
-  updateProduct: (product: Product) => void
-  deleteProduct: (id: string) => void
+  addProduct: (product: Product) => Promise<void>
+  updateProduct: (product: Product) => Promise<void>
+  deleteProduct: (id: string) => Promise<void>
 
   // Inventory CRUD
-  addInventoryItem: (item: InventoryItem) => void
-  updateInventoryItem: (item: InventoryItem) => void
-  deleteInventoryItem: (id: string) => void
+  addInventoryItem: (item: InventoryItem) => Promise<void>
+  updateInventoryItem: (item: InventoryItem) => Promise<void>
+  deleteInventoryItem: (id: string) => Promise<void>
 
   // Quote CRUD
-  addQuote: (quote: Quote) => void
-  updateQuote: (quote: Quote) => void
-  deleteQuote: (id: string) => void
-  duplicateQuote: (id: string) => void
-  updateQuoteStatus: (id: string, status: QuoteStatus) => void
+  addQuote: (quote: Quote) => Promise<void>
+  updateQuote: (quote: Quote) => Promise<void>
+  deleteQuote: (id: string) => Promise<void>
+  duplicateQuote: (id: string) => Promise<void>
+  updateQuoteStatus: (id: string, status: QuoteStatus) => Promise<void>
 
   // Project CRUD
-  addProject: (project: Project) => void
-  updateProject: (project: Project) => void
-  deleteProject: (id: string) => void
-  updateProjectStatus: (id: string, status: ProjectStatus) => void
-  finishProject: (id: string) => void
-  toggleChecklistItem: (projectId: string, itemId: string) => void
-  addChecklistItem: (projectId: string, item: ChecklistItem) => void
-  addProjectIssue: (projectId: string, issue: ProjectIssue) => void
-  resolveProjectIssue: (projectId: string, issueId: string) => void
-  createProjectFromQuote: (quoteId: string) => Project | null
+  addProject: (project: Project) => Promise<void>
+  updateProject: (project: Project) => Promise<void>
+  deleteProject: (id: string) => Promise<void>
+  updateProjectStatus: (id: string, status: ProjectStatus) => Promise<void>
+  finishProject: (id: string) => Promise<void>
+  toggleChecklistItem: (projectId: string, itemId: string) => Promise<void>
+  addChecklistItem: (projectId: string, item: ChecklistItem) => Promise<void>
+  addProjectIssue: (projectId: string, issue: ProjectIssue) => Promise<void>
+  resolveProjectIssue: (projectId: string, issueId: string) => Promise<void>
+  createProjectFromQuote: (quoteId: string) => Promise<Project | null>
 
   // User CRUD
-  addUser: (userWithInfo: UserWithInfo) => void
-  updateUser: (userWithInfo: UserWithInfo) => void
-  deleteUser: (id: string) => void
+  addUser: (userWithInfo: UserWithInfo) => Promise<void>
+  updateUser: (userWithInfo: UserWithInfo) => Promise<void>
+  deleteUser: (id: string) => Promise<void>
 }
 
 const AppContext = createContext<AppState | null>(null)
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [companies, setCompanies] = useState<Company[]>(initialCompanies)
-  const [parts, setParts] = useState<Part[]>(initialParts)
-  const [assemblies, setAssemblies] = useState<Assembly[]>(initialAssemblies)
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory)
-  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes)
-  const [projects, setProjects] = useState<Project[]>(initialProjects)
-  const [usersWithInfo, setUsersWithInfo] = useState<UserWithInfo[]>(initialUsersWithInfo)
+  const [isLoading, setIsLoading] = useState(true)
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [parts, setParts] = useState<Part[]>([])
+  const [assemblies, setAssemblies] = useState<Assembly[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [usersWithInfo, setUsersWithInfo] = useState<UserWithInfo[]>([])
 
-  // Company CRUD
-  const addCompany = useCallback((company: Company) => {
-    setCompanies((prev) => [...prev, company])
+  const reloadAll = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [
+        companiesData,
+        partsData,
+        assembliesData,
+        productsData,
+        inventoryData,
+        quotesData,
+        projectsData,
+        usersData,
+      ] = await Promise.all([
+        companiesApi.list().catch(() => []),
+        partsApi.list().catch(() => []),
+        assembliesApi.list().catch(() => []),
+        productsApi.list().catch(() => []),
+        inventoryApi.list().catch(() => []),
+        quotesApi.list().catch(() => []),
+        projectsApi.list().catch(() => []),
+        usersApi.list().catch(() => []),
+      ])
+      setCompanies(companiesData)
+      setParts(partsData)
+      setAssemblies(assembliesData)
+      setProducts(productsData)
+      setInventory(inventoryData)
+      setQuotes(quotesData)
+      setProjects(projectsData)
+      setUsersWithInfo(usersData)
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
-  const updateCompany = useCallback((company: Company) => {
-    setCompanies((prev) => prev.map((c) => (c.id === company.id ? company : c)))
+  useEffect(() => {
+    // Only load from API if we have a token (user is logged in)
+    if (typeof window !== 'undefined' && localStorage.getItem('access_token')) {
+      reloadAll()
+    } else {
+      setIsLoading(false)
+    }
+  }, [reloadAll])
+
+  // ─── Companies ──────────────────────────────────────────────────────────────
+
+  const addCompany = useCallback(async (company: Company) => {
+    const created = await companiesApi.create(company)
+    setCompanies((prev) => [...prev, created])
   }, [])
 
-  const deleteCompany = useCallback((id: string) => {
+  const updateCompany = useCallback(async (company: Company) => {
+    const updated = await companiesApi.update(company.id, company)
+    setCompanies((prev) => prev.map((c) => (c.id === company.id ? updated : c)))
+  }, [])
+
+  const deleteCompany = useCallback(async (id: string) => {
+    await companiesApi.delete(id)
     setCompanies((prev) => prev.filter((c) => c.id !== id))
   }, [])
 
-  // Part CRUD
-  const addPart = useCallback((part: Part) => {
-    setParts((prev) => [...prev, part])
+  // ─── Parts ──────────────────────────────────────────────────────────────────
+
+  const addPart = useCallback(async (part: Part) => {
+    const created = await partsApi.create(part)
+    setParts((prev) => [...prev, created])
   }, [])
 
-  const updatePart = useCallback((part: Part) => {
-    setParts((prev) => prev.map((p) => (p.id === part.id ? part : p)))
+  const updatePart = useCallback(async (part: Part) => {
+    const updated = await partsApi.update(part.id, part)
+    setParts((prev) => prev.map((p) => (p.id === part.id ? updated : p)))
   }, [])
 
-  const deletePart = useCallback((id: string) => {
+  const deletePart = useCallback(async (id: string) => {
+    await partsApi.delete(id)
     setParts((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
-  // Assembly CRUD
-  const addAssembly = useCallback((assembly: Assembly) => {
-    setAssemblies((prev) => [...prev, assembly])
+  // ─── Assemblies ─────────────────────────────────────────────────────────────
+
+  const addAssembly = useCallback(async (assembly: Assembly) => {
+    const created = await assembliesApi.create(assembly)
+    setAssemblies((prev) => [...prev, created])
   }, [])
 
-  const updateAssembly = useCallback((assembly: Assembly) => {
-    setAssemblies((prev) => prev.map((a) => (a.id === assembly.id ? assembly : a)))
+  const updateAssembly = useCallback(async (assembly: Assembly) => {
+    const updated = await assembliesApi.update(assembly.id, assembly)
+    setAssemblies((prev) => prev.map((a) => (a.id === assembly.id ? updated : a)))
   }, [])
 
-  const deleteAssembly = useCallback((id: string) => {
+  const deleteAssembly = useCallback(async (id: string) => {
+    await assembliesApi.delete(id)
     setAssemblies((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
-  // Product CRUD
-  const addProduct = useCallback((product: Product) => {
-    setProducts((prev) => [...prev, product])
+  // ─── Products ───────────────────────────────────────────────────────────────
+
+  const addProduct = useCallback(async (product: Product) => {
+    const created = await productsApi.create(product)
+    setProducts((prev) => [...prev, created])
   }, [])
 
-  const updateProduct = useCallback((product: Product) => {
-    setProducts((prev) => prev.map((p) => (p.id === product.id ? product : p)))
+  const updateProduct = useCallback(async (product: Product) => {
+    const updated = await productsApi.update(product.id, product)
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? updated : p)))
   }, [])
 
-  const deleteProduct = useCallback((id: string) => {
+  const deleteProduct = useCallback(async (id: string) => {
+    await productsApi.delete(id)
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
-  // Inventory CRUD
-  const addInventoryItem = useCallback((item: InventoryItem) => {
-    setInventory((prev) => [...prev, item])
+  // ─── Inventory ──────────────────────────────────────────────────────────────
+
+  const addInventoryItem = useCallback(async (item: InventoryItem) => {
+    const created = await inventoryApi.create(item)
+    setInventory((prev) => [...prev, created])
   }, [])
 
-  const updateInventoryItem = useCallback((item: InventoryItem) => {
-    setInventory((prev) => prev.map((i) => (i.id === item.id ? item : i)))
+  const updateInventoryItem = useCallback(async (item: InventoryItem) => {
+    const updated = await inventoryApi.update(item.id, item)
+    setInventory((prev) => prev.map((i) => (i.id === item.id ? updated : i)))
   }, [])
 
-  const deleteInventoryItem = useCallback((id: string) => {
+  const deleteInventoryItem = useCallback(async (id: string) => {
+    await inventoryApi.delete(id)
     setInventory((prev) => prev.filter((i) => i.id !== id))
   }, [])
 
-  // Quote CRUD
-  const addQuote = useCallback((quote: Quote) => {
-    setQuotes((prev) => [...prev, quote])
+  // ─── Quotes ─────────────────────────────────────────────────────────────────
+
+  const addQuote = useCallback(async (quote: Quote) => {
+    const created = await quotesApi.create(quote)
+    setQuotes((prev) => [...prev, created])
   }, [])
 
-  const updateQuote = useCallback((quote: Quote) => {
-    setQuotes((prev) => prev.map((q) => (q.id === quote.id ? quote : q)))
+  const updateQuote = useCallback(async (quote: Quote) => {
+    const updated = await quotesApi.update(quote.id, quote)
+    setQuotes((prev) => prev.map((q) => (q.id === quote.id ? updated : q)))
   }, [])
 
-  const deleteQuote = useCallback((id: string) => {
+  const deleteQuote = useCallback(async (id: string) => {
+    await quotesApi.delete(id)
     setQuotes((prev) => prev.filter((q) => q.id !== id))
   }, [])
 
-  const duplicateQuote = useCallback((id: string) => {
-    setQuotes((prev) => {
-      const original = prev.find((q) => q.id === id)
-      if (!original) return prev
-      const copy: Quote = {
-        ...original,
-        id: `q${Date.now()}`,
-        name: `${original.name} (Copy)`,
-        status: "draft",
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
-      }
-      return [...prev, copy]
-    })
+  const duplicateQuote = useCallback(async (id: string) => {
+    const copy = await quotesApi.duplicate(id)
+    setQuotes((prev) => [...prev, copy])
   }, [])
 
-  const updateQuoteStatus = useCallback((id: string, status: QuoteStatus) => {
-    setQuotes((prev) =>
-      prev.map((q) =>
-        q.id === id
-          ? { ...q, status, updatedAt: new Date().toISOString().split("T")[0] }
-          : q
-      )
-    )
+  const updateQuoteStatus = useCallback(async (id: string, status: QuoteStatus) => {
+    const updated = await quotesApi.updateStatus(id, status)
+    setQuotes((prev) => prev.map((q) => (q.id === id ? updated : q)))
   }, [])
 
-  // Project CRUD
-  const addProject = useCallback((project: Project) => {
-    setProjects((prev) => [...prev, project])
+  // ─── Projects ───────────────────────────────────────────────────────────────
+
+  const addProject = useCallback(async (project: Project) => {
+    const created = await projectsApi.create(project)
+    setProjects((prev) => [...prev, created])
   }, [])
 
-  const updateProject = useCallback((project: Project) => {
-    setProjects((prev) => prev.map((p) => (p.id === project.id ? project : p)))
+  const updateProject = useCallback(async (project: Project) => {
+    const updated = await projectsApi.update(project.id, project)
+    setProjects((prev) => prev.map((p) => (p.id === project.id ? updated : p)))
   }, [])
 
-  const deleteProject = useCallback((id: string) => {
+  const deleteProject = useCallback(async (id: string) => {
+    await projectsApi.delete(id)
     setProjects((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
-  const updateProjectStatus = useCallback((id: string, status: ProjectStatus) => {
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              status,
-              updatedAt: new Date().toISOString().split("T")[0],
-              activity: [
-                ...p.activity,
-                {
-                  id: `a${Date.now()}`,
-                  action: `Status changed to ${status.replace("-", " ")}`,
-                  user: "Claudiu Ardelean",
-                  timestamp: new Date().toLocaleString(),
-                },
-              ],
-            }
-          : p
-      )
-    )
+  const updateProjectStatus = useCallback(async (id: string, status: ProjectStatus) => {
+    const updated = await projectsApi.updateStatus(id, status)
+    setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)))
   }, [])
 
-  const finishProject = useCallback((id: string) => {
-    const today = new Date().toISOString().split("T")[0]
-    const warrantyDate = new Date()
-    warrantyDate.setFullYear(warrantyDate.getFullYear() + 2)
-    const warranty = warrantyDate.toISOString().split("T")[0]
-
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              status: "done" as ProjectStatus,
-              finishDate: today,
-              warrantyExpiration: warranty,
-              updatedAt: today,
-              activity: [
-                ...p.activity,
-                {
-                  id: `a${Date.now()}`,
-                  action: "Project finished",
-                  user: "Claudiu Ardelean",
-                  timestamp: new Date().toLocaleString(),
-                },
-              ],
-            }
-          : p
-      )
-    )
+  const finishProject = useCallback(async (id: string) => {
+    const updated = await projectsApi.finish(id)
+    setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)))
   }, [])
 
-  const toggleChecklistItem = useCallback((projectId: string, itemId: string) => {
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId
-          ? {
-              ...p,
-              checklist: p.checklist.map((c) =>
-                c.id === itemId
-                  ? { ...c, done: !c.done, doneAt: !c.done ? new Date().toISOString().split("T")[0] : null }
-                  : c
-              ),
-            }
-          : p
-      )
-    )
+  const toggleChecklistItem = useCallback(async (projectId: string, itemId: string) => {
+    const updated = await projectsApi.toggleChecklistItem(projectId, itemId)
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)))
   }, [])
 
-  const addChecklistItem = useCallback((projectId: string, item: ChecklistItem) => {
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId
-          ? { ...p, checklist: [...p.checklist, item] }
-          : p
-      )
-    )
+  const addChecklistItem = useCallback(async (projectId: string, item: ChecklistItem) => {
+    const updated = await projectsApi.addChecklistItem(projectId, item)
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)))
   }, [])
 
-  const addProjectIssue = useCallback((projectId: string, issue: ProjectIssue) => {
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId
-          ? {
-              ...p,
-              issues: [...p.issues, issue],
-              activity: [
-                ...p.activity,
-                {
-                  id: `a${Date.now()}`,
-                  action: `Issue reported: ${issue.description.substring(0, 50)}...`,
-                  user: "Claudiu Ardelean",
-                  timestamp: new Date().toLocaleString(),
-                },
-              ],
-            }
-          : p
-      )
-    )
+  const addProjectIssue = useCallback(async (projectId: string, issue: ProjectIssue) => {
+    const updated = await projectsApi.addIssue(projectId, issue)
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)))
   }, [])
 
-  const resolveProjectIssue = useCallback((projectId: string, issueId: string) => {
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === projectId
-          ? {
-              ...p,
-              issues: p.issues.map((i) =>
-                i.id === issueId
-                  ? { ...i, solved: true, solvedAt: new Date().toISOString().split("T")[0] }
-                  : i
-              ),
-              activity: [
-                ...p.activity,
-                {
-                  id: `a${Date.now()}`,
-                  action: "Issue resolved",
-                  user: "Claudiu Ardelean",
-                  timestamp: new Date().toLocaleString(),
-                },
-              ],
-            }
-          : p
-      )
-    )
+  const resolveProjectIssue = useCallback(async (projectId: string, issueId: string) => {
+    const updated = await projectsApi.resolveIssue(projectId, issueId)
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)))
   }, [])
 
-  const createProjectFromQuote = useCallback((quoteId: string): Project | null => {
-    const quote = quotes.find((q) => q.id === quoteId)
-    if (!quote) return null
-
-    const projectCount = projects.length + 1
-    const today = new Date().toISOString().split("T")[0]
-    const deadline = new Date()
-    deadline.setDate(deadline.getDate() + quote.deliveryTimeWeeks * 7)
-
-    const newProject: Project = {
-      id: `proj${Date.now()}`,
-      code: `PRJ-2026-${String(projectCount).padStart(3, "0")}`,
-      name: quote.name,
-      companyId: quote.companyId,
-      quoteId: quote.id,
-      status: "draft",
-      startDate: today,
-      deadline: deadline.toISOString().split("T")[0],
-      finishDate: null,
-      warrantyExpiration: null,
-      items: quote.items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        notes: item.notes,
-        fromInventory: false,
-      })),
-      checklist: [],
-      issues: [],
-      activity: [
-        {
-          id: `a${Date.now()}`,
-          action: "Project created from quote",
-          user: "Claudiu Ardelean",
-          timestamp: new Date().toLocaleString(),
-        },
-      ],
-      createdAt: today,
-      updatedAt: today,
-    }
-
+  const createProjectFromQuote = useCallback(async (quoteId: string): Promise<Project | null> => {
+    const user = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+    const userName = user ? JSON.parse(user).name : 'System'
+    const newProject = await projectsApi.createFromQuote(quoteId, userName)
     setProjects((prev) => [...prev, newProject])
     return newProject
-  }, [quotes, projects])
-
-  // User CRUD
-  const addUser = useCallback((userWithInfo: UserWithInfo) => {
-    setUsersWithInfo((prev) => [...prev, userWithInfo])
   }, [])
 
-  const updateUser = useCallback((userWithInfo: UserWithInfo) => {
-    setUsersWithInfo((prev) =>
-      prev.map((u) => (u.user.id === userWithInfo.user.id ? userWithInfo : u))
-    )
+  // ─── Users ──────────────────────────────────────────────────────────────────
+
+  const addUser = useCallback(async (userWithInfo: UserWithInfo) => {
+    // UserWithInfo from forms won't have password; handled separately
+    // For now, accept the shape components pass and create via a cast
+    const payload = userWithInfo as UserWithInfo & { password?: string }
+    const created = await usersApi.create({
+      name: payload.user.name,
+      email: payload.user.email,
+      password: (payload as { password?: string }).password || 'changeme',
+      role: payload.additionalInformation.role,
+    })
+    setUsersWithInfo((prev) => [...prev, created])
   }, [])
 
-  const deleteUser = useCallback((id: string) => {
+  const updateUser = useCallback(async (userWithInfo: UserWithInfo) => {
+    const payload = userWithInfo as UserWithInfo & { password?: string }
+    const updated = await usersApi.update(payload.user.id, {
+      name: payload.user.name,
+      email: payload.user.email,
+      role: payload.additionalInformation.role,
+      status: payload.user.status,
+      ...(payload.password ? { password: payload.password } : {}),
+    })
+    setUsersWithInfo((prev) => prev.map((u) => (u.user.id === payload.user.id ? updated : u)))
+  }, [])
+
+  const deleteUser = useCallback(async (id: string) => {
+    await usersApi.delete(id)
     setUsersWithInfo((prev) => prev.filter((u) => u.user.id !== id))
   }, [])
 
   return (
     <AppContext.Provider
       value={{
+        isLoading,
         companies,
         parts,
         assemblies,
@@ -415,6 +361,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quotes,
         projects,
         usersWithInfo,
+        reloadAll,
         addCompany,
         updateCompany,
         deleteCompany,

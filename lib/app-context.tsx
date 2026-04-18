@@ -69,7 +69,7 @@ interface AppState {
   deleteInventoryItem: (id: string) => Promise<void>
 
   // Quote CRUD
-  addQuote: (quote: Quote) => Promise<void>
+  addQuote: (quote: Quote) => Promise<Quote>
   updateQuote: (quote: Quote) => Promise<void>
   deleteQuote: (id: string) => Promise<void>
   duplicateQuote: (id: string) => Promise<void>
@@ -237,9 +237,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Quotes ─────────────────────────────────────────────────────────────────
 
-  const addQuote = useCallback(async (quote: Quote) => {
+  const addQuote = useCallback(async (quote: Quote): Promise<Quote> => {
     const created = await quotesApi.create(quote)
     setQuotes((prev) => [...prev, created])
+    return created
   }, [])
 
   const updateQuote = useCallback(async (quote: Quote) => {

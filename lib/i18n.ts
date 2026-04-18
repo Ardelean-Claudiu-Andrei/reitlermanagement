@@ -395,6 +395,50 @@ type TranslationKeys = {
   "parts.formDesc": string
   "parts.deletePart": string
   "parts.deleteConfirm": string
+
+  // Missing keys used without prefix in quotes/projects/management pages
+  "companyName": string
+  "contactPerson": string
+  "phone": string
+  "address": string
+  "associatedProjects": string
+  "startDate": string
+  "deadline": string
+  "associatedQuotes": string
+  "validity": string
+  "projectName": string
+  "quoteName": string
+  "company": string
+  "productName": string
+  "installation": string
+  "quotes.noProductsHint": string
+  "addProduct": string
+  "addQuote": string
+  "noResults": string
+  "quotes.noQuotesFound": string
+  "deliveryTimeWeeks": string
+  "newProject": string
+  "selectProduct": string
+  "selectCompany": string
+  "weeks": string
+  "common.basicInfo": string
+  "common.requiredFields": string
+  "back": string
+  "edit": string
+  "save": string
+  "name": string
+  "status": string
+  "draft": string
+  "pending": string
+  "approved": string
+  "quantity": string
+  "price": string
+  "total": string
+  "notes": string
+  "description": string
+  "view": string
+  "viewDetails": string
+  "savedSuccessfully": string
 }
 
 const translations: Record<Locale | "de", TranslationKeys> = {
@@ -771,6 +815,50 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Fill in the part details",
     "parts.deletePart": "Delete Part",
     "parts.deleteConfirm": "Are you sure you want to delete this part? This action cannot be undone.",
+
+    // Unprefixed keys used in quotes/projects/management pages
+    "companyName": "Company Name",
+    "contactPerson": "Contact Person",
+    "phone": "Phone",
+    "address": "Address",
+    "associatedProjects": "Associated Projects",
+    "startDate": "Start Date",
+    "deadline": "Deadline",
+    "associatedQuotes": "Associated Quotes",
+    "validity": "Validity",
+    "projectName": "Project Name",
+    "quoteName": "Quote Name",
+    "company": "Company",
+    "productName": "Product Name",
+    "installation": "Installation",
+    "quotes.noProductsHint": "No products added. Click \"Add Product\" to start.",
+    "addProduct": "Add Product",
+    "addQuote": "Add Quote",
+    "noResults": "No results found",
+    "quotes.noQuotesFound": "No quotes found",
+    "deliveryTimeWeeks": "Delivery Time (weeks)",
+    "newProject": "New Project",
+    "selectProduct": "Select Product",
+    "selectCompany": "Select Company",
+    "weeks": "weeks",
+    "common.basicInfo": "Basic Information",
+    "common.requiredFields": "Please fill in all required fields",
+    "back": "Back",
+    "edit": "Edit",
+    "save": "Save",
+    "name": "Name",
+    "status": "Status",
+    "draft": "Draft",
+    "pending": "Pending",
+    "approved": "Approved",
+    "quantity": "Quantity",
+    "price": "Price",
+    "total": "Total",
+    "notes": "Notes",
+    "description": "Description",
+    "view": "View",
+    "viewDetails": "View Details",
+    "savedSuccessfully": "Saved successfully",
   },
   ro: {
     // Simple Navigation Keys
@@ -1151,6 +1239,50 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Completati detaliile piesei",
     "parts.deletePart": "Sterge Piesa",
     "parts.deleteConfirm": "Esti sigur ca vrei sa stergi aceasta piesa? Aceasta actiune nu poate fi anulata.",
+
+    // Unprefixed keys used in quotes/projects/management pages
+    "companyName": "Nume Companie",
+    "contactPerson": "Persoana de Contact",
+    "phone": "Telefon",
+    "address": "Adresa",
+    "associatedProjects": "Proiecte Asociate",
+    "startDate": "Data Start",
+    "deadline": "Termen Limita",
+    "associatedQuotes": "Oferte Asociate",
+    "validity": "Valabilitate",
+    "projectName": "Nume Proiect",
+    "quoteName": "Nume Oferta",
+    "company": "Companie",
+    "productName": "Nume Produs",
+    "installation": "Instalare",
+    "quotes.noProductsHint": "Niciun produs adaugat. Apasati \"Adauga Produs\" pentru a incepe.",
+    "addProduct": "Adauga Produs",
+    "addQuote": "Adauga Oferta",
+    "noResults": "Niciun rezultat gasit",
+    "quotes.noQuotesFound": "Nicio oferta gasita",
+    "deliveryTimeWeeks": "Timp Livrare (saptamani)",
+    "newProject": "Proiect Nou",
+    "selectProduct": "Selecteaza Produs",
+    "selectCompany": "Selecteaza Companie",
+    "weeks": "saptamani",
+    "common.basicInfo": "Informatii de Baza",
+    "common.requiredFields": "Completati toate campurile obligatorii",
+    "back": "Inapoi",
+    "edit": "Editeaza",
+    "save": "Salveaza",
+    "name": "Nume",
+    "status": "Status",
+    "draft": "Ciorna",
+    "pending": "In asteptare",
+    "approved": "Aprobat",
+    "quantity": "Cantitate",
+    "price": "Pret",
+    "total": "Total",
+    "notes": "Note",
+    "description": "Descriere",
+    "view": "Vizualizeaza",
+    "viewDetails": "Vezi detalii",
+    "savedSuccessfully": "Salvat cu succes",
   },
   hu: {
     // Simple Navigation Keys
@@ -1531,6 +1663,50 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Toltse ki az alkatresz adatait",
     "parts.deletePart": "Alkatresz Torlese",
     "parts.deleteConfirm": "Biztosan torolni szeretned ezt az alkatreszt? Ez a muvelet nem vonhato vissza.",
+
+    // Unprefixed keys used in quotes/projects/management pages
+    "companyName": "Ceg Neve",
+    "contactPerson": "Kapcsolattarto",
+    "phone": "Telefon",
+    "address": "Cim",
+    "associatedProjects": "Kapcsolodo Projektek",
+    "startDate": "Kezdes Datum",
+    "deadline": "Hatarido",
+    "associatedQuotes": "Kapcsolodo Arajanlatok",
+    "validity": "Ervenesseg",
+    "projectName": "Projekt Neve",
+    "quoteName": "Arajanlat Neve",
+    "company": "Ceg",
+    "productName": "Termek Neve",
+    "installation": "Telepites",
+    "quotes.noProductsHint": "Meg nem adtak hozza termekett. Kattintson a \"Termek Hozzaadasa\" gombra a kezdeshez.",
+    "addProduct": "Termek Hozzaadasa",
+    "addQuote": "Arajanlat Hozzaadasa",
+    "noResults": "Nem talalhato eredmeny",
+    "quotes.noQuotesFound": "Nem talalhato arajanlat",
+    "deliveryTimeWeeks": "Szallitasi Ido (het)",
+    "newProject": "Uj Projekt",
+    "selectProduct": "Termek Kivalasztasa",
+    "selectCompany": "Ceg Kivalasztasa",
+    "weeks": "het",
+    "common.basicInfo": "Alapinformaciok",
+    "common.requiredFields": "Kerem toltse ki az osszes kotelezo mezot",
+    "back": "Vissza",
+    "edit": "Szerkesztes",
+    "save": "Mentes",
+    "name": "Nev",
+    "status": "Allapot",
+    "draft": "Vazlat",
+    "pending": "Fuggoben",
+    "approved": "Elfogadva",
+    "quantity": "Mennyiseg",
+    "price": "Ar",
+    "total": "Osszesen",
+    "notes": "Megjegyzesek",
+    "description": "Leiras",
+    "view": "Megtekintes",
+    "viewDetails": "Reszletek",
+    "savedSuccessfully": "Sikeresen mentve",
   },
   de: {
     // Simple Navigation Keys
@@ -1911,6 +2087,50 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Teiledetails ausfullen",
     "parts.deletePart": "Teil Loschen",
     "parts.deleteConfirm": "Sind Sie sicher, dass Sie dieses Teil loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+
+    // Unprefixed keys used in quotes/projects/management pages
+    "companyName": "Unternehmensname",
+    "contactPerson": "Kontaktperson",
+    "phone": "Telefon",
+    "address": "Adresse",
+    "associatedProjects": "Zugehorige Projekte",
+    "startDate": "Startdatum",
+    "deadline": "Frist",
+    "associatedQuotes": "Zugehorige Angebote",
+    "validity": "Gultigkeit",
+    "projectName": "Projektname",
+    "quoteName": "Angebotsname",
+    "company": "Unternehmen",
+    "productName": "Produktname",
+    "installation": "Installation",
+    "quotes.noProductsHint": "Keine Produkte hinzugefugt. Klicken Sie auf \"Produkt Hinzufugen\" um zu beginnen.",
+    "addProduct": "Produkt Hinzufugen",
+    "addQuote": "Angebot Hinzufugen",
+    "noResults": "Keine Ergebnisse gefunden",
+    "quotes.noQuotesFound": "Keine Angebote gefunden",
+    "deliveryTimeWeeks": "Lieferzeit (Wochen)",
+    "newProject": "Neues Projekt",
+    "selectProduct": "Produkt Wahlen",
+    "selectCompany": "Unternehmen Wahlen",
+    "weeks": "Wochen",
+    "common.basicInfo": "Grundinformationen",
+    "common.requiredFields": "Bitte alle Pflichtfelder ausfullen",
+    "back": "Zuruck",
+    "edit": "Bearbeiten",
+    "save": "Speichern",
+    "name": "Name",
+    "status": "Status",
+    "draft": "Entwurf",
+    "pending": "Ausstehend",
+    "approved": "Genehmigt",
+    "quantity": "Menge",
+    "price": "Preis",
+    "total": "Gesamt",
+    "notes": "Notizen",
+    "description": "Beschreibung",
+    "view": "Ansehen",
+    "viewDetails": "Details Ansehen",
+    "savedSuccessfully": "Erfolgreich gespeichert",
   },
 }
 

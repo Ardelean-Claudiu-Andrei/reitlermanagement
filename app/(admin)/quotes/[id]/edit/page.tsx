@@ -112,7 +112,7 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
   const total = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const grandTotal = total + formData.installation
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error("Quote name is required")
       return
@@ -137,9 +137,9 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
         createdAt: today,
         updatedAt: today,
       }
-      addQuote(newQuote)
+      const created = await addQuote(newQuote)
       toast.success(t("savedSuccessfully"))
-      router.push(`/quotes/${newQuote.id}`)
+      router.push(`/quotes/${created?.id ?? newQuote.id}`)
     } else {
       const updated: Quote = {
         ...existingQuote!,
@@ -148,7 +148,7 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
         items,
         updatedAt: today,
       }
-      updateQuote(updated)
+      await updateQuote(updated)
       toast.success(t("savedSuccessfully"))
       router.push(`/quotes/${updated.id}`)
     }
@@ -293,7 +293,7 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
               {items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    No products added. Click "Add Product" to start.
+                    {t("quotes.noProductsHint")}
                   </TableCell>
                 </TableRow>
               ) : (

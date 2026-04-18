@@ -227,7 +227,7 @@ export default function NewProjectPage() {
               {items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    No products added. Click "Add Product" to start.
+                     {t("quotes.noProductsHint")}
                   </TableCell>
                 </TableRow>
               ) : (

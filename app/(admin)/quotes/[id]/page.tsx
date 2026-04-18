@@ -36,6 +36,8 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Pencil, FileDown, FolderPlus, Calendar, Truck, Building2 } from "lucide-react"
 import { toast } from "sonner"
+import { generateOfferHtml } from "@/lib/generate-offer-html"
+import { settingsApi } from "@/lib/api"
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -77,53 +79,33 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     return <Badge variant={c.variant}>{c.label}</Badge>
   }
 
-  const handleGenerateQuote = () => {
-    // Generate CSV export
-    const rows: string[][] = [
-      ["SMS REITLER - QUOTE"],
-      [""],
-      ["Quote Name:", quote.name],
-      ["Company:", company?.name || "Personal / Internal"],
-      ["Contact:", company?.contactPerson || "-"],
-      ["Validity:", quote.validity],
-      ["Delivery Time:", `${quote.deliveryTimeWeeks} weeks`],
-      [""],
-      ["PRODUCTS"],
-      ["Product", "Quantity", "Unit Price", "Total", "Notes"],
-    ]
-
-    quote.items.forEach((item) => {
-      const product = products.find((p) => p.id === item.productId)
-      rows.push([
-        product?.name || item.productId,
-        item.quantity.toString(),
-        item.unitPrice.toFixed(2),
-        (item.quantity * item.unitPrice).toFixed(2),
-        item.notes,
-      ])
+  const handleGenerateQuote = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const branding = await settingsApi.getBranding().catch(() => ({ headerUrl: null, signatureUrl: null }))
+    const logoUrl = branding.headerUrl
+      ? `${API_URL}${branding.headerUrl}`
+      : `${window.location.origin}/branding/sms-reitler.png`
+    const signatureUrl = branding.signatureUrl ? `${API_URL}${branding.signatureUrl}` : null
+    const html = generateOfferHtml({
+      quote,
+      company,
+      products,
+      lang: exportLang,
+      logoUrl,
+      signatureUrl,
     })
 
-    rows.push([""])
-    rows.push(["Subtotal:", "", "", total.toFixed(2)])
-    rows.push(["Installation/Labor:", "", "", quote.installation.toFixed(2)])
-    rows.push(["GRAND TOTAL:", "", "", grandTotal.toFixed(2)])
-
-    if (quote.notes) {
-      rows.push([""])
-      rows.push(["Notes:", quote.notes])
+    const printWindow = window.open("", "_blank", "width=900,height=1200")
+    if (!printWindow) {
+      toast.error("Could not open print window. Please allow popups.")
+      return
     }
-
-    const csvContent = rows.map((row) => row.join(",")).join("\n")
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `quote_${quote.name.replace(/\s+/g, "_")}_${exportLang}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    printWindow.document.open()
+    printWindow.document.write(html)
+    printWindow.document.close()
 
     setGenerateOpen(false)
-    toast.success(`Quote exported in ${quoteLocaleNames[exportLang]}`)
+    toast.success(`Offer opened in ${quoteLocaleNames[exportLang]}`)
   }
 
   const handleCreateProject = () => {
@@ -306,7 +288,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </Button>
             <Button onClick={handleGenerateQuote}>
               <FileDown className="mr-2 h-4 w-4" />
-              {t("common.export")} CSV
+              {t("common.export")} PDF
             </Button>
           </DialogFooter>
         </DialogContent>

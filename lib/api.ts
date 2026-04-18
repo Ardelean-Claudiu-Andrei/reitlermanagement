@@ -225,3 +225,42 @@ export const statsApi = {
     doneProjects: number
   }> => request('/api/stats'),
 }
+
+// ─── Settings / Branding ─────────────────────────────────────────────────────
+
+export const settingsApi = {
+  getBranding: (): Promise<{ headerUrl: string | null; signatureUrl: string | null }> =>
+    request('/api/settings/branding'),
+
+  uploadHeader: async (file: File): Promise<{ url: string }> => {
+    const form = new FormData()
+    form.append('file', file)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const res = await fetch(`${API_URL}/api/settings/branding/header`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  },
+
+  uploadSignature: async (file: File): Promise<{ url: string }> => {
+    const form = new FormData()
+    form.append('file', file)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const res = await fetch(`${API_URL}/api/settings/branding/signature`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  },
+
+  deleteHeader: (): Promise<{ ok: boolean }> =>
+    request('/api/settings/branding/header', { method: 'DELETE' }),
+
+  deleteSignature: (): Promise<{ ok: boolean }> =>
+    request('/api/settings/branding/signature', { method: 'DELETE' }),
+}

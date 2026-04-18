@@ -16,12 +16,18 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { usersApi, getCurrentUser } from "@/lib/api"
+import { usersApi, settingsApi, getCurrentUser } from "@/lib/api"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const { t, locale, setLocale } = useLocale()
   const [mounted, setMounted] = useState(false)
+
+  // Branding state
+  const [headerUrl, setHeaderUrl] = useState<string | null>(null)
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  const [uploadingHeader, setUploadingHeader] = useState(false)
+  const [uploadingSignature, setUploadingSignature] = useState(false)
 
   // Profile form state
   const [firstName, setFirstName] = useState("")
@@ -33,6 +39,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
+    settingsApi.getBranding()
+      .then((b) => { setHeaderUrl(b.headerUrl); setSignatureUrl(b.signatureUrl) })
+      .catch(() => {})
     // Load from localStorage first (fast)
     const cached = getCurrentUser()
     if (cached) {
@@ -47,6 +56,58 @@ export default function SettingsPage() {
       setEmail(data.user.email || "")
     }).catch(() => {/* not logged in or error */})
   }, [])
+
+  async function handleUploadHeader(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingHeader(true)
+    try {
+      const { url } = await settingsApi.uploadHeader(file)
+      setHeaderUrl(url)
+      toast.success("Imagine antet salvată")
+    } catch {
+      toast.error("Eroare la upload imagine antet")
+    } finally {
+      setUploadingHeader(false)
+      e.target.value = ""
+    }
+  }
+
+  async function handleUploadSignature(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingSignature(true)
+    try {
+      const { url } = await settingsApi.uploadSignature(file)
+      setSignatureUrl(url)
+      toast.success("Imagine semnătură salvată")
+    } catch {
+      toast.error("Eroare la upload imagine semnătură")
+    } finally {
+      setUploadingSignature(false)
+      e.target.value = ""
+    }
+  }
+
+  async function handleDeleteHeader() {
+    try {
+      await settingsApi.deleteHeader()
+      setHeaderUrl(null)
+      toast.success("Imagine antet ștearsă")
+    } catch {
+      toast.error("Eroare la ștergere")
+    }
+  }
+
+  async function handleDeleteSignature() {
+    try {
+      await settingsApi.deleteSignature()
+      setSignatureUrl(null)
+      toast.success("Imagine semnătură ștearsă")
+    } catch {
+      toast.error("Eroare la ștergere")
+    }
+  }
 
   async function handleSaveProfile() {
     if (!firstName.trim() || !lastName.trim()) {
@@ -93,6 +154,73 @@ export default function SettingsPage() {
         <h2 className="text-2xl font-semibold text-foreground">{t("nav.settings")}</h2>
         <p className="text-sm text-muted-foreground">{t("settings.description")}</p>
       </div>
+
+      {/* ── Branding ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Branding ofertă</CardTitle>
+          <CardDescription>Imaginea de antet și semnătura afișate în PDF-ul ofertei</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Header image */}
+          <div className="space-y-3">
+            <Label>Imagine antet (logo / header)</Label>
+            {headerUrl && (
+              <div className="flex items-center gap-4">
+                <img
+                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${headerUrl}`}
+                  alt="Antet ofertă"
+                  className="h-16 max-w-[240px] object-contain rounded border"
+                />
+                <Button variant="destructive" size="sm" onClick={handleDeleteHeader}>
+                  Șterge
+                </Button>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={uploadingHeader}
+                onChange={handleUploadHeader}
+                className="max-w-xs"
+              />
+              {uploadingHeader && <span className="text-sm text-muted-foreground">Se încarcă...</span>}
+            </div>
+            <p className="text-xs text-muted-foreground">PNG/JPEG/WebP, max 5 MB. Afișat în colțul dreapta-sus al ofertei.</p>
+          </div>
+
+          <Separator />
+
+          {/* Signature image */}
+          <div className="space-y-3">
+            <Label>Imagine semnătură</Label>
+            {signatureUrl && (
+              <div className="flex items-center gap-4">
+                <img
+                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${signatureUrl}`}
+                  alt="Semnătură ofertă"
+                  className="h-20 max-w-[200px] object-contain rounded border"
+                />
+                <Button variant="destructive" size="sm" onClick={handleDeleteSignature}>
+                  Șterge
+                </Button>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={uploadingSignature}
+                onChange={handleUploadSignature}
+                className="max-w-xs"
+              />
+              {uploadingSignature && <span className="text-sm text-muted-foreground">Se încarcă...</span>}
+            </div>
+            <p className="text-xs text-muted-foreground">PNG/JPEG/WebP, max 5 MB. Afișată în zona de semnătură la finalul ofertei.</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

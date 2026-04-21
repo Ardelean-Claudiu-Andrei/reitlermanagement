@@ -160,6 +160,22 @@ export const quotesApi = {
     request(`/api/quotes/${id}/duplicate`, { method: 'POST' }),
   delete: (id: string): Promise<void> =>
     request(`/api/quotes/${id}`, { method: 'DELETE' }),
+  generatePdf: async (id: string, lang: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/quotes/${id}/generate-pdf?lang=${lang}`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
+  generateExcel: async (id: string, lang: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/quotes/${id}/generate-excel?lang=${lang}`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'Excel generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Projects ─────────────────────────────────────────────────────────────────

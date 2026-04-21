@@ -7,6 +7,7 @@ import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { quoteLocales, quoteLocaleNames, type QuoteLocale } from "@/lib/i18n"
 import type { QuoteStatus } from "@/lib/types"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -36,16 +37,16 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Pencil, FileDown, FolderPlus, Calendar, Truck, Building2 } from "lucide-react"
 import { toast } from "sonner"
-import { generateOfferHtml } from "@/lib/generate-offer-html"
-import { settingsApi } from "@/lib/api"
+import { quotesApi } from "@/lib/api"
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { quotes, companies, products, updateQuoteStatus, createProjectFromQuote } = useAppData()
-  const { t, locale } = useLocale()
+  const { quotes, companies, products, createProjectFromQuote } = useAppData()
+  const { t } = useLocale()
   const [generateOpen, setGenerateOpen] = useState(false)
   const [exportLang, setExportLang] = useState<QuoteLocale>("ro")
+  const [exportFormat, setExportFormat] = useState<"pdf" | "excel">("pdf")
 
   const quote = quotes.find((q) => q.id === id)
 
@@ -80,36 +81,27 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const handleGenerateQuote = async () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const branding = await settingsApi.getBranding().catch(() => ({ headerUrl: null, signatureUrl: null }))
-    const logoUrl = branding.headerUrl
-      ? `${API_URL}${branding.headerUrl}`
-      : `${window.location.origin}/branding/sms-reitler.png`
-    const signatureUrl = branding.signatureUrl ? `${API_URL}${branding.signatureUrl}` : null
-    const html = generateOfferHtml({
-      quote,
-      company,
-      products,
-      lang: exportLang,
-      logoUrl,
-      signatureUrl,
-    })
-
-    const printWindow = window.open("", "_blank", "width=900,height=1200")
-    if (!printWindow) {
-      toast.error("Could not open print window. Please allow popups.")
-      return
+    try {
+      const isExcel = exportFormat === "excel"
+      const blob = isExcel
+        ? await quotesApi.generateExcel(quote.id, exportLang)
+        : await quotesApi.generatePdf(quote.id, exportLang)
+      const ext = isExcel ? "xlsx" : "pdf"
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `offer-${quote.id.slice(0, 8)}-${exportLang}.${ext}`
+      a.click()
+      URL.revokeObjectURL(url)
+      setGenerateOpen(false)
+      toast.success(`Offer downloaded in ${quoteLocaleNames[exportLang]}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed")
     }
-    printWindow.document.open()
-    printWindow.document.write(html)
-    printWindow.document.close()
-
-    setGenerateOpen(false)
-    toast.success(`Offer opened in ${quoteLocaleNames[exportLang]}`)
   }
 
-  const handleCreateProject = () => {
-    const project = createProjectFromQuote(quote.id)
+  const handleCreateProject = async () => {
+    const project = await createProjectFromQuote(quote.id)
     if (project) {
       toast.success("Project created from quote")
       router.push(`/projects/${project.id}`)
@@ -281,6 +273,18 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Format</Label>
+              <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "pdf" | "excel")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGenerateOpen(false)}>
@@ -288,7 +292,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </Button>
             <Button onClick={handleGenerateQuote}>
               <FileDown className="mr-2 h-4 w-4" />
-              {t("common.export")} PDF
+              {t("common.export")} {exportFormat === "excel" ? "Excel" : "PDF"}
             </Button>
           </DialogFooter>
         </DialogContent>

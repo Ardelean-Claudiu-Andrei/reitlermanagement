@@ -61,7 +61,12 @@ export default function EditProductPage() {
       setFormData({
         code: product.code,
         name: product.name,
-        category: product.category,
+        category:
+          categories.find(
+            (c) =>
+              c.value === product.category ||
+              c.label.toLowerCase() === product.category?.toLowerCase()
+          )?.value ?? product.category ?? "other",
         basePrice: product.basePrice,
         descriptionRo: product.description?.ro || "",
         descriptionHu: product.description?.hu || "",

@@ -11,6 +11,7 @@ import type {
   ChecklistItem,
   ProjectIssue,
   UserWithInfo,
+  CreateProjectPayload,
 } from "./types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -183,7 +184,7 @@ export const quotesApi = {
 export const projectsApi = {
   list: (): Promise<Project[]> => request('/api/projects'),
   get: (id: string): Promise<Project> => request(`/api/projects/${id}`),
-  create: (data: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> =>
+  create: (data: CreateProjectPayload): Promise<Project> =>
     request('/api/projects', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: Partial<Project>): Promise<Project> =>
     request(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

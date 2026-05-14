@@ -179,6 +179,10 @@ export interface ActivityEntry {
 
 export type ProjectStatus = "draft" | "in-progress" | "done" | "cancelled"
 
+export type CreateProjectPayload = Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'activity'> & {
+  activity: Array<{ id?: string; action: string; user: string; timestamp: string }>
+}
+
 export interface Project {
   id: string
   code: string

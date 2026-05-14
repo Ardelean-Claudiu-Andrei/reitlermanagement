@@ -23,6 +23,9 @@ export function TopBar() {
   const router = useRouter()
   const { locale, setLocale, t } = useLocale()
   const [displayName, setDisplayName] = useState("")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     const raw = getCurrentUser()
@@ -75,9 +78,9 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                {theme === "dark" ? (
+                {mounted && theme === "dark" ? (
                   <Moon className="mr-2 h-4 w-4" />
-                ) : theme === "light" ? (
+                ) : mounted && theme === "light" ? (
                   <Sun className="mr-2 h-4 w-4" />
                 ) : (
                   <Monitor className="mr-2 h-4 w-4" />

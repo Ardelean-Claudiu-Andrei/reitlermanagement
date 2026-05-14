@@ -40,7 +40,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all")
 
   const safeProducts = products ?? []
-  const categories = [...new Set(safeProducts.map((p) => p.category))]
+  const categories = [...new Set(safeProducts.map((p) => p.category).filter(Boolean))]
 
   const filtered = safeProducts.filter((p) => {
     const matchesSearch =

@@ -14,6 +14,7 @@ import type {
   QuoteStatus,
   ChecklistItem,
   ProjectIssue,
+  CreateProjectPayload,
 } from "./types"
 import {
   companiesApi,
@@ -76,7 +77,7 @@ interface AppState {
   updateQuoteStatus: (id: string, status: QuoteStatus) => Promise<void>
 
   // Project CRUD
-  addProject: (project: Project) => Promise<void>
+  addProject: (project: CreateProjectPayload) => Promise<Project>
   updateProject: (project: Project) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   updateProjectStatus: (id: string, status: ProjectStatus) => Promise<void>
@@ -265,9 +266,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Projects ───────────────────────────────────────────────────────────────
 
-  const addProject = useCallback(async (project: Project) => {
+  const addProject = useCallback(async (project: CreateProjectPayload): Promise<Project> => {
     const created = await projectsApi.create(project)
     setProjects((prev) => [...prev, created])
+    return created
   }, [])
 
   const updateProject = useCallback(async (project: Project) => {

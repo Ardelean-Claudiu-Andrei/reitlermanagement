@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
-import type { Project, ProjectItem, ProjectStatus } from "@/lib/types"
+import type { Project, ProjectItem } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -78,7 +78,7 @@ export default function NewProjectPage() {
 
   const total = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error("Project name is required")
       return
@@ -95,8 +95,7 @@ export default function NewProjectPage() {
     const today = new Date().toISOString().split("T")[0]
     const projectCount = projects.length + 1
 
-    const newProject: Project = {
-      id: `proj${Date.now()}`,
+    const newProject: Omit<Project, 'id'> = {
       code: `PRJ-2026-${String(projectCount).padStart(3, "0")}`,
       name: formData.name,
       companyId: formData.companyId || null,
@@ -121,9 +120,9 @@ export default function NewProjectPage() {
       updatedAt: today,
     }
 
-    addProject(newProject)
+    const created = await addProject(newProject)
     toast.success(t("savedSuccessfully"))
-    router.push(`/projects/${newProject.id}`)
+    router.push(`/projects/${created.id}`)
   }
 
   return (

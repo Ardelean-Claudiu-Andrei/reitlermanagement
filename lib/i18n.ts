@@ -135,6 +135,9 @@ type TranslationKeys = {
   "dashboard.activity5": string
   "dashboard.daysAgo": string
   "dashboard.weekAgo": string
+  "dashboard.weeksAgo": string
+  "dashboard.today": string
+  "dashboard.yesterday": string
 
   // Settings
   "settings.description": string
@@ -555,6 +558,9 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "dashboard.activity5": "Inventory updated for assemblies",
     "dashboard.daysAgo": "{days} days ago",
     "dashboard.weekAgo": "1 week ago",
+    "dashboard.weeksAgo": "{weeks} weeks ago",
+    "dashboard.today": "today",
+    "dashboard.yesterday": "yesterday",
 
     // Settings
     "settings.description": "Manage your account preferences",
@@ -973,6 +979,9 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "dashboard.activity5": "Inventar actualizat pentru ansambluri",
     "dashboard.daysAgo": "acum {days} zile",
     "dashboard.weekAgo": "acum 1 saptamana",
+    "dashboard.weeksAgo": "acum {weeks} saptamani",
+    "dashboard.today": "azi",
+    "dashboard.yesterday": "ieri",
 
     // Settings
     "settings.description": "Gestioneaza preferintele contului",
@@ -1397,6 +1406,9 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "dashboard.activity5": "Keszlet frissitve a szerelvenyekhez",
     "dashboard.daysAgo": "{days} napja",
     "dashboard.weekAgo": "1 hete",
+    "dashboard.weeksAgo": "{weeks} hete",
+    "dashboard.today": "ma",
+    "dashboard.yesterday": "tegnap",
 
     // Settings
     "settings.description": "Fiok beallitasok kezelese",
@@ -1821,6 +1833,9 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "dashboard.activity5": "Inventar fur Baugruppen aktualisiert",
     "dashboard.daysAgo": "vor {days} Tagen",
     "dashboard.weekAgo": "vor 1 Woche",
+    "dashboard.weeksAgo": "vor {weeks} Wochen",
+    "dashboard.today": "heute",
+    "dashboard.yesterday": "gestern",
 
     // Settings
     "settings.description": "Kontoeinstellungen verwalten",

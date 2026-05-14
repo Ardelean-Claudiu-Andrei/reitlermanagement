@@ -25,16 +25,33 @@ export default function DashboardPage() {
   const safeCompanies = companies ?? []
 
   const activeProjects = safeProjects.filter((p) => p.status === "in-progress")
-  const doneProjects = safeProjects.filter((p) => p.status === "completed")
-  const projectsWithIssues = safeProjects.filter((p) => p.issues?.some((i) => i.status === "open"))
+  const doneProjects = safeProjects.filter((p) => p.status === "done")
+  const projectsWithIssues = safeProjects.filter((p) => p.issues?.some((i) => !i.solved))
+
+  function getRelativeTime(isoDate: string): string {
+    const diffDays = Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000)
+    if (diffDays <= 0) return t("dashboard.today")
+    if (diffDays === 1) return t("dashboard.yesterday")
+    if (diffDays < 7) return t("dashboard.daysAgo", { days: String(diffDays) })
+    const weeks = Math.floor(diffDays / 7)
+    if (weeks === 1) return t("dashboard.weekAgo")
+    return t("dashboard.weeksAgo", { weeks: String(weeks) })
+  }
 
   const recentActivity = [
-    { text: t("dashboard.activity1"), time: t("dashboard.daysAgo", { days: "2" }) },
-    { text: t("dashboard.activity2"), time: t("dashboard.daysAgo", { days: "4" }) },
-    { text: t("dashboard.activity3"), time: t("dashboard.daysAgo", { days: "5" }) },
-    { text: t("dashboard.activity4"), time: t("dashboard.weekAgo") },
-    { text: t("dashboard.activity5"), time: t("dashboard.weekAgo") },
+    ...safeProjects.map((p) => ({ text: `[${p.code}] ${p.activity?.[0]?.action ?? "Project created"}`, sortDate: p.createdAt })),
+    ...safeQuotes.map((q) => ({ text: `Quote "${q.name}" created`, sortDate: q.createdAt })),
+    ...safeCompanies.map((c) => ({ text: `Company "${c.name}" added`, sortDate: c.createdAt })),
+    ...safeProjects.flatMap((p) =>
+      (p.activity ?? [])
+        .filter((a) => a.timestamp?.includes("T"))
+        .map((a) => ({ text: `[${p.code}] ${a.action}`, sortDate: a.timestamp }))
+    ),
   ]
+    .filter((e) => !!e.sortDate)
+    .sort((a, b) => b.sortDate.localeCompare(a.sortDate))
+    .slice(0, 5)
+    .map((e) => ({ text: e.text, time: getRelativeTime(e.sortDate) }))
 
   const topProjects = safeProjects
     .filter((p) => p.status !== "cancelled")
@@ -117,15 +134,19 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm text-foreground">{item.text}</p>
-                    <p className="text-xs text-muted-foreground">{item.time}</p>
+              {recentActivity.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">—</p>
+              ) : (
+                recentActivity.map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground">{item.text}</p>
+                      <p className="text-xs text-muted-foreground">{item.time}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

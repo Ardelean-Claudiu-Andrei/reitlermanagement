@@ -155,13 +155,16 @@ export default function ProjectsPage() {
     setProjectDeadline("")
   }
 
+  
   // Create project
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
+  try {
     const selectedQuote = safeQuotes.find((q) => q.id === selectedQuoteId)
     const today = new Date().toISOString().split("T")[0]
 
     const projectItems: ProjectItem[] = selectedProducts.map((sp) => {
       const product = safeProducts.find((p) => p.id === sp.productId)
+
       return {
         productId: sp.productId,
         quantity: sp.quantity,
@@ -171,13 +174,12 @@ export default function ProjectsPage() {
       }
     })
 
-    const newProject: Project = {
-      id: `proj-${Date.now()}`,
+    const projectPayload = {
       code: `PRJ-${String(safeProjects.length + 1).padStart(3, "0")}`,
       name: projectName || (selectedQuote?.name ? `Project: ${selectedQuote.name}` : `Project ${safeProjects.length + 1}`),
       companyId: isPersonal ? null : selectedCompanyId || null,
-      quoteId: selectedQuoteId || null,
-      status: "draft",
+      quoteId: selectedQuoteId && selectedQuoteId !== "none" ? selectedQuoteId : null,
+      status: "draft" as const,
       startDate: today,
       deadline: projectDeadline || today,
       finishDate: null,
@@ -187,22 +189,26 @@ export default function ProjectsPage() {
       issues: [],
       activity: [
         {
-          id: `act-${Date.now()}`,
+          id: `a${Date.now()}`,
           action: "Project created",
           user: "Admin",
           timestamp: new Date().toISOString(),
         },
       ],
-      createdAt: today,
-      updatedAt: today,
     }
 
-    addProject(newProject)
+    const createdProject = await addProject(projectPayload)
+
     toast.success(t("common.savedSuccessfully"))
     setWizardOpen(false)
     resetWizard()
-    router.push(`/projects/${newProject.id}`)
+
+    router.push(`/projects/${createdProject.id}`)
+  } catch (error) {
+    console.error(error)
+    toast.error("Project could not be created")
   }
+}
 
   // Check if can proceed to next step
   const canProceed = () => {

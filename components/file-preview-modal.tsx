@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { ExternalLink, Download, FileQuestion, FileText } from "lucide-react"
 import type { UploadedFile } from "@/lib/types"
 import { getUploadFileUrl } from "@/lib/api"
+import { DxfPreview } from "@/components/file-preview/dxf-preview"
 
 const CATEGORY_LABELS: Record<string, string> = {
   dxf: "DXF",
@@ -52,7 +53,7 @@ export function FilePreviewModal({
 
   const url = getUploadFileUrl(file.url)
   const type = detectType(file)
-  const isWide = type === "image" || type === "pdf"
+  const isWide = type === "image" || type === "pdf" || type === "dxf"
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
@@ -91,17 +92,9 @@ export function FilePreviewModal({
           </div>
         )}
 
-        {/* ── DXF fallback ── */}
+        {/* ── DXF viewer ── */}
         {type === "dxf" && (
-          <div className="flex flex-col items-center gap-3 py-10 text-center text-muted-foreground">
-            <FileText className="h-12 w-12 text-blue-400" />
-            <Badge className="bg-blue-100 text-blue-800">DXF</Badge>
-            <p className="text-sm">
-              Previzualizarea fișierelor DXF nu este disponibilă.
-              <br />
-              Folosiți butonul de mai jos pentru a deschide fișierul.
-            </p>
-          </div>
+          <DxfPreview fileUrl={url} />
         )}
 
         {/* ── DPD fallback ── */}

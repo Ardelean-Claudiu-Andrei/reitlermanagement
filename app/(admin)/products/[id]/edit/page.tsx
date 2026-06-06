@@ -17,8 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Plus, X, GripVertical } from "lucide-react"
 import { toast } from "sonner"
+import { EntityFileUploads } from "@/components/entity-file-uploads"
+import { productsApi } from "@/lib/api"
+import type { AssemblyStep, Product, ProductCategory } from "@/lib/types"
+
+const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
+
+function newStepId() { return `step-${Date.now()}-${Math.random().toString(36).slice(2)}` }
 
 const categories = [
   { value: "silo-interior", label: "Silo Interior" },
@@ -31,53 +38,108 @@ const categories = [
   { value: "other", label: "Other" },
 ]
 
+function resolveCategory(raw: string | undefined): string {
+  if (!raw) return "other"
+  const match = categories.find(
+    (c) => c.value === raw || c.label.toLowerCase() === raw.toLowerCase()
+  )
+  return match?.value ?? "other"
+}
+
 export default function EditProductPage() {
   const params = useParams()
   const router = useRouter()
   const { products, assemblies, parts, updateProduct } = useAppData()
   const { t } = useLocale()
 
+  const productId = params.id as string
   const safeProducts = products ?? []
   const safeAssemblies = assemblies ?? []
   const safeParts = parts ?? []
-  const product = safeProducts.find((p) => p.id === params.id)
 
-  const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    category: "other",
-    basePrice: 0,
-    descriptionRo: "",
-    descriptionHu: "",
-    descriptionDe: "",
-    descriptionEn: "",
-    notes: "",
-    assemblyIds: [] as string[],
-    partIds: [] as string[],
-  })
+  const contextProduct = safeProducts.find((p) => p.id === productId)
+  const [apiProduct, setApiProduct] = useState<Product | null>(null)
+  const [fetchLoading, setFetchLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
+  // Fetch from API if not in context (e.g. after direct create → redirect)
   useEffect(() => {
-    if (product) {
+    if (!contextProduct && productId) {
+      setFetchLoading(true)
+      productsApi.get(productId)
+        .then(setApiProduct)
+        .catch(() => {})
+        .finally(() => setFetchLoading(false))
+    }
+  }, [productId, contextProduct])
+
+  const product = contextProduct ?? apiProduct
+
+  const [formData, setFormData] = useState(() => ({
+    code: product?.code ?? "",
+    name: product?.name ?? "",
+    category: resolveCategory(product?.category),
+    basePrice: product?.basePrice ?? 0,
+    descriptionRo: product?.description?.ro ?? "",
+    descriptionHu: product?.description?.hu ?? "",
+    descriptionDe: product?.description?.de ?? "",
+    descriptionEn: product?.description?.en ?? "",
+    notes: product?.notes ?? "",
+    assemblyIds: product?.assemblyIds ?? [] as string[],
+    partIds: product?.partIds ?? [] as string[],
+  }))
+
+  const [formSteps, setFormSteps] = useState<AssemblyStep[]>(() =>
+    product?.productionSteps ?? []
+  )
+
+  // Re-sync when product loads (async context or API fetch)
+  useEffect(() => {
+    if (product && !formData.code) {
       setFormData({
         code: product.code,
         name: product.name,
-        category:
-          categories.find(
-            (c) =>
-              c.value === product.category ||
-              c.label.toLowerCase() === product.category?.toLowerCase()
-          )?.value ?? product.category ?? "other",
+        category: resolveCategory(product.category),
         basePrice: product.basePrice,
-        descriptionRo: product.description?.ro || "",
-        descriptionHu: product.description?.hu || "",
-        descriptionDe: product.description?.de || "",
-        descriptionEn: product.description?.en || "",
-        notes: product.notes || "",
+        descriptionRo: product.description?.ro ?? "",
+        descriptionHu: product.description?.hu ?? "",
+        descriptionDe: product.description?.de ?? "",
+        descriptionEn: product.description?.en ?? "",
+        notes: product.notes ?? "",
         assemblyIds: product.assemblyIds ?? [],
         partIds: product.partIds ?? [],
       })
+      setFormSteps(product.productionSteps ?? [])
     }
-  }, [product])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id])
+
+  // ─── Step helpers ─────────────────────────────────────────────────────────
+
+  function addStep() {
+    setFormSteps((prev) => [
+      ...prev,
+      { id: newStepId(), name: "", type: "assembly", description: "", order: prev.length + 1 },
+    ])
+  }
+
+  function updateStep(index: number, field: keyof AssemblyStep, value: string | number) {
+    setFormSteps((prev) => prev.map((s, i) => i === index ? { ...s, [field]: value } : s))
+  }
+
+  function removeStep(index: number) {
+    setFormSteps((prev) =>
+      prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i + 1 }))
+    )
+  }
+
+  if (fetchLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">Se încarcă...</p>
+      </div>
+    )
+  }
 
   if (!product) {
     return (
@@ -87,7 +149,7 @@ export default function EditProductPage() {
     )
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.code.trim() || !formData.name.trim()) {
@@ -99,7 +161,7 @@ export default function EditProductPage() {
       ...product,
       code: formData.code.trim(),
       name: formData.name.trim(),
-      category: formData.category,
+      category: formData.category as ProductCategory,
       basePrice: formData.basePrice,
       description: {
         ro: formData.descriptionRo,
@@ -110,12 +172,20 @@ export default function EditProductPage() {
       notes: formData.notes,
       assemblyIds: formData.assemblyIds,
       partIds: formData.partIds,
+      productionSteps: formSteps,
       updatedAt: new Date().toISOString().split("T")[0],
     }
 
-    updateProduct(updatedProduct)
-    toast.success(t("common.savedSuccessfully"))
-    router.push(`/products/${product.id}`)
+    setSaving(true)
+    try {
+      await updateProduct(updatedProduct)
+      toast.success(t("common.savedSuccessfully"))
+      router.push(`/products/${product.id}`)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("common.errorOccurred"))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const toggleAssembly = (assemblyId: string) => {
@@ -205,6 +275,69 @@ export default function EditProductPage() {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Production Steps */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Pași de producție</CardTitle>
+              <CardDescription>Operațiile de producție pentru acest produs</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {formSteps.length === 0 ? "Niciun pas adăugat." : `${formSteps.length} pas(i)`}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={addStep}>
+                  <Plus className="mr-1 h-3 w-3" />
+                  Adaugă pas
+                </Button>
+              </div>
+              {formSteps.length > 0 && (
+                <div className="space-y-3">
+                  {formSteps.map((step, idx) => (
+                    <div key={step.id} className="rounded-md border p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                        <div className="flex-1 space-y-1.5">
+                          <Input
+                            value={step.name}
+                            onChange={(e) => updateStep(idx, "name", e.target.value)}
+                            placeholder="Denumire pas"
+                          />
+                          <Input
+                            value={step.description}
+                            onChange={(e) => updateStep(idx, "description", e.target.value)}
+                            placeholder="Descriere (opțional)"
+                            className="text-sm"
+                          />
+                        </div>
+                        <Select value={step.type} onValueChange={(v) => updateStep(idx, "type", v)}>
+                          <SelectTrigger className="w-40 shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STEP_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => removeStep(idx)}
+                        >
+                          <X className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -329,14 +462,28 @@ export default function EditProductPage() {
             </CardContent>
           </Card>
 
+          {/* Files */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Fișiere</CardTitle>
+              <CardDescription>DXF, DPD, PDF atașate produsului</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EntityFileUploads
+                entityType="product"
+                entityId={product.id}
+              />
+            </CardContent>
+          </Card>
+
           {/* Actions */}
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={() => router.push(`/products/${product.id}`)}>
               {t("common.cancel")}
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
-              {t("common.save")}
+              {saving ? "Se salvează..." : t("common.save")}
             </Button>
           </div>
         </div>

@@ -12,9 +12,17 @@ import type {
   ProjectIssue,
   UserWithInfo,
   CreateProjectPayload,
+  UploadedFile,
+  FileCategory,
 } from "./types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+export function getUploadFileUrl(url?: string | null): string {
+  if (!url) return "#"
+  if (url.startsWith("http://") || url.startsWith("https://")) return url
+  return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`
+}
 
 export async function apiFetch(endpoint: string, options?: RequestInit) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
@@ -105,6 +113,22 @@ export const productsApi = {
     request(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string): Promise<void> =>
     request(`/api/products/${id}`, { method: 'DELETE' }),
+  laserCuttingPdf: async (id: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/products/${id}/laser-cutting-pdf`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
+  exportProductionStepsPdf: async (id: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/products/${id}/export-production-steps`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Parts ────────────────────────────────────────────────────────────────────
@@ -131,6 +155,38 @@ export const assembliesApi = {
     request(`/api/assemblies/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string): Promise<void> =>
     request(`/api/assemblies/${id}`, { method: 'DELETE' }),
+}
+
+// ─── Uploads ─────────────────────────────────────────────────────────────────
+
+export const uploadsApi = {
+  list: (entityType: string, entityId: string): Promise<UploadedFile[]> =>
+    request(`/api/uploads/${entityType}/${entityId}`),
+
+  upload: async (
+    entityType: string,
+    entityId: string,
+    fileCategory: FileCategory,
+    file: File,
+  ): Promise<UploadedFile> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('file_category', fileCategory)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const res = await fetch(`${API_URL}/api/uploads/${entityType}/${entityId}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'Upload failed')
+    }
+    return res.json()
+  },
+
+  delete: (fileId: string): Promise<void> =>
+    request(`/api/uploads/${fileId}`, { method: 'DELETE' }),
 }
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
@@ -204,6 +260,14 @@ export const projectsApi = {
     request('/api/projects/from-quote', { method: 'POST', body: JSON.stringify({ quoteId, userName }) }),
   delete: (id: string): Promise<void> =>
     request(`/api/projects/${id}`, { method: 'DELETE' }),
+  exportProductionStepsPdf: async (id: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/projects/${id}/export-production-steps`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────

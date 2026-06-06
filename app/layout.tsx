@@ -14,20 +14,7 @@ export const metadata: Metadata = {
   description: 'Internal admin app for SMS Reitler Offer & Production Tracking',
   generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
+    icon: '/branding/sms-reitler.svg',
     apple: '/apple-icon.png',
   },
 }

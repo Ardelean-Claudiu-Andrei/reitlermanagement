@@ -35,6 +35,15 @@ export type AssemblyStepType =
   | "welding"
   | "assembly"
 
+export type AssemblyCompositionType = "from_parts" | "standalone"
+
+export type FileCategory =
+  | "dxf"
+  | "dpd"
+  | "pdf"
+  | "welding_drawing"
+  | "bending_drawing"
+
 export interface MultiLangText {
   ro: string
   hu: string
@@ -50,8 +59,21 @@ export interface AssemblyStep {
   order: number
 }
 
+export interface UploadedFile {
+  id: string
+  entityType: "assembly" | "part" | "product"
+  entityId: string
+  fileCategory: FileCategory
+  originalFilename: string
+  storedPath: string
+  url: string
+  contentType: string | null
+  uploadedAt: string
+}
+
 export interface Part {
   id: string
+  code: string
   name: string
   description: MultiLangText
   category: string
@@ -59,7 +81,14 @@ export interface Part {
   basePrice: number
   minimumStock: number
   quantity: number
+  requiredQuantity: number
   location: string
+  physicalLocation: string
+  drawingLocation: string
+  requiresLaserCutting: boolean
+  weldingDrawingLocation: string
+  bendingDrawingLocation: string
+  productionSteps: AssemblyStep[]
   notes: string
   fileName: string
   fileLocation: string
@@ -77,7 +106,10 @@ export interface Assembly {
   code: string
   name: string
   description: MultiLangText
-  parts: AssemblyPart[] // Parts that make up this assembly with quantities
+  parts: AssemblyPart[]
+  compositionType: AssemblyCompositionType
+  physicalLocation: string
+  productionSteps: AssemblyStep[]
   notes: string
   createdAt: string
   updatedAt: string
@@ -91,10 +123,12 @@ export interface Product {
   category: ProductCategory
   unit: string
   basePrice: number
-  assemblyIds: string[] // Assemblies used in this product
-  partIds: string[] // Direct parts (not in assemblies)
-  assemblySteps: AssemblyStep[]
+  assemblyIds: string[]
+  partIds: string[]
+  assemblySteps: AssemblyStep[]   // product-level production steps (existing field)
+  productionSteps: AssemblyStep[] // forward-compat alias
   notes: string
+  hasLaserCutting?: boolean       // populated by GET /{id} endpoint
   createdAt: string
   updatedAt: string
 }

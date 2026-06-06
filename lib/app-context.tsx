@@ -60,7 +60,7 @@ interface AppState {
   deleteAssembly: (id: string) => Promise<void>
 
   // Product CRUD
-  addProduct: (product: Product) => Promise<void>
+  addProduct: (product: Product) => Promise<Product>
   updateProduct: (product: Product) => Promise<void>
   deleteProduct: (id: string) => Promise<void>
 
@@ -204,14 +204,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Products ───────────────────────────────────────────────────────────────
 
-  const addProduct = useCallback(async (product: Product) => {
+  const addProduct = useCallback(async (product: Product): Promise<Product> => {
     const created = await productsApi.create(product)
     setProducts((prev) => [...prev, created])
+    return created
   }, [])
 
   const updateProduct = useCallback(async (product: Product) => {
     const updated = await productsApi.update(product.id, product)
-    setProducts((prev) => prev.map((p) => (p.id === product.id ? updated : p)))
+    setProducts((prev) => {
+      const exists = prev.some((p) => p.id === product.id)
+      return exists ? prev.map((p) => (p.id === product.id ? updated : p)) : [...prev, updated]
+    })
   }, [])
 
   const deleteProduct = useCallback(async (id: string) => {

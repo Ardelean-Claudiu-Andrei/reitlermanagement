@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
+import { useAppData } from "@/lib/app-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Info } from "lucide-react"
 import { toast } from "sonner"
 
 const categories = [
@@ -32,8 +32,9 @@ const categories = [
 
 export default function NewProductPage() {
   const router = useRouter()
-  const { addProduct } = useAppData()
   const { t } = useLocale()
+  const { addProduct } = useAppData()
+  const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
     code: "",
@@ -47,7 +48,7 @@ export default function NewProductPage() {
     notes: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.code.trim() || !formData.name.trim()) {
@@ -55,30 +56,33 @@ export default function NewProductPage() {
       return
     }
 
-    const newProduct = {
-      id: `prod-${Date.now()}`,
-      code: formData.code.trim(),
-      name: formData.name.trim(),
-      category: formData.category,
-      basePrice: formData.basePrice,
-      description: {
-        ro: formData.descriptionRo,
-        hu: formData.descriptionHu,
-        de: formData.descriptionDe,
-        en: formData.descriptionEn,
-      },
-      notes: formData.notes,
-      assemblyIds: [],
-      partIds: [],
-      steps: [],
-      assemblySteps: [],
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
+    setSaving(true)
+    try {
+      const created = await addProduct({
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        category: formData.category,
+        basePrice: formData.basePrice,
+        description: {
+          ro: formData.descriptionRo,
+          hu: formData.descriptionHu,
+          de: formData.descriptionDe,
+          en: formData.descriptionEn,
+        },
+        notes: formData.notes,
+        assemblyIds: [],
+        partIds: [],
+        assemblySteps: [],
+        productionSteps: [],
+        unit: "buc",
+      } as unknown as import("@/lib/types").Product)
+      toast.success(t("common.savedSuccessfully"))
+      router.push(`/products/${created.id}/edit`)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("common.errorOccurred"))
+    } finally {
+      setSaving(false)
     }
-
-    addProduct(newProduct)
-    toast.success(t("common.savedSuccessfully"))
-    router.push("/products")
   }
 
   return (
@@ -221,14 +225,20 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
+          {/* Files info */}
+          <div className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 shrink-0" />
+            Fișierele (DXF, DPD, PDF) pot fi încărcate imediat după salvare — vei fi redirecționat automat pe pagina de editare.
+          </div>
+
           {/* Actions */}
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={() => router.push("/products")}>
               {t("common.cancel")}
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
-              {t("common.save")}
+              {saving ? "Se salvează..." : t("common.save")}
             </Button>
           </div>
         </div>

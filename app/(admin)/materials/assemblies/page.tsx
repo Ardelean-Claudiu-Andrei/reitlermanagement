@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -38,31 +38,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, GripVertical } from "lucide-react"
 import { toast } from "sonner"
-import type { Assembly, AssemblyPart } from "@/lib/types"
+import type { Assembly, AssemblyPart, AssemblyStep, AssemblyCompositionType } from "@/lib/types"
+import { EntityFileUploads } from "@/components/entity-file-uploads"
+
+const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
+
+function newStepId() { return `step-${Date.now()}-${Math.random().toString(36).slice(2)}` }
 
 export default function AssembliesPage() {
-  const router = useRouter()
   const { assemblies, parts, addAssembly, updateAssembly, deleteAssembly } = useAppData()
-  const { t, locale } = useLocale()
+  const { t } = useLocale()
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAssembly, setEditingAssembly] = useState<Assembly | null>(null)
   const [viewAssembly, setViewAssembly] = useState<Assembly | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   // Form state
   const [formCode, setFormCode] = useState("")
   const [formName, setFormName] = useState("")
   const [formNotes, setFormNotes] = useState("")
   const [formParts, setFormParts] = useState<AssemblyPart[]>([])
+  const [formCompositionType, setFormCompositionType] = useState<AssemblyCompositionType>("standalone")
+  const [formPhysicalLocation, setFormPhysicalLocation] = useState("")
+  const [formSteps, setFormSteps] = useState<AssemblyStep[]>([])
 
   const safeAssemblies = assemblies ?? []
   const safeParts = parts ?? []
 
-  const filteredAssemblies = safeAssemblies.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase()) ||
-    a.code.toLowerCase().includes(search.toLowerCase())
+  const filteredAssemblies = safeAssemblies.filter(
+    (a) =>
+      a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.code.toLowerCase().includes(search.toLowerCase())
   )
 
   function openNewDialog() {
@@ -71,6 +92,9 @@ export default function AssembliesPage() {
     setFormName("")
     setFormNotes("")
     setFormParts([])
+    setFormCompositionType("standalone")
+    setFormPhysicalLocation("")
+    setFormSteps([])
     setDialogOpen(true)
   }
 
@@ -80,50 +104,70 @@ export default function AssembliesPage() {
     setFormName(assembly.name)
     setFormNotes(assembly.notes)
     setFormParts([...assembly.parts])
+    setFormCompositionType(assembly.compositionType || "standalone")
+    setFormPhysicalLocation(assembly.physicalLocation || "")
+    setFormSteps([...(assembly.productionSteps || [])])
     setDialogOpen(true)
   }
 
-  function handleSave() {
-    const now = new Date().toISOString().split("T")[0]
-    const assembly: Assembly = {
-      id: editingAssembly?.id ?? `asm${Date.now()}`,
-      code: formCode,
-      name: formName,
-      description: { en: formName, ro: formName, hu: formName, de: formName },
-      parts: formParts,
-      notes: formNotes,
-      createdAt: editingAssembly?.createdAt ?? now,
-      updatedAt: now,
+  async function handleSave() {
+    if (!formCode.trim() || !formName.trim()) {
+      toast.error("Codul și numele sunt obligatorii")
+      return
     }
-
-    if (editingAssembly) {
-      updateAssembly(assembly)
-      toast.success(t("common.savedSuccessfully"))
-    } else {
-      addAssembly(assembly)
-      toast.success(t("common.savedSuccessfully"))
+    setSaving(true)
+    try {
+      const payload: Omit<Assembly, "id" | "createdAt" | "updatedAt"> = {
+        code: formCode.trim(),
+        name: formName.trim(),
+        description: editingAssembly?.description ?? { ro: "", hu: "", de: "", en: "" },
+        parts: formParts,
+        compositionType: formCompositionType,
+        physicalLocation: formPhysicalLocation,
+        productionSteps: formSteps,
+        notes: formNotes,
+      }
+      if (editingAssembly) {
+        await updateAssembly({ ...editingAssembly, ...payload })
+        toast.success(t("common.savedSuccessfully"))
+      } else {
+        await addAssembly(payload as Assembly)
+        toast.success(t("common.savedSuccessfully"))
+      }
+      setDialogOpen(false)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t("common.errorOccurred"))
+    } finally {
+      setSaving(false)
     }
-    setDialogOpen(false)
   }
 
-  function handleDelete(id: string) {
-    deleteAssembly(id)
-    toast.success(t("common.deleted"))
+  async function handleDelete() {
+    if (!deleteTarget) return
+    try {
+      await deleteAssembly(deleteTarget)
+      toast.success(t("common.deleted"))
+    } catch {
+      toast.error(t("common.errorOccurred"))
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
-  function handleDuplicate(assembly: Assembly) {
-    const now = new Date().toISOString().split("T")[0]
-    const newAssembly: Assembly = {
-      ...assembly,
-      id: `asm${Date.now()}`,
-      code: `${assembly.code}-COPY`,
-      name: `${assembly.name} (Copy)`,
-      createdAt: now,
-      updatedAt: now,
+  async function handleDuplicate(assembly: Assembly) {
+    try {
+      await addAssembly({
+        ...assembly,
+        code: `${assembly.code}-COPY`,
+        name: `${assembly.name} (Copy)`,
+      } as Assembly)
+      toast.success(t("common.duplicated"))
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t("common.errorOccurred"))
     }
-    addAssembly(newAssembly)
-    toast.success(t("common.duplicated"))
   }
+
+  // ─── Parts within assembly ────────────────────────────────────────────────
 
   function addPartToForm() {
     if (safeParts.length > 0) {
@@ -133,11 +177,8 @@ export default function AssembliesPage() {
 
   function updateFormPart(index: number, field: "partId" | "quantity", value: string | number) {
     const updated = [...formParts]
-    if (field === "partId") {
-      updated[index].partId = value as string
-    } else {
-      updated[index].quantity = value as number
-    }
+    if (field === "partId") updated[index].partId = value as string
+    else updated[index].quantity = value as number
     setFormParts(updated)
   }
 
@@ -145,7 +186,30 @@ export default function AssembliesPage() {
     setFormParts(formParts.filter((_, i) => i !== index))
   }
 
-  function getPartName(partId: string): string {
+  // ─── Production steps ─────────────────────────────────────────────────────
+
+  function addStep() {
+    const newStep: AssemblyStep = {
+      id: newStepId(),
+      name: "",
+      type: "assembly",
+      description: "",
+      order: formSteps.length + 1,
+    }
+    setFormSteps([...formSteps, newStep])
+  }
+
+  function updateStep(index: number, field: keyof AssemblyStep, value: string | number) {
+    const updated = [...formSteps]
+    updated[index] = { ...updated[index], [field]: value }
+    setFormSteps(updated)
+  }
+
+  function removeStep(index: number) {
+    setFormSteps(formSteps.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i + 1 })))
+  }
+
+  function getPartName(partId: string) {
     return safeParts.find((p) => p.id === partId)?.name ?? t("common.unknown")
   }
 
@@ -207,8 +271,10 @@ export default function AssembliesPage() {
               <TableRow>
                 <TableHead>{t("common.code")}</TableHead>
                 <TableHead>{t("common.name")}</TableHead>
+                <TableHead>Tip</TableHead>
+                <TableHead>Locație fizică</TableHead>
                 <TableHead className="text-center">{t("materials.partsCount")}</TableHead>
-                <TableHead>{t("common.notes")}</TableHead>
+                <TableHead className="text-center">Pași</TableHead>
                 <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -217,10 +283,14 @@ export default function AssembliesPage() {
                 <TableRow key={assembly.id}>
                   <TableCell className="font-mono text-xs">{assembly.code}</TableCell>
                   <TableCell className="font-medium">{assembly.name}</TableCell>
-                  <TableCell className="text-center">{assembly.parts?.length ?? 0}</TableCell>
-                  <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                    {assembly.notes || "--"}
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {assembly.compositionType === "from_parts" ? "Din piese" : "Independent"}
+                    </Badge>
                   </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{assembly.physicalLocation || "—"}</TableCell>
+                  <TableCell className="text-center">{assembly.parts?.length ?? 0}</TableCell>
+                  <TableCell className="text-center">{assembly.productionSteps?.length ?? 0}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -242,7 +312,7 @@ export default function AssembliesPage() {
                           {t("common.duplicate")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleDelete(assembly.id)}
+                          onClick={() => setDeleteTarget(assembly.id)}
                           className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -255,7 +325,7 @@ export default function AssembliesPage() {
               ))}
               {filteredAssemblies.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     {t("materials.noAssembliesFound")}
                   </TableCell>
                 </TableRow>
@@ -267,36 +337,69 @@ export default function AssembliesPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingAssembly ? t("common.edit") : t("materials.addAssembly")}
             </DialogTitle>
-            <DialogDescription>
-              {t("materials.assemblyFormDesc")}
-            </DialogDescription>
+            <DialogDescription>{t("materials.assemblyFormDesc")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t("common.code")}</Label>
-                <Input value={formCode} onChange={(e) => setFormCode(e.target.value)} />
+
+          <Tabs defaultValue="general">
+            <TabsList className="mb-4">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="parts">Piese</TabsTrigger>
+              <TabsTrigger value="steps">Pași producție</TabsTrigger>
+              <TabsTrigger value="files">Fișiere</TabsTrigger>
+            </TabsList>
+
+            {/* General tab */}
+            <TabsContent value="general" className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("common.code")} *</Label>
+                  <Input value={formCode} onChange={(e) => setFormCode(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("common.name")} *</Label>
+                  <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tip compoziție</Label>
+                  <Select value={formCompositionType} onValueChange={(v) => setFormCompositionType(v as AssemblyCompositionType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standalone">Independent (fără piese)</SelectItem>
+                      <SelectItem value="from_parts">Din piese</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Locație fizică</Label>
+                  <Input
+                    value={formPhysicalLocation}
+                    onChange={(e) => setFormPhysicalLocation(e.target.value)}
+                    placeholder="ex: Depozit A, Raft 3"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>{t("common.name")}</Label>
-                <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+                <Label>{t("common.notes")}</Label>
+                <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("common.notes")}</Label>
-              <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} />
-            </div>
-            <div className="space-y-2">
+            </TabsContent>
+
+            {/* Parts tab */}
+            <TabsContent value="parts" className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>{t("materials.parts")}</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addPartToForm}>
+                <Label>Piese componente</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addPartToForm} disabled={safeParts.length === 0}>
                   <Plus className="mr-1 h-3 w-3" />
-                  {t("common.add")}
+                  Adaugă piesă
                 </Button>
               </div>
               {formParts.length === 0 ? (
@@ -305,18 +408,13 @@ export default function AssembliesPage() {
                 <div className="space-y-2">
                   {formParts.map((fp, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <Select
-                        value={fp.partId}
-                        onValueChange={(v) => updateFormPart(idx, "partId", v)}
-                      >
+                      <Select value={fp.partId} onValueChange={(v) => updateFormPart(idx, "partId", v)}>
                         <SelectTrigger className="flex-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {safeParts.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name}
-                            </SelectItem>
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -327,67 +425,220 @@ export default function AssembliesPage() {
                         onChange={(e) => updateFormPart(idx, "quantity", parseInt(e.target.value) || 1)}
                         className="w-20"
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeFormPart(idx)}
-                      >
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeFormPart(idx)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
-          </div>
+            </TabsContent>
+
+            {/* Production steps tab */}
+            <TabsContent value="steps" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Pași de producție</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addStep}>
+                  <Plus className="mr-1 h-3 w-3" />
+                  Adaugă pas
+                </Button>
+              </div>
+              {formSteps.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Niciun pas adăugat.</p>
+              ) : (
+                <div className="space-y-3">
+                  {formSteps.map((step, idx) => (
+                    <div key={step.id} className="rounded-md border p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                        <div className="flex-1 space-y-1.5">
+                          <Input
+                            value={step.name}
+                            onChange={(e) => updateStep(idx, "name", e.target.value)}
+                            placeholder="Denumire pas"
+                          />
+                          <Input
+                            value={step.description}
+                            onChange={(e) => updateStep(idx, "description", e.target.value)}
+                            placeholder="Descriere (opțional)"
+                            className="text-sm"
+                          />
+                        </div>
+                        <Select value={step.type} onValueChange={(v) => updateStep(idx, "type", v)}>
+                          <SelectTrigger className="w-40 shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STEP_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => removeStep(idx)}>
+                          <X className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Files tab */}
+            <TabsContent value="files" className="space-y-4">
+              <p className="text-sm text-muted-foreground">Fișiere atașate ansamblului (DXF, DPD, PDF)</p>
+              <EntityFileUploads
+                entityType="assembly"
+                entityId={editingAssembly?.id}
+                disabledMessage="Salvează ansamblul înainte de a încărca fișiere."
+              />
+            </TabsContent>
+          </Tabs>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               {t("common.cancel")}
             </Button>
-            <Button onClick={handleSave}>{t("common.save")}</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Se salvează..." : t("common.save")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* View Dialog */}
       <Dialog open={!!viewAssembly} onOpenChange={() => setViewAssembly(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{viewAssembly?.name}</DialogTitle>
-            <DialogDescription>{viewAssembly?.code}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              {viewAssembly?.name}
+              <Badge variant="outline" className="text-xs font-mono font-normal">{viewAssembly?.code}</Badge>
+            </DialogTitle>
+            <DialogDescription>
+              {viewAssembly?.compositionType === "from_parts" ? "Ansamblu din piese" : "Ansamblu independent"}
+            </DialogDescription>
           </DialogHeader>
           {viewAssembly && (
-            <div className="space-y-4">
-              <div>
-                <Label className="text-muted-foreground">{t("common.notes")}</Label>
-                <p className="text-sm">{viewAssembly.notes || "--"}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">{t("materials.parts")}</Label>
-                <div className="mt-2 rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("materials.part")}</TableHead>
-                        <TableHead className="text-right">{t("common.quantity")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {viewAssembly.parts.map((fp, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{getPartName(fp.partId)}</TableCell>
-                          <TableCell className="text-right font-mono">{fp.quantity}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+            <Tabs defaultValue="info">
+              <TabsList className="mb-2">
+                <TabsTrigger value="info">Informații</TabsTrigger>
+                <TabsTrigger value="parts">
+                  Piese {viewAssembly.parts?.length > 0 && `(${viewAssembly.parts.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="steps">
+                  Pași {viewAssembly.productionSteps?.length > 0 && `(${viewAssembly.productionSteps.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="files">Fișiere</TabsTrigger>
+              </TabsList>
+
+              {/* Info */}
+              <TabsContent value="info" className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Tip compoziție</p>
+                    <p>{viewAssembly.compositionType === "from_parts" ? "Din piese" : "Independent"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
+                    <p>{viewAssembly.physicalLocation || "—"}</p>
+                  </div>
                 </div>
-              </div>
-            </div>
+                {viewAssembly.notes && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                    <p className="text-sm">{viewAssembly.notes}</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Parts */}
+              <TabsContent value="parts">
+                {viewAssembly.parts?.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nicio piesă adăugată.</p>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Piesă</TableHead>
+                          <TableHead>Laser</TableHead>
+                          <TableHead className="text-right">Cantitate</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewAssembly.parts.map((fp, idx) => {
+                          const part = safeParts.find((p) => p.id === fp.partId)
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell>
+                                <p className="font-medium">{part?.name ?? fp.partId}</p>
+                                {part?.code && <p className="text-xs text-muted-foreground font-mono">{part.code}</p>}
+                              </TableCell>
+                              <TableCell>
+                                {part?.requiresLaserCutting && (
+                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">Laser</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">{fp.quantity}</TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Steps */}
+              <TabsContent value="steps">
+                {viewAssembly.productionSteps?.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {viewAssembly.productionSteps.map((step, idx) => (
+                      <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                          <span className="font-medium flex-1">{step.name}</span>
+                          <Badge variant="outline" className="text-xs">{step.type}</Badge>
+                        </div>
+                        {step.description && (
+                          <p className="mt-1 ml-7 text-xs text-muted-foreground">{step.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Files */}
+              <TabsContent value="files">
+                <EntityFileUploads entityType="assembly" entityId={viewAssembly.id} readonly />
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Șterge ansamblu</AlertDialogTitle>
+            <AlertDialogDescription>Această acțiune nu poate fi anulată.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

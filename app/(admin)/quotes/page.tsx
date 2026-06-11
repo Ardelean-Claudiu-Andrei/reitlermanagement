@@ -78,10 +78,14 @@ export default function QuotesPage() {
     return <Badge variant={c.variant}>{c.label}</Badge>
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
-      deleteQuote(deleteId)
-      toast.success(t("common.delete"))
+      try {
+        await deleteQuote(deleteId)
+        toast.success(t("common.delete"))
+      } catch {
+        toast.error(t("common.errorOccurred"))
+      }
       setDeleteId(null)
     }
   }

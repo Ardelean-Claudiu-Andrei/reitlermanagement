@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  transpilePackages: ["dxf-viewer"],
 }
 
 export default nextConfig

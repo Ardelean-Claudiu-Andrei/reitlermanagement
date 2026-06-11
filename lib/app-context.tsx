@@ -50,12 +50,12 @@ interface AppState {
   deleteCompany: (id: string) => Promise<void>
 
   // Part CRUD
-  addPart: (part: Part) => Promise<void>
+  addPart: (part: Part) => Promise<Part>
   updatePart: (part: Part) => Promise<void>
   deletePart: (id: string) => Promise<void>
 
   // Assembly CRUD
-  addAssembly: (assembly: Assembly) => Promise<void>
+  addAssembly: (assembly: Assembly) => Promise<Assembly>
   updateAssembly: (assembly: Assembly) => Promise<void>
   deleteAssembly: (id: string) => Promise<void>
 
@@ -170,9 +170,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Parts ──────────────────────────────────────────────────────────────────
 
-  const addPart = useCallback(async (part: Part) => {
+  const addPart = useCallback(async (part: Part): Promise<Part> => {
     const created = await partsApi.create(part)
     setParts((prev) => [...prev, created])
+    return created
   }, [])
 
   const updatePart = useCallback(async (part: Part) => {
@@ -187,9 +188,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Assemblies ─────────────────────────────────────────────────────────────
 
-  const addAssembly = useCallback(async (assembly: Assembly) => {
+  const addAssembly = useCallback(async (assembly: Assembly): Promise<Assembly> => {
     const created = await assembliesApi.create(assembly)
     setAssemblies((prev) => [...prev, created])
+    return created
   }, [])
 
   const updateAssembly = useCallback(async (assembly: Assembly) => {

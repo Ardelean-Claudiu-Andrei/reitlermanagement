@@ -23,7 +23,7 @@ export default function ReportsPage() {
 
   const safeProjects = projects ?? []
 
-  const completed = safeProjects.filter((p) => p.status === "completed")
+  const completed = safeProjects.filter((p) => p.status === "done")
   const inProgress = safeProjects.filter((p) => p.status === "in-progress")
   const cancelled = safeProjects.filter((p) => p.status === "cancelled")
 

@@ -20,18 +20,15 @@ export function DxfPreview({ fileUrl }: DxfPreviewProps) {
 
     ;(async () => {
       try {
-        const [{ DxfViewer }, { Color }] = await Promise.all([
-          import("dxf-viewer"),
-          import("three"),
-        ])
+        const { DxfViewer } = await import("dxf-viewer")
 
         if (!mounted || !containerRef.current) return
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         viewer = new (DxfViewer as any)(containerRef.current, {
           autoResize: true,
-          clearColor: new Color("#fafafa"),
-          clearAlpha: 1,
+          canvasAlpha: true,
+          clearAlpha: 0,
           colorCorrection: true,
           blackWhiteInversion: true,
           antialias: true,

@@ -130,11 +130,12 @@ export default function AssembliesPage() {
       if (editingAssembly) {
         await updateAssembly({ ...editingAssembly, ...payload })
         toast.success(t("common.savedSuccessfully"))
+        setDialogOpen(false)
       } else {
-        await addAssembly(payload as Assembly)
-        toast.success(t("common.savedSuccessfully"))
+        const created = await addAssembly(payload as Assembly)
+        setEditingAssembly(created)
+        toast.success("Ansamblu creat. Poți adăuga fișiere în tab-ul Fișiere.")
       }
-      setDialogOpen(false)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("common.errorOccurred"))
     } finally {

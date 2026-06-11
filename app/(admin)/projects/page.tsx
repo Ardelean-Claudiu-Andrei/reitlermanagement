@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
-import type { ProjectStatus, Project, ProjectItem } from "@/lib/types"
+import type { ProjectStatus, ProjectItem } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -175,7 +175,7 @@ export default function ProjectsPage() {
     })
 
     const projectPayload = {
-      code: `PRJ-${String(safeProjects.length + 1).padStart(3, "0")}`,
+      code: `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
       name: projectName || (selectedQuote?.name ? `Project: ${selectedQuote.name}` : `Project ${safeProjects.length + 1}`),
       companyId: isPersonal ? null : selectedCompanyId || null,
       quoteId: selectedQuoteId && selectedQuoteId !== "none" ? selectedQuoteId : null,

@@ -1,10 +1,10 @@
 "use client"
 
-import { use, useState } from "react"
+import { use, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
-import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product } from "@/lib/types"
+import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -258,7 +258,31 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
 
-  const project = projects.find((p) => p.id === id)
+  const contextProject = projects?.find((p) => p.id === id) ?? null
+  const [apiProject, setApiProject] = useState<Project | null>(null)
+  const [fetchLoading, setFetchLoading] = useState(!contextProject)
+
+  useEffect(() => {
+    if (!contextProject && id) {
+      setFetchLoading(true)
+      projectsApi.get(id)
+        .then(setApiProject)
+        .catch(() => {})
+        .finally(() => setFetchLoading(false))
+    } else if (contextProject) {
+      setFetchLoading(false)
+    }
+  }, [id, contextProject])
+
+  const project = contextProject ?? apiProject
+
+  if (!project && fetchLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-muted-foreground">Se încarcă...</p>
+      </div>
+    )
+  }
 
   if (!project) {
     return (
@@ -284,7 +308,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     .map((product) => buildProductHierarchy(product, assemblies ?? [], parts ?? []))
 
   const totalStepCount = productNodes.reduce((s, n) => s + countNodeSteps(n), 0)
-  const hasAnySteps = totalStepCount > 0
 
   const getProductName = (productId: string) =>
     products.find((p) => p.id === productId)?.name || productId
@@ -594,32 +617,36 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </CardContent>
       </Card>
 
-      {/* Hierarchical Production Steps */}
-      {hasAnySteps && (
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <Boxes className="h-5 w-5" />
-              Pași de producție ({totalStepCount})
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={handleExportStepsPdf}
-              disabled={exportingSteps}
-            >
-              <FileDown className="mr-1 h-3 w-3" />
-              {exportingSteps ? "Se generează..." : "Export lista de steps"}
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {productNodes.map((node) => (
+      {/* Production Steps */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <CardTitle className="flex items-center gap-2">
+            <Boxes className="h-5 w-5" />
+            Pași de producție{totalStepCount > 0 && ` (${totalStepCount})`}
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={handleExportStepsPdf}
+            disabled={exportingSteps}
+          >
+            <FileDown className="mr-1 h-3 w-3" />
+            {exportingSteps ? "Se generează..." : "Export lista de steps"}
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {totalStepCount === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              Nu există pași de producție configurați pentru produsele din acest proiect.
+            </p>
+          ) : (
+            productNodes.map((node) => (
               <ProductStepsBlock key={node.productId} node={node} />
-            ))}
-          </CardContent>
-        </Card>
-      )}
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       {/* Issues Section */}
       <Card>

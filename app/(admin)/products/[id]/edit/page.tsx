@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -17,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save, Plus, X, GripVertical } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ArrowLeft, Save, Plus, X, Search } from "lucide-react"
 import { toast } from "sonner"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 import { productsApi } from "@/lib/api"
@@ -25,7 +27,9 @@ import type { AssemblyStep, Product, ProductCategory } from "@/lib/types"
 
 const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
 
-function newStepId() { return `step-${Date.now()}-${Math.random().toString(36).slice(2)}` }
+function newStepId() {
+  return `step-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 const categories = [
   { value: "silo-interior", label: "Silo Interior" },
@@ -59,10 +63,12 @@ export default function EditProductPage() {
 
   const contextProduct = safeProducts.find((p) => p.id === productId)
   const [apiProduct, setApiProduct] = useState<Product | null>(null)
-  const [fetchLoading, setFetchLoading] = useState(false)
+  const [fetchLoading, setFetchLoading] = useState(!contextProduct)
   const [saving, setSaving] = useState(false)
+  const [assemblySearch, setAssemblySearch] = useState("")
+  const [partSearch, setPartSearch] = useState("")
 
-  // Fetch from API if not in context (e.g. after direct create → redirect)
+  // Fetch from API if not in context (e.g. right after create → redirect)
   useEffect(() => {
     if (!contextProduct && productId) {
       setFetchLoading(true)
@@ -70,6 +76,8 @@ export default function EditProductPage() {
         .then(setApiProduct)
         .catch(() => {})
         .finally(() => setFetchLoading(false))
+    } else if (contextProduct) {
+      setFetchLoading(false)
     }
   }, [productId, contextProduct])
 
@@ -93,28 +101,27 @@ export default function EditProductPage() {
     product?.productionSteps ?? []
   )
 
-  // Re-sync when product loads (async context or API fetch)
+  // Re-sync when product first becomes available (async context or API fetch)
   useEffect(() => {
-    if (product && !formData.code) {
-      setFormData({
-        code: product.code,
-        name: product.name,
-        category: resolveCategory(product.category),
-        basePrice: product.basePrice,
-        descriptionRo: product.description?.ro ?? "",
-        descriptionHu: product.description?.hu ?? "",
-        descriptionDe: product.description?.de ?? "",
-        descriptionEn: product.description?.en ?? "",
-        notes: product.notes ?? "",
-        assemblyIds: product.assemblyIds ?? [],
-        partIds: product.partIds ?? [],
-      })
-      setFormSteps(product.productionSteps ?? [])
-    }
+    if (!product) return
+    setFormData({
+      code: product.code,
+      name: product.name,
+      category: resolveCategory(product.category),
+      basePrice: product.basePrice,
+      descriptionRo: product.description?.ro ?? "",
+      descriptionHu: product.description?.hu ?? "",
+      descriptionDe: product.description?.de ?? "",
+      descriptionEn: product.description?.en ?? "",
+      notes: product.notes ?? "",
+      assemblyIds: product.assemblyIds ?? [],
+      partIds: product.partIds ?? [],
+    })
+    setFormSteps(product.productionSteps ?? [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id])
 
-  // ─── Step helpers ─────────────────────────────────────────────────────────
+  // ─── Step helpers ──────────────────────────────────────────────────────────
 
   function addStep() {
     setFormSteps((prev) => [
@@ -133,60 +140,7 @@ export default function EditProductPage() {
     )
   }
 
-  if (fetchLoading) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <p className="text-muted-foreground">Se încarcă...</p>
-      </div>
-    )
-  }
-
-  if (!product) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <p className="text-muted-foreground">{t("products.notFound")}</p>
-      </div>
-    )
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.code.trim() || !formData.name.trim()) {
-      toast.error(t("common.requiredFields"))
-      return
-    }
-
-    const updatedProduct = {
-      ...product,
-      code: formData.code.trim(),
-      name: formData.name.trim(),
-      category: formData.category as ProductCategory,
-      basePrice: formData.basePrice,
-      description: {
-        ro: formData.descriptionRo,
-        hu: formData.descriptionHu,
-        de: formData.descriptionDe,
-        en: formData.descriptionEn,
-      },
-      notes: formData.notes,
-      assemblyIds: formData.assemblyIds,
-      partIds: formData.partIds,
-      productionSteps: formSteps,
-      updatedAt: new Date().toISOString().split("T")[0],
-    }
-
-    setSaving(true)
-    try {
-      await updateProduct(updatedProduct)
-      toast.success(t("common.savedSuccessfully"))
-      router.push(`/products/${product.id}`)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("common.errorOccurred"))
-    } finally {
-      setSaving(false)
-    }
-  }
+  // ─── Assembly / Part toggle ────────────────────────────────────────────────
 
   const toggleAssembly = (assemblyId: string) => {
     setFormData((prev) => ({
@@ -206,21 +160,123 @@ export default function EditProductPage() {
     }))
   }
 
+  // ─── Search filter ─────────────────────────────────────────────────────────
+
+  const filteredAssemblies = assemblySearch.trim()
+    ? safeAssemblies.filter(
+        (a) =>
+          a.name.toLowerCase().includes(assemblySearch.toLowerCase()) ||
+          a.code.toLowerCase().includes(assemblySearch.toLowerCase())
+      )
+    : safeAssemblies
+
+  const filteredParts = partSearch.trim()
+    ? safeParts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(partSearch.toLowerCase()) ||
+          (p.code ?? "").toLowerCase().includes(partSearch.toLowerCase())
+      )
+    : safeParts
+
+  // ─── Loading / not found ───────────────────────────────────────────────────
+
+  if (!product && fetchLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">Se încarcă...</p>
+      </div>
+    )
+  }
+
+  if (!product) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">{t("products.notFound")}</p>
+      </div>
+    )
+  }
+
+  // ─── Save ──────────────────────────────────────────────────────────────────
+
+  async function handleSave() {
+    if (!product) return
+
+    if (!formData.code.trim() || !formData.name.trim()) {
+      toast.error(t("common.requiredFields"))
+      return
+    }
+
+    const updatedProduct: Product = {
+      ...product,
+      code: formData.code.trim(),
+      name: formData.name.trim(),
+      category: formData.category as ProductCategory,
+      basePrice: formData.basePrice,
+      description: {
+        ro: formData.descriptionRo,
+        hu: formData.descriptionHu,
+        de: formData.descriptionDe,
+        en: formData.descriptionEn,
+      },
+      notes: formData.notes,
+      assemblyIds: formData.assemblyIds,
+      partIds: formData.partIds,
+      productionSteps: formSteps,
+    }
+
+    setSaving(true)
+    try {
+      await updateProduct(updatedProduct)
+      toast.success(t("common.savedSuccessfully"))
+      router.push(`/products/${product.id}`)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("common.errorOccurred"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push(`/products/${product.id}`)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h2 className="text-2xl font-semibold text-foreground">{t("common.edit")}: {product.name}</h2>
-          <p className="text-sm text-muted-foreground font-mono">{product.code}</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push(`/products/${product.id}`)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">
+              {t("common.edit")}: {product.name}
+            </h2>
+            <p className="text-sm text-muted-foreground font-mono">{product.code}</p>
+          </div>
         </div>
+        <Button onClick={handleSave} disabled={saving}>
+          <Save className="mr-2 h-4 w-4" />
+          {saving ? "Se salvează..." : t("common.save")}
+        </Button>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-6">
-          {/* Basic Information */}
+      {/* Tabs */}
+      <Tabs defaultValue="info">
+        <TabsList>
+          <TabsTrigger value="info">Informații</TabsTrigger>
+          <TabsTrigger value="assemblies">
+            Ansambluri{formData.assemblyIds.length > 0 ? ` (${formData.assemblyIds.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="parts">
+            Piese{formData.partIds.length > 0 ? ` (${formData.partIds.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="steps">
+            Pași producție{formSteps.length > 0 ? ` (${formSteps.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="files">Fișiere</TabsTrigger>
+        </TabsList>
+
+        {/* ── Informații ──────────────────────────────────────────────────── */}
+        <TabsContent value="info" className="mt-4 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t("common.basicInfo")}</CardTitle>
@@ -248,7 +304,7 @@ export default function EditProductPage() {
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="category">{t("products.category")}</Label>
+                  <Label>{t("products.category")}</Label>
                   <Select
                     value={formData.category}
                     onValueChange={(v) => setFormData({ ...formData, category: v })}
@@ -271,36 +327,256 @@ export default function EditProductPage() {
                     min="0"
                     step="0.01"
                     value={formData.basePrice}
-                    onChange={(e) => setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })
+                    }
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Production Steps */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Pași de producție</CardTitle>
-              <CardDescription>Operațiile de producție pentru acest produs</CardDescription>
+              <CardTitle className="text-base">{t("common.description")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>RO</Label>
+                  <Textarea
+                    placeholder="Descriere in romana..."
+                    value={formData.descriptionRo}
+                    onChange={(e) => setFormData({ ...formData, descriptionRo: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>HU</Label>
+                  <Textarea
+                    placeholder="Leírás magyarul..."
+                    value={formData.descriptionHu}
+                    onChange={(e) => setFormData({ ...formData, descriptionHu: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>DE</Label>
+                  <Textarea
+                    placeholder="Beschreibung auf Deutsch..."
+                    value={formData.descriptionDe}
+                    onChange={(e) => setFormData({ ...formData, descriptionDe: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>EN</Label>
+                  <Textarea
+                    placeholder="Description in English..."
+                    value={formData.descriptionEn}
+                    onChange={(e) => setFormData({ ...formData, descriptionEn: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("common.notes")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder={t("common.notes")}
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Ansambluri ──────────────────────────────────────────────────── */}
+        <TabsContent value="assemblies" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("products.subassemblies")}</CardTitle>
+              <CardDescription>
+                {formData.assemblyIds.length === 0
+                  ? "Niciun ansamblu selectat."
+                  : `${formData.assemblyIds.length} ansamblu(ri) selectate`}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {formSteps.length === 0 ? "Niciun pas adăugat." : `${formSteps.length} pas(i)`}
-                </p>
-                <Button type="button" variant="outline" size="sm" onClick={addStep}>
-                  <Plus className="mr-1 h-3 w-3" />
-                  Adaugă pas
-                </Button>
+              {/* Selected badges */}
+              {formData.assemblyIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 pb-3 border-b">
+                  {formData.assemblyIds.map((id) => {
+                    const asm = safeAssemblies.find((a) => a.id === id)
+                    return asm ? (
+                      <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                        {asm.name}
+                        <button
+                          type="button"
+                          onClick={() => toggleAssembly(id)}
+                          className="ml-0.5 rounded hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ) : null
+                  })}
+                </div>
+              )}
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Caută ansamblu după nume sau cod..."
+                  value={assemblySearch}
+                  onChange={(e) => setAssemblySearch(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-              {formSteps.length > 0 && (
+
+              {safeAssemblies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("materials.noAssembliesFound")}</p>
+              ) : filteredAssemblies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Niciun rezultat pentru &ldquo;{assemblySearch}&rdquo;.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-[420px] overflow-y-auto pr-1">
+                  {filteredAssemblies.map((assembly) => (
+                    <div
+                      key={assembly.id}
+                      className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
+                      onClick={() => toggleAssembly(assembly.id)}
+                    >
+                      <Checkbox
+                        id={`asm-${assembly.id}`}
+                        checked={formData.assemblyIds.includes(assembly.id)}
+                        onCheckedChange={() => toggleAssembly(assembly.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Label htmlFor={`asm-${assembly.id}`} className="flex-1 cursor-pointer">
+                        <span className="font-medium">{assembly.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground font-mono">
+                          {assembly.code}
+                        </span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Piese ───────────────────────────────────────────────────────── */}
+        <TabsContent value="parts" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("products.directParts")}</CardTitle>
+              <CardDescription>
+                {formData.partIds.length === 0
+                  ? "Nicio piesă directă selectată."
+                  : `${formData.partIds.length} piesă(e) selectate`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Selected badges */}
+              {formData.partIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 pb-3 border-b">
+                  {formData.partIds.map((id) => {
+                    const part = safeParts.find((p) => p.id === id)
+                    return part ? (
+                      <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                        {part.name}
+                        <button
+                          type="button"
+                          onClick={() => togglePart(id)}
+                          className="ml-0.5 rounded hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ) : null
+                  })}
+                </div>
+              )}
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Caută piesă după nume sau cod..."
+                  value={partSearch}
+                  onChange={(e) => setPartSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {safeParts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("materials.noPartsAdded")}</p>
+              ) : filteredParts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Niciun rezultat pentru &ldquo;{partSearch}&rdquo;.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-[420px] overflow-y-auto pr-1">
+                  {filteredParts.map((part) => (
+                    <div
+                      key={part.id}
+                      className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
+                      onClick={() => togglePart(part.id)}
+                    >
+                      <Checkbox
+                        id={`part-${part.id}`}
+                        checked={formData.partIds.includes(part.id)}
+                        onCheckedChange={() => togglePart(part.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <Label htmlFor={`part-${part.id}`} className="flex-1 cursor-pointer">
+                        <span className="font-medium">{part.name}</span>
+                        {part.code && (
+                          <span className="ml-2 text-xs text-muted-foreground font-mono">
+                            {part.code}
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Pași producție ───────────────────────────────────────────────── */}
+        <TabsContent value="steps" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">Pași de producție</CardTitle>
+                <CardDescription>Operațiile de producție la nivel de produs</CardDescription>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addStep}>
+                <Plus className="mr-1 h-3 w-3" />
+                Adaugă pas
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {formSteps.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-6">
+                  Niciun pas adăugat. Apasă &ldquo;Adaugă pas&rdquo; pentru a începe.
+                </p>
+              ) : (
                 <div className="space-y-3">
                   {formSteps.map((step, idx) => (
-                    <div key={step.id} className="rounded-md border p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                    <div key={step.id} className="rounded-md border p-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-muted-foreground font-mono w-5 shrink-0 mt-2.5">
+                          {idx + 1}.
+                        </span>
                         <div className="flex-1 space-y-1.5">
                           <Input
                             value={step.name}
@@ -314,8 +590,11 @@ export default function EditProductPage() {
                             className="text-sm"
                           />
                         </div>
-                        <Select value={step.type} onValueChange={(v) => updateStep(idx, "type", v)}>
-                          <SelectTrigger className="w-40 shrink-0">
+                        <Select
+                          value={step.type}
+                          onValueChange={(v) => updateStep(idx, "type", v)}
+                        >
+                          <SelectTrigger className="w-36 shrink-0">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -340,133 +619,14 @@ export default function EditProductPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Assemblies */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("products.subassemblies")}</CardTitle>
-              <CardDescription>{t("products.description")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                {safeAssemblies.map((assembly) => (
-                  <div key={assembly.id} className="flex items-center space-x-2 rounded-md border p-3">
-                    <Checkbox
-                      id={`asm-${assembly.id}`}
-                      checked={formData.assemblyIds.includes(assembly.id)}
-                      onCheckedChange={() => toggleAssembly(assembly.id)}
-                    />
-                    <Label htmlFor={`asm-${assembly.id}`} className="flex-1 cursor-pointer">
-                      <span className="font-medium">{assembly.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground font-mono">{assembly.code}</span>
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              {safeAssemblies.length === 0 && (
-                <p className="text-sm text-muted-foreground">{t("materials.noAssembliesFound")}</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Direct Parts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("products.directParts")}</CardTitle>
-              <CardDescription>{t("products.directPartsDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-[300px] overflow-y-auto">
-                {safeParts.map((part) => (
-                  <div key={part.id} className="flex items-center space-x-2 rounded-md border p-3">
-                    <Checkbox
-                      id={`part-${part.id}`}
-                      checked={formData.partIds.includes(part.id)}
-                      onCheckedChange={() => togglePart(part.id)}
-                    />
-                    <Label htmlFor={`part-${part.id}`} className="flex-1 cursor-pointer">
-                      <span className="font-medium">{part.name}</span>
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              {safeParts.length === 0 && (
-                <p className="text-sm text-muted-foreground">{t("materials.noPartsAdded")}</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Descriptions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("common.description")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="descRo">RO</Label>
-                  <Textarea
-                    id="descRo"
-                    placeholder="Descriere in romana..."
-                    value={formData.descriptionRo}
-                    onChange={(e) => setFormData({ ...formData, descriptionRo: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="descHu">HU</Label>
-                  <Textarea
-                    id="descHu"
-                    placeholder="Leírás magyarul..."
-                    value={formData.descriptionHu}
-                    onChange={(e) => setFormData({ ...formData, descriptionHu: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="descDe">DE</Label>
-                  <Textarea
-                    id="descDe"
-                    placeholder="Beschreibung auf Deutsch..."
-                    value={formData.descriptionDe}
-                    onChange={(e) => setFormData({ ...formData, descriptionDe: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="descEn">EN</Label>
-                  <Textarea
-                    id="descEn"
-                    placeholder="Description in English..."
-                    value={formData.descriptionEn}
-                    onChange={(e) => setFormData({ ...formData, descriptionEn: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notes */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("common.notes")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder={t("common.notes")}
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Files */}
+        {/* ── Fișiere ──────────────────────────────────────────────────────── */}
+        <TabsContent value="files" className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Fișiere</CardTitle>
-              <CardDescription>DXF, DPD, PDF atașate produsului</CardDescription>
+              <CardDescription>DXF, DPD, PDF atașate produsului — detectate automat după extensie</CardDescription>
             </CardHeader>
             <CardContent>
               <EntityFileUploads
@@ -475,19 +635,8 @@ export default function EditProductPage() {
               />
             </CardContent>
           </Card>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => router.push(`/products/${product.id}`)}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="submit" disabled={saving}>
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Se salvează..." : t("common.save")}
-            </Button>
-          </div>
-        </div>
-      </form>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -50,9 +50,13 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory
   })
 
-  function handleDelete(id: string) {
-    deleteProduct(id)
-    toast.success(t("products.deleted"))
+  async function handleDelete(id: string) {
+    try {
+      await deleteProduct(id)
+      toast.success(t("products.deleted"))
+    } catch {
+      toast.error(t("common.errorOccurred"))
+    }
   }
 
   return (
@@ -127,7 +131,7 @@ export default function ProductsPage() {
                     <Badge variant="outline">{product.category}</Badge>
                   </TableCell>
                   <TableCell className="text-center text-muted-foreground">
-                    {product.assemblySteps?.length ?? 0}
+                    {product.productionSteps?.length || product.assemblySteps?.length || 0}
                   </TableCell>
                   <TableCell className="text-center text-muted-foreground">
                     {product.partIds?.length ?? 0}

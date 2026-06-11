@@ -145,18 +145,17 @@ export default function ProductDetailPage() {
   const { products, parts, assemblies } = useAppData()
   const { t } = useLocale()
 
-  const [hasLaserCutting, setHasLaserCutting] = useState(false)
-  const [exportingLaser, setExportingLaser] = useState(false)
-  const [exportingSteps, setExportingSteps] = useState(false)
-  const [apiProduct, setApiProduct] = useState<Product | null>(null)
-  const [fetchLoading, setFetchLoading] = useState(false)
-
   const productId = params.id as string
   const safeProducts = products ?? []
   const safeParts = parts ?? []
   const safeAssemblies = assemblies ?? []
-
   const contextProduct = safeProducts.find((p) => p.id === productId)
+
+  const [hasLaserCutting, setHasLaserCutting] = useState(false)
+  const [exportingLaser, setExportingLaser] = useState(false)
+  const [exportingSteps, setExportingSteps] = useState(false)
+  const [apiProduct, setApiProduct] = useState<Product | null>(null)
+  const [fetchLoading, setFetchLoading] = useState(!contextProduct)
 
   // Fallback: fetch from API if not in context (e.g. right after create)
   useEffect(() => {
@@ -179,7 +178,7 @@ export default function ProductDetailPage() {
 
   const product = contextProduct ?? apiProduct
 
-  if (fetchLoading) {
+  if (!product && fetchLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <p className="text-muted-foreground">Se încarcă...</p>

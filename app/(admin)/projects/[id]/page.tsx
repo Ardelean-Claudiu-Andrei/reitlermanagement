@@ -297,7 +297,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const company = project.companyId ? companies.find((c) => c.id === project.companyId) : null
   const quote = project.quoteId ? quotes.find((q) => q.id === project.quoteId) : null
-  const total = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  const subtotal = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  const installationCost = project.installationCost || 0
+  const total = subtotal + installationCost
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
 
@@ -490,6 +492,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <div>
                 <p className="text-xs text-muted-foreground">{t("common.total")}</p>
                 <p className="font-medium">{total.toLocaleString()} EUR</p>
+                {installationCost > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    incl. instalare {installationCost.toLocaleString()} EUR
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

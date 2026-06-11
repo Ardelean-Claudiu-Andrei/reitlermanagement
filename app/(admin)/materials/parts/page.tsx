@@ -157,9 +157,9 @@ export default function PartsPage() {
         toast.success(t("common.savedSuccessfully"))
         setDialogOpen(false)
       } else {
-        const created = await addPart(payload as Part)
-        setEditingPart(created)
-        toast.success("Piesă creată. Poți adăuga fișiere în tab-ul Fișiere.")
+        await addPart(payload as Part)
+        toast.success("Piesă creată cu succes.")
+        setDialogOpen(false)
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("common.errorOccurred"))

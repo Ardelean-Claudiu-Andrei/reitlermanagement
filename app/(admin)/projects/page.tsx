@@ -43,7 +43,9 @@ import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User, ChevronsUpDown, Check } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
 
 export default function ProjectsPage() {
@@ -63,6 +65,8 @@ export default function ProjectsPage() {
   const [selectedProducts, setSelectedProducts] = useState<{ productId: string; fromInventory: boolean; quantity: number }[]>([])
   const [projectName, setProjectName] = useState("")
   const [projectDeadline, setProjectDeadline] = useState("")
+  const [companyComboOpen, setCompanyComboOpen] = useState(false)
+  const [quoteComboOpen, setQuoteComboOpen] = useState(false)
 
   const safeProjects = projects ?? []
   const safeCompanies = companies ?? []
@@ -111,8 +115,8 @@ export default function ProjectsPage() {
   }
 
   const getTotal = (project: typeof safeProjects[0]) => {
-    if (!project.items) return 0
-    return project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+    const itemsTotal = (project.items || []).reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+    return itemsTotal + (project.installationCost || 0)
   }
 
   // Get available quotes for wizard (filter by selected company or all for personal)
@@ -153,6 +157,25 @@ export default function ProjectsPage() {
     setSelectedProducts([])
     setProjectName("")
     setProjectDeadline("")
+    setCompanyComboOpen(false)
+    setQuoteComboOpen(false)
+  }
+
+  // Advance wizard step, pre-filling products from quote on step 2→3
+  const handleNextStep = () => {
+    if (wizardStep === 2) {
+      const quote = safeQuotes.find((q) => q.id === selectedQuoteId)
+      if (quote && selectedQuoteId !== "none" && quote.items?.length > 0) {
+        setSelectedProducts(
+          quote.items.map((item) => ({
+            productId: item.productId,
+            fromInventory: false,
+            quantity: item.quantity || 1,
+          }))
+        )
+      }
+    }
+    setWizardStep((s) => s + 1)
   }
 
   
@@ -164,12 +187,12 @@ export default function ProjectsPage() {
 
     const projectItems: ProjectItem[] = selectedProducts.map((sp) => {
       const product = safeProducts.find((p) => p.id === sp.productId)
-
+      const quoteItem = selectedQuote?.items?.find((item) => item.productId === sp.productId)
       return {
         productId: sp.productId,
         quantity: sp.quantity,
-        unitPrice: product?.basePrice || 0,
-        notes: "",
+        unitPrice: quoteItem?.unitPrice ?? product?.basePrice ?? 0,
+        notes: quoteItem?.notes ?? "",
         fromInventory: sp.fromInventory,
       }
     })
@@ -184,6 +207,7 @@ export default function ProjectsPage() {
       deadline: projectDeadline || today,
       finishDate: null,
       warrantyExpiration: null,
+      installationCost: (selectedQuoteId && selectedQuoteId !== "none") ? (selectedQuote?.installation || 0) : 0,
       items: projectItems,
       checklist: [],
       issues: [],
@@ -383,18 +407,39 @@ export default function ProjectsPage() {
               {!isPersonal && (
                 <div className="space-y-2">
                   <Label>{t("projects.selectCompany")}</Label>
-                  <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("projects.selectCompanyPlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {safeCompanies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={companyComboOpen} onOpenChange={setCompanyComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                        {selectedCompanyId
+                          ? safeCompanies.find((c) => c.id === selectedCompanyId)?.name
+                          : "Caută client după nume..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Caută client după nume..." />
+                        <CommandList>
+                          <CommandEmpty>Niciun client găsit.</CommandEmpty>
+                          <CommandGroup>
+                            {safeCompanies.map((company) => (
+                              <CommandItem
+                                key={company.id}
+                                value={company.name}
+                                onSelect={() => {
+                                  setSelectedCompanyId(company.id)
+                                  setCompanyComboOpen(false)
+                                }}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${selectedCompanyId === company.id ? "opacity-100" : "opacity-0"}`} />
+                                {company.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </div>
@@ -404,77 +449,133 @@ export default function ProjectsPage() {
           {wizardStep === 2 && (
             <div className="space-y-4 py-4">
               <Label>{t("projects.selectQuote")} ({t("common.optional")})</Label>
-              <Select value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("projects.selectQuotePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("projects.noQuote")}</SelectItem>
-                  {availableQuotes.map((quote) => (
-                    <SelectItem key={quote.id} value={quote.id}>
-                      {quote.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={quoteComboOpen} onOpenChange={setQuoteComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    {selectedQuoteId === "none"
+                      ? t("projects.noQuote")
+                      : selectedQuoteId
+                        ? (() => {
+                            const q = safeQuotes.find((q) => q.id === selectedQuoteId)
+                            if (!q) return t("projects.selectQuotePlaceholder")
+                            const company = q.companyId ? safeCompanies.find((c) => c.id === q.companyId)?.name : null
+                            return company ? `${company} — ${q.name}` : q.name
+                          })()
+                        : t("projects.selectQuotePlaceholder")}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[480px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Caută după ofertă sau client..." />
+                    <CommandList>
+                      <CommandEmpty>Nicio ofertă găsită.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="none"
+                          onSelect={() => { setSelectedQuoteId("none"); setQuoteComboOpen(false) }}
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${selectedQuoteId === "none" ? "opacity-100" : "opacity-0"}`} />
+                          {t("projects.noQuote")}
+                        </CommandItem>
+                        {availableQuotes.map((quote) => {
+                          const company = quote.companyId ? safeCompanies.find((c) => c.id === quote.companyId)?.name : null
+                          const label = company ? `${company} — ${quote.name}` : quote.name
+                          return (
+                            <CommandItem
+                              key={quote.id}
+                              value={label}
+                              onSelect={() => { setSelectedQuoteId(quote.id); setQuoteComboOpen(false) }}
+                            >
+                              <Check className={`mr-2 h-4 w-4 ${selectedQuoteId === quote.id ? "opacity-100" : "opacity-0"}`} />
+                              {label}
+                            </CommandItem>
+                          )
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <p className="text-sm text-muted-foreground">{t("projects.quoteOptionalNote")}</p>
             </div>
           )}
 
           {/* Step 3: Select Products */}
-          {wizardStep === 3 && (
-            <div className="space-y-4 py-4 max-h-[400px] overflow-y-auto">
-              <Label>{t("projects.selectProducts")}</Label>
-              <div className="space-y-3">
-                {safeProducts.map((product) => {
-                  const isSelected = selectedProducts.some((p) => p.productId === product.id)
-                  const selection = selectedProducts.find((p) => p.productId === product.id)
-                  const invQty = getInventoryQty(product.id)
-                  return (
-                    <div key={product.id} className="border rounded-lg p-3 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleProduct(product.id)}
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-muted-foreground">{product.code} - {product.basePrice.toLocaleString()} EUR</p>
-                        </div>
-                        {invQty > 0 && (
-                          <Badge variant="outline">{t("projects.inStock")}: {invQty}</Badge>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <div className="flex items-center gap-4 pl-7">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-sm">{t("common.quantity")}:</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              value={selection?.quantity || 1}
-                              onChange={(e) => updateProductSelection(product.id, "quantity", parseInt(e.target.value) || 1)}
-                              className="w-20 h-8"
-                            />
+          {wizardStep === 3 && (() => {
+            const selectedQuote = selectedQuoteId && selectedQuoteId !== "none"
+              ? safeQuotes.find((q) => q.id === selectedQuoteId)
+              : null
+            // If quote selected, show only quote products; otherwise all products
+            const productsToShow = selectedQuote
+              ? safeProducts.filter((p) => selectedQuote.items.some((item) => item.productId === p.id))
+              : safeProducts
+            return (
+              <div className="space-y-4 py-4 max-h-[400px] overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  <Label>{t("projects.selectProducts")}</Label>
+                  {selectedQuote && (
+                    <Badge variant="outline" className="text-xs">
+                      Din oferta: {selectedQuote.name}
+                    </Badge>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {productsToShow.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Niciun produs disponibil.</p>
+                  ) : productsToShow.map((product) => {
+                    const isSelected = selectedProducts.some((p) => p.productId === product.id)
+                    const selection = selectedProducts.find((p) => p.productId === product.id)
+                    const invQty = getInventoryQty(product.id)
+                    const quoteItem = selectedQuote?.items.find((item) => item.productId === product.id)
+                    return (
+                      <div key={product.id} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleProduct(product.id)}
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {product.code} — {(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR
+                            </p>
                           </div>
                           {invQty > 0 && (
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                id={`inv-${product.id}`}
-                                checked={selection?.fromInventory || false}
-                                onCheckedChange={(checked) => updateProductSelection(product.id, "fromInventory", !!checked)}
-                              />
-                              <Label htmlFor={`inv-${product.id}`} className="text-sm">{t("projects.fromInventory")}</Label>
-                            </div>
+                            <Badge variant="outline">{t("projects.inStock")}: {invQty}</Badge>
                           )}
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                        {isSelected && (
+                          <div className="flex items-center gap-4 pl-7">
+                            <div className="flex items-center gap-2">
+                              <Label className="text-sm">{t("common.quantity")}:</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={selection?.quantity || 1}
+                                onChange={(e) => updateProductSelection(product.id, "quantity", parseInt(e.target.value) || 1)}
+                                className="w-20 h-8"
+                              />
+                            </div>
+                            {invQty > 0 && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`inv-${product.id}`}
+                                  checked={selection?.fromInventory || false}
+                                  onCheckedChange={(checked) => updateProductSelection(product.id, "fromInventory", !!checked)}
+                                />
+                                <Label htmlFor={`inv-${product.id}`} className="text-sm">{t("projects.fromInventory")}</Label>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Step 4: Confirm */}
           {wizardStep === 4 && (
@@ -506,6 +607,12 @@ export default function ProjectsPage() {
                 <p className="text-sm">
                   {t("products")}: {selectedProducts.length} {t("common.items")}
                 </p>
+                {selectedQuoteId && selectedQuoteId !== "none" && (() => {
+                  const q = safeQuotes.find((q) => q.id === selectedQuoteId)
+                  return q?.installation ? (
+                    <p className="text-sm">Instalare: {q.installation.toLocaleString()} EUR</p>
+                  ) : null
+                })()}
               </div>
             </div>
           )}
@@ -517,7 +624,7 @@ export default function ProjectsPage() {
               </Button>
             )}
             {wizardStep < 4 ? (
-              <Button onClick={() => setWizardStep((s) => s + 1)} disabled={!canProceed()}>
+              <Button onClick={handleNextStep} disabled={!canProceed()}>
                 {t("common.next")}
               </Button>
             ) : (

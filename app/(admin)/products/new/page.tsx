@@ -40,7 +40,7 @@ export default function NewProductPage() {
     code: "",
     name: "",
     category: "other",
-    basePrice: 0,
+    basePrice: "" as string | number,
     descriptionRo: "",
     descriptionHu: "",
     descriptionDe: "",
@@ -62,7 +62,7 @@ export default function NewProductPage() {
         code: formData.code.trim(),
         name: formData.name.trim(),
         category: formData.category,
-        basePrice: formData.basePrice,
+        basePrice: typeof formData.basePrice === "string" ? parseFloat(formData.basePrice) || 0 : formData.basePrice,
         description: {
           ro: formData.descriptionRo,
           hu: formData.descriptionHu,
@@ -151,7 +151,8 @@ export default function NewProductPage() {
                     min="0"
                     step="0.01"
                     value={formData.basePrice}
-                    onChange={(e) => setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
+                    placeholder="0.00"
                   />
                 </div>
               </div>

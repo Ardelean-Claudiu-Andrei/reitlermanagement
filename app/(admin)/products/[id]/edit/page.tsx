@@ -23,7 +23,7 @@ import { ArrowLeft, Save, Plus, X, Search } from "lucide-react"
 import { toast } from "sonner"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 import { productsApi } from "@/lib/api"
-import type { AssemblyStep, Product, ProductCategory } from "@/lib/types"
+import type { AssemblyStep, Product, ProductCategory, ProductAssemblyEntry, ProductPartEntry } from "@/lib/types"
 
 const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
 
@@ -87,14 +87,14 @@ export default function EditProductPage() {
     code: product?.code ?? "",
     name: product?.name ?? "",
     category: resolveCategory(product?.category),
-    basePrice: product?.basePrice ?? 0,
+    basePrice: product?.basePrice !== undefined ? String(product.basePrice) : "" as string,
     descriptionRo: product?.description?.ro ?? "",
     descriptionHu: product?.description?.hu ?? "",
     descriptionDe: product?.description?.de ?? "",
     descriptionEn: product?.description?.en ?? "",
     notes: product?.notes ?? "",
-    assemblyIds: product?.assemblyIds ?? [] as string[],
-    partIds: product?.partIds ?? [] as string[],
+    productAssemblies: (product?.productAssemblies ?? product?.assemblyIds?.map(id => ({ assemblyId: id, quantity: 1 })) ?? []) as ProductAssemblyEntry[],
+    productParts: (product?.productParts ?? product?.partIds?.map(id => ({ partId: id, quantity: 1 })) ?? []) as ProductPartEntry[],
   }))
 
   const [formSteps, setFormSteps] = useState<AssemblyStep[]>(() =>
@@ -108,14 +108,14 @@ export default function EditProductPage() {
       code: product.code,
       name: product.name,
       category: resolveCategory(product.category),
-      basePrice: product.basePrice,
+      basePrice: String(product.basePrice ?? ""),
       descriptionRo: product.description?.ro ?? "",
       descriptionHu: product.description?.hu ?? "",
       descriptionDe: product.description?.de ?? "",
       descriptionEn: product.description?.en ?? "",
       notes: product.notes ?? "",
-      assemblyIds: product.assemblyIds ?? [],
-      partIds: product.partIds ?? [],
+      productAssemblies: product.productAssemblies ?? (product.assemblyIds ?? []).map(id => ({ assemblyId: id, quantity: 1 })),
+      productParts: product.productParts ?? (product.partIds ?? []).map(id => ({ partId: id, quantity: 1 })),
     })
     setFormSteps(product.productionSteps ?? [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,20 +143,44 @@ export default function EditProductPage() {
   // ─── Assembly / Part toggle ────────────────────────────────────────────────
 
   const toggleAssembly = (assemblyId: string) => {
+    setFormData((prev) => {
+      const exists = prev.productAssemblies.some((a) => a.assemblyId === assemblyId)
+      return {
+        ...prev,
+        productAssemblies: exists
+          ? prev.productAssemblies.filter((a) => a.assemblyId !== assemblyId)
+          : [...prev.productAssemblies, { assemblyId, quantity: 1 }],
+      }
+    })
+  }
+
+  const updateAssemblyQty = (assemblyId: string, quantity: number) => {
     setFormData((prev) => ({
       ...prev,
-      assemblyIds: prev.assemblyIds.includes(assemblyId)
-        ? prev.assemblyIds.filter((id) => id !== assemblyId)
-        : [...prev.assemblyIds, assemblyId],
+      productAssemblies: prev.productAssemblies.map((a) =>
+        a.assemblyId === assemblyId ? { ...a, quantity: Math.max(1, quantity) } : a
+      ),
     }))
   }
 
   const togglePart = (partId: string) => {
+    setFormData((prev) => {
+      const exists = prev.productParts.some((p) => p.partId === partId)
+      return {
+        ...prev,
+        productParts: exists
+          ? prev.productParts.filter((p) => p.partId !== partId)
+          : [...prev.productParts, { partId, quantity: 1 }],
+      }
+    })
+  }
+
+  const updatePartQty = (partId: string, quantity: number) => {
     setFormData((prev) => ({
       ...prev,
-      partIds: prev.partIds.includes(partId)
-        ? prev.partIds.filter((id) => id !== partId)
-        : [...prev.partIds, partId],
+      productParts: prev.productParts.map((p) =>
+        p.partId === partId ? { ...p, quantity: Math.max(1, quantity) } : p
+      ),
     }))
   }
 
@@ -211,7 +235,7 @@ export default function EditProductPage() {
       code: formData.code.trim(),
       name: formData.name.trim(),
       category: formData.category as ProductCategory,
-      basePrice: formData.basePrice,
+      basePrice: typeof formData.basePrice === "string" ? parseFloat(formData.basePrice) || 0 : formData.basePrice,
       description: {
         ro: formData.descriptionRo,
         hu: formData.descriptionHu,
@@ -219,8 +243,10 @@ export default function EditProductPage() {
         en: formData.descriptionEn,
       },
       notes: formData.notes,
-      assemblyIds: formData.assemblyIds,
-      partIds: formData.partIds,
+      productAssemblies: formData.productAssemblies,
+      productParts: formData.productParts,
+      assemblyIds: formData.productAssemblies.map((a) => a.assemblyId),
+      partIds: formData.productParts.map((p) => p.partId),
       productionSteps: formSteps,
     }
 
@@ -264,10 +290,10 @@ export default function EditProductPage() {
         <TabsList>
           <TabsTrigger value="info">Informații</TabsTrigger>
           <TabsTrigger value="assemblies">
-            Ansambluri{formData.assemblyIds.length > 0 ? ` (${formData.assemblyIds.length})` : ""}
+            Ansambluri{formData.productAssemblies.length > 0 ? ` (${formData.productAssemblies.length})` : ""}
           </TabsTrigger>
           <TabsTrigger value="parts">
-            Piese{formData.partIds.length > 0 ? ` (${formData.partIds.length})` : ""}
+            Piese{formData.productParts.length > 0 ? ` (${formData.productParts.length})` : ""}
           </TabsTrigger>
           <TabsTrigger value="steps">
             Pași producție{formSteps.length > 0 ? ` (${formSteps.length})` : ""}
@@ -327,9 +353,8 @@ export default function EditProductPage() {
                     min="0"
                     step="0.01"
                     value={formData.basePrice}
-                    onChange={(e) =>
-                      setFormData({ ...formData, basePrice: parseFloat(e.target.value) || 0 })
-                    }
+                    onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -403,28 +428,38 @@ export default function EditProductPage() {
             <CardHeader>
               <CardTitle className="text-base">{t("products.subassemblies")}</CardTitle>
               <CardDescription>
-                {formData.assemblyIds.length === 0
+                {formData.productAssemblies.length === 0
                   ? "Niciun ansamblu selectat."
-                  : `${formData.assemblyIds.length} ansamblu(ri) selectate`}
+                  : `${formData.productAssemblies.length} ansamblu(ri) selectate`}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Selected badges */}
-              {formData.assemblyIds.length > 0 && (
-                <div className="flex flex-wrap gap-2 pb-3 border-b">
-                  {formData.assemblyIds.map((id) => {
-                    const asm = safeAssemblies.find((a) => a.id === id)
+              {/* Selected assemblies with quantity */}
+              {formData.productAssemblies.length > 0 && (
+                <div className="space-y-2 pb-3 border-b">
+                  {formData.productAssemblies.map((entry) => {
+                    const asm = safeAssemblies.find((a) => a.id === entry.assemblyId)
                     return asm ? (
-                      <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                        {asm.name}
+                      <div key={entry.assemblyId} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
+                        <span className="flex-1 font-medium text-sm">{asm.name}
+                          <span className="ml-2 text-xs text-muted-foreground font-mono">{asm.code}</span>
+                        </span>
+                        <span className="text-xs text-muted-foreground">×</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={entry.quantity}
+                          onChange={(e) => updateAssemblyQty(entry.assemblyId, parseInt(e.target.value) || 1)}
+                          className="w-16 h-7 text-sm"
+                        />
                         <button
                           type="button"
-                          onClick={() => toggleAssembly(id)}
-                          className="ml-0.5 rounded hover:text-destructive"
+                          onClick={() => toggleAssembly(entry.assemblyId)}
+                          className="text-muted-foreground hover:text-destructive"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
-                      </Badge>
+                      </div>
                     ) : null
                   })}
                 </div>
@@ -447,26 +482,29 @@ export default function EditProductPage() {
                 <p className="text-sm text-muted-foreground">Niciun rezultat pentru &ldquo;{assemblySearch}&rdquo;.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-[420px] overflow-y-auto pr-1">
-                  {filteredAssemblies.map((assembly) => (
-                    <div
-                      key={assembly.id}
-                      className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
-                      onClick={() => toggleAssembly(assembly.id)}
-                    >
-                      <Checkbox
-                        id={`asm-${assembly.id}`}
-                        checked={formData.assemblyIds.includes(assembly.id)}
-                        onCheckedChange={() => toggleAssembly(assembly.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <Label htmlFor={`asm-${assembly.id}`} className="flex-1 cursor-pointer">
-                        <span className="font-medium">{assembly.name}</span>
-                        <span className="ml-2 text-xs text-muted-foreground font-mono">
-                          {assembly.code}
-                        </span>
-                      </Label>
-                    </div>
-                  ))}
+                  {filteredAssemblies.map((assembly) => {
+                    const isSelected = formData.productAssemblies.some((a) => a.assemblyId === assembly.id)
+                    return (
+                      <div
+                        key={assembly.id}
+                        className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
+                        onClick={() => toggleAssembly(assembly.id)}
+                      >
+                        <Checkbox
+                          id={`asm-${assembly.id}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleAssembly(assembly.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <Label htmlFor={`asm-${assembly.id}`} className="flex-1 cursor-pointer">
+                          <span className="font-medium">{assembly.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground font-mono">
+                            {assembly.code}
+                          </span>
+                        </Label>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>
@@ -479,28 +517,38 @@ export default function EditProductPage() {
             <CardHeader>
               <CardTitle className="text-base">{t("products.directParts")}</CardTitle>
               <CardDescription>
-                {formData.partIds.length === 0
+                {formData.productParts.length === 0
                   ? "Nicio piesă directă selectată."
-                  : `${formData.partIds.length} piesă(e) selectate`}
+                  : `${formData.productParts.length} piesă(e) selectate`}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Selected badges */}
-              {formData.partIds.length > 0 && (
-                <div className="flex flex-wrap gap-2 pb-3 border-b">
-                  {formData.partIds.map((id) => {
-                    const part = safeParts.find((p) => p.id === id)
+              {/* Selected parts with quantity */}
+              {formData.productParts.length > 0 && (
+                <div className="space-y-2 pb-3 border-b">
+                  {formData.productParts.map((entry) => {
+                    const part = safeParts.find((p) => p.id === entry.partId)
                     return part ? (
-                      <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                        {part.name}
+                      <div key={entry.partId} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
+                        <span className="flex-1 font-medium text-sm">{part.name}
+                          {part.code && <span className="ml-2 text-xs text-muted-foreground font-mono">{part.code}</span>}
+                        </span>
+                        <span className="text-xs text-muted-foreground">×</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={entry.quantity}
+                          onChange={(e) => updatePartQty(entry.partId, parseInt(e.target.value) || 1)}
+                          className="w-16 h-7 text-sm"
+                        />
                         <button
                           type="button"
-                          onClick={() => togglePart(id)}
-                          className="ml-0.5 rounded hover:text-destructive"
+                          onClick={() => togglePart(entry.partId)}
+                          className="text-muted-foreground hover:text-destructive"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
-                      </Badge>
+                      </div>
                     ) : null
                   })}
                 </div>
@@ -523,28 +571,31 @@ export default function EditProductPage() {
                 <p className="text-sm text-muted-foreground">Niciun rezultat pentru &ldquo;{partSearch}&rdquo;.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 max-h-[420px] overflow-y-auto pr-1">
-                  {filteredParts.map((part) => (
-                    <div
-                      key={part.id}
-                      className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
-                      onClick={() => togglePart(part.id)}
-                    >
-                      <Checkbox
-                        id={`part-${part.id}`}
-                        checked={formData.partIds.includes(part.id)}
-                        onCheckedChange={() => togglePart(part.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <Label htmlFor={`part-${part.id}`} className="flex-1 cursor-pointer">
-                        <span className="font-medium">{part.name}</span>
-                        {part.code && (
-                          <span className="ml-2 text-xs text-muted-foreground font-mono">
-                            {part.code}
-                          </span>
-                        )}
-                      </Label>
-                    </div>
-                  ))}
+                  {filteredParts.map((part) => {
+                    const isSelected = formData.productParts.some((p) => p.partId === part.id)
+                    return (
+                      <div
+                        key={part.id}
+                        className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
+                        onClick={() => togglePart(part.id)}
+                      >
+                        <Checkbox
+                          id={`part-${part.id}`}
+                          checked={isSelected}
+                          onCheckedChange={() => togglePart(part.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <Label htmlFor={`part-${part.id}`} className="flex-1 cursor-pointer">
+                          <span className="font-medium">{part.name}</span>
+                          {part.code && (
+                            <span className="ml-2 text-xs text-muted-foreground font-mono">
+                              {part.code}
+                            </span>
+                          )}
+                        </Label>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </CardContent>

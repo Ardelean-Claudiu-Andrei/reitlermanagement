@@ -115,6 +115,16 @@ export interface Assembly {
   updatedAt: string
 }
 
+export interface ProductAssemblyEntry {
+  assemblyId: string
+  quantity: number
+}
+
+export interface ProductPartEntry {
+  partId: string
+  quantity: number
+}
+
 export interface Product {
   id: string
   code: string
@@ -125,6 +135,8 @@ export interface Product {
   basePrice: number
   assemblyIds: string[]
   partIds: string[]
+  productAssemblies?: ProductAssemblyEntry[]  // [{assemblyId, quantity}]
+  productParts?: ProductPartEntry[]            // [{partId, quantity}]
   assemblySteps: AssemblyStep[]   // product-level production steps (existing field)
   productionSteps: AssemblyStep[] // forward-compat alias
   notes: string
@@ -215,6 +227,7 @@ export type ProjectStatus = "draft" | "in-progress" | "done" | "cancelled"
 
 export type CreateProjectPayload = Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'activity'> & {
   activity: Array<{ id?: string; action: string; user: string; timestamp: string }>
+  installationCost?: number
 }
 
 export interface Project {
@@ -228,6 +241,7 @@ export interface Project {
   deadline: string
   finishDate: string | null
   warrantyExpiration: string | null // finishDate + 2 years
+  installationCost?: number          // carried from quote, 0 if none
   items: ProjectItem[]
   checklist: ChecklistItem[]
   issues: ProjectIssue[]

@@ -1,12 +1,12 @@
 "use client"
 
-import { use, useState } from "react"
+import { use, useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { quoteLocales, quoteLocaleNames, type QuoteLocale } from "@/lib/i18n"
-import type { QuoteStatus } from "@/lib/types"
+import type { Quote, QuoteStatus } from "@/lib/types"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,7 +48,31 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [exportLang, setExportLang] = useState<QuoteLocale>("ro")
   const [exportFormat, setExportFormat] = useState<"pdf" | "excel">("pdf")
 
-  const quote = quotes.find((q) => q.id === id)
+  const contextQuote = quotes.find((q) => q.id === id)
+  const [apiQuote, setApiQuote] = useState<Quote | null>(null)
+  const [fetchLoading, setFetchLoading] = useState(!contextQuote)
+
+  useEffect(() => {
+    if (!contextQuote && id) {
+      setFetchLoading(true)
+      quotesApi.get(id)
+        .then(setApiQuote)
+        .catch(() => {})
+        .finally(() => setFetchLoading(false))
+    } else if (contextQuote) {
+      setFetchLoading(false)
+    }
+  }, [id, contextQuote])
+
+  const quote = contextQuote ?? apiQuote
+
+  if (!quote && fetchLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-muted-foreground">Se încarcă...</p>
+      </div>
+    )
+  }
 
   if (!quote) {
     return (

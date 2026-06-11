@@ -43,9 +43,9 @@ export function EntityFileUploads({
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [uploadingCategory, setUploadingCategory] = useState<FileCategory | null>(null)
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null)
-  const generalInputRef = useRef<HTMLInputElement>(null)
-  const weldingInputRef = useRef<HTMLInputElement>(null)
-  const bendingInputRef = useRef<HTMLInputElement>(null)
+  const generalInputRef = useRef<HTMLInputElement | null>(null)
+  const weldingInputRef = useRef<HTMLInputElement | null>(null)
+  const bendingInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (!entityId) { setFiles([]); return }
@@ -239,7 +239,7 @@ function DrawingSection({
   label: string
   files: UploadedFile[]
   uploading: boolean
-  inputRef: React.RefObject<HTMLInputElement>
+  inputRef: React.RefObject<HTMLInputElement | null>
   onDelete: (id: string) => void
   onPreview: (file: UploadedFile) => void
 }) {

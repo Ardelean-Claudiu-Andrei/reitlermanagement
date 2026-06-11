@@ -30,7 +30,7 @@ import { toast } from "sonner"
 
 export default function NewProjectPage() {
   const router = useRouter()
-  const { companies, products, addProject, projects } = useAppData()
+  const { companies, products, addProject } = useAppData()
   const { t } = useLocale()
 
   const [formData, setFormData] = useState({
@@ -93,10 +93,9 @@ export default function NewProjectPage() {
     }
 
     const today = new Date().toISOString().split("T")[0]
-    const projectCount = projects.length + 1
 
     const newProject: Omit<Project, 'id'> = {
-      code: `PRJ-2026-${String(projectCount).padStart(3, "0")}`,
+      code: `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
       name: formData.name,
       companyId: formData.companyId || null,
       quoteId: null,

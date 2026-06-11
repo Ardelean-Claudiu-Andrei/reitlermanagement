@@ -49,7 +49,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, GripVertical } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, GripVertical, ChevronsUpDown, Check } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
 import type { Assembly, AssemblyPart, AssemblyStep, AssemblyCompositionType } from "@/lib/types"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
@@ -130,11 +132,12 @@ export default function AssembliesPage() {
       if (editingAssembly) {
         await updateAssembly({ ...editingAssembly, ...payload })
         toast.success(t("common.savedSuccessfully"))
+        setDialogOpen(false)
       } else {
         await addAssembly(payload as Assembly)
-        toast.success(t("common.savedSuccessfully"))
+        toast.success("Ansamblu creat cu succes.")
+        setDialogOpen(false)
       }
-      setDialogOpen(false)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("common.errorOccurred"))
     } finally {
@@ -167,12 +170,12 @@ export default function AssembliesPage() {
     }
   }
 
+  const [openPartCombobox, setOpenPartCombobox] = useState<number | null>(null)
+
   // ─── Parts within assembly ────────────────────────────────────────────────
 
   function addPartToForm() {
-    if (safeParts.length > 0) {
-      setFormParts([...formParts, { partId: safeParts[0].id, quantity: 1 }])
-    }
+    setFormParts([...formParts, { partId: "", quantity: 1 }])
   }
 
   function updateFormPart(index: number, field: "partId" | "quantity", value: string | number) {
@@ -406,30 +409,62 @@ export default function AssembliesPage() {
                 <p className="text-sm text-muted-foreground">{t("materials.noPartsAdded")}</p>
               ) : (
                 <div className="space-y-2">
-                  {formParts.map((fp, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <Select value={fp.partId} onValueChange={(v) => updateFormPart(idx, "partId", v)}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {safeParts.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={fp.quantity}
-                        onChange={(e) => updateFormPart(idx, "quantity", parseInt(e.target.value) || 1)}
-                        className="w-20"
-                      />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeFormPart(idx)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
+                  {formParts.map((fp, idx) => {
+                    const selectedPart = safeParts.find((p) => p.id === fp.partId)
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Popover open={openPartCombobox === idx} onOpenChange={(open) => setOpenPartCombobox(open ? idx : null)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              className="flex-1 justify-between font-normal"
+                            >
+                              {selectedPart
+                                ? `${selectedPart.name}${selectedPart.code ? ` — ${selectedPart.code}` : ""}`
+                                : "Caută piesă după nume sau cod..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[380px] p-0">
+                            <Command>
+                              <CommandInput placeholder="Caută piesă după nume sau cod..." />
+                              <CommandList>
+                                <CommandEmpty>Nicio piesă găsită.</CommandEmpty>
+                                <CommandGroup>
+                                  {safeParts.map((p) => (
+                                    <CommandItem
+                                      key={p.id}
+                                      value={`${p.name} ${p.code ?? ""}`}
+                                      onSelect={() => {
+                                        updateFormPart(idx, "partId", p.id)
+                                        setOpenPartCombobox(null)
+                                      }}
+                                    >
+                                      <Check className={`mr-2 h-4 w-4 ${fp.partId === p.id ? "opacity-100" : "opacity-0"}`} />
+                                      <span className="font-medium">{p.name}</span>
+                                      {p.code && <span className="ml-2 text-xs text-muted-foreground font-mono">{p.code}</span>}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={fp.quantity}
+                          onChange={(e) => updateFormPart(idx, "quantity", parseInt(e.target.value) || 1)}
+                          className="w-20"
+                        />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeFormPart(idx)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </TabsContent>

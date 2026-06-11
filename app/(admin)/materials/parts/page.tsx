@@ -155,11 +155,12 @@ export default function PartsPage() {
       if (editingPart) {
         await updatePart({ ...editingPart, ...payload })
         toast.success(t("common.savedSuccessfully"))
+        setDialogOpen(false)
       } else {
         await addPart(payload as Part)
-        toast.success(t("common.savedSuccessfully"))
+        toast.success("Piesă creată cu succes.")
+        setDialogOpen(false)
       }
-      setDialogOpen(false)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t("common.errorOccurred"))
     } finally {

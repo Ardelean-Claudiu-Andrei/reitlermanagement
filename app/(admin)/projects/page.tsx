@@ -64,6 +64,7 @@ export default function ProjectsPage() {
   const [selectedQuoteId, setSelectedQuoteId] = useState<string>("")
   const [selectedProducts, setSelectedProducts] = useState<{ productId: string; fromInventory: boolean; quantity: number }[]>([])
   const [projectName, setProjectName] = useState("")
+  const [projectStartDate, setProjectStartDate] = useState(new Date().toISOString().split("T")[0])
   const [projectDeadline, setProjectDeadline] = useState("")
   const [companyComboOpen, setCompanyComboOpen] = useState(false)
   const [quoteComboOpen, setQuoteComboOpen] = useState(false)
@@ -156,6 +157,7 @@ export default function ProjectsPage() {
     setSelectedQuoteId("")
     setSelectedProducts([])
     setProjectName("")
+    setProjectStartDate(new Date().toISOString().split("T")[0])
     setProjectDeadline("")
     setCompanyComboOpen(false)
     setQuoteComboOpen(false)
@@ -203,7 +205,7 @@ export default function ProjectsPage() {
       companyId: isPersonal ? null : selectedCompanyId || null,
       quoteId: selectedQuoteId && selectedQuoteId !== "none" ? selectedQuoteId : null,
       status: "draft" as const,
-      startDate: today,
+      startDate: projectStartDate || today,
       deadline: projectDeadline || today,
       finishDate: null,
       warrantyExpiration: null,
@@ -302,6 +304,7 @@ export default function ProjectsPage() {
                 <TableHead>{t("common.status")}</TableHead>
                 <TableHead>{t("common.progress")}</TableHead>
                 <TableHead>{t("projects.issues")}</TableHead>
+                <TableHead>{t("projects.startDate")}</TableHead>
                 <TableHead>{t("projects.deadline")}</TableHead>
                 <TableHead>{t("common.total")}</TableHead>
                 <TableHead className="w-[80px]">{t("common.actions")}</TableHead>
@@ -310,7 +313,7 @@ export default function ProjectsPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     {t("projects.noProjectsFound")}
                   </TableCell>
                 </TableRow>
@@ -355,7 +358,8 @@ export default function ProjectsPage() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell>{project.deadline}</TableCell>
+                      <TableCell>{project.startDate || "-"}</TableCell>
+                      <TableCell>{project.deadline || "-"}</TableCell>
                       <TableCell className="font-medium">{total.toLocaleString()} EUR</TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -588,13 +592,23 @@ export default function ProjectsPage() {
                   placeholder={t("projects.projectNamePlaceholder")}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>{t("projects.deadline")}</Label>
-                <Input
-                  type="date"
-                  value={projectDeadline}
-                  onChange={(e) => setProjectDeadline(e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("projects.startDate")}</Label>
+                  <Input
+                    type="date"
+                    value={projectStartDate}
+                    onChange={(e) => setProjectStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("projects.deadline")}</Label>
+                  <Input
+                    type="date"
+                    value={projectDeadline}
+                    onChange={(e) => setProjectDeadline(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
                 <p className="font-medium">{t("projects.summary")}</p>

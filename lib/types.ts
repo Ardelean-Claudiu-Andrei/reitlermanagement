@@ -10,6 +10,7 @@ export interface Company {
   phone: string
   address: string
   cui: string
+  details: string
   createdAt: string
   updatedAt: string
 }

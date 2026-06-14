@@ -165,6 +165,7 @@ type TranslationKeys = {
   "companies.contactPerson": string
   "companies.associatedProjects": string
   "companies.associatedQuotes": string
+  "companies.details": string
 
   // Quotes
   "quotes.title": string
@@ -588,6 +589,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Contact Person",
     "companies.associatedProjects": "Associated Projects",
     "companies.associatedQuotes": "Associated Quotes",
+    "companies.details": "Details",
 
     // Quotes
     "quotes.title": "Quotes",
@@ -1009,6 +1011,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Persoana de contact",
     "companies.associatedProjects": "Proiecte Asociate",
     "companies.associatedQuotes": "Oferte Asociate",
+    "companies.details": "Detalii",
 
     // Quotes
     "quotes.title": "Oferte",
@@ -1436,6 +1439,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Kapcsolattarto",
     "companies.associatedProjects": "Kapcsolodo Projektek",
     "companies.associatedQuotes": "Kapcsolodo Arajanlatok",
+    "companies.details": "Reszletek",
 
     // Quotes
     "quotes.title": "Arajanlatok",
@@ -1863,6 +1867,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Kontaktperson",
     "companies.associatedProjects": "Zugehorige Projekte",
     "companies.associatedQuotes": "Zugehorige Angebote",
+    "companies.details": "Details",
 
     // Quotes
     "quotes.title": "Angebote",

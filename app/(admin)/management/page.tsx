@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -58,6 +59,7 @@ export default function ManagementPage() {
     phone: "",
     address: "",
     cui: "",
+    details: "",
   })
 
   const safeCompanies = companies ?? []
@@ -79,7 +81,7 @@ export default function ManagementPage() {
 
   const openNewDialog = () => {
     setEditingCompany(null)
-    setFormData({ name: "", contactPerson: "", email: "", phone: "", address: "", cui: "" })
+    setFormData({ name: "", contactPerson: "", email: "", phone: "", address: "", cui: "", details: "" })
     setDialogOpen(true)
   }
 
@@ -92,6 +94,7 @@ export default function ManagementPage() {
       phone: company.phone,
       address: company.address,
       cui: company.cui,
+      details: company.details ?? "",
     })
     setDialogOpen(true)
   }
@@ -99,6 +102,10 @@ export default function ManagementPage() {
   const handleSave = () => {
     if (!formData.name.trim()) {
       toast.error("Company name is required")
+      return
+    }
+    if (formData.phone && !/^\d*$/.test(formData.phone)) {
+      toast.error("Phone number must contain only digits")
       return
     }
 
@@ -267,8 +274,12 @@ export default function ManagementPage() {
               <Label htmlFor="phone">{t("common.phone")}</Label>
               <Input
                 id="phone"
+                inputMode="numeric"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "")
+                  setFormData({ ...formData, phone: digits })
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -285,6 +296,15 @@ export default function ManagementPage() {
                 id="cui"
                 value={formData.cui}
                 onChange={(e) => setFormData({ ...formData, cui: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="details">{t("companies.details")}</Label>
+              <Textarea
+                id="details"
+                value={formData.details}
+                onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                className="resize-y min-h-[80px]"
               />
             </div>
           </div>

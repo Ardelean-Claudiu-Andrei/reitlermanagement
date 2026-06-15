@@ -39,15 +39,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 
 export default function ManagementPage() {
   const { companies, quotes, projects, addCompany, updateCompany, deleteCompany } = useAppData()
   const { t } = useLocale()
   const [search, setSearch] = useState("")
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCompany, setEditingCompany] = useState<Company | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -72,6 +81,10 @@ export default function ManagementPage() {
       c.contactPerson.toLowerCase().includes(search.toLowerCase()) ||
       c.address.toLowerCase().includes(search.toLowerCase())
   )
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const getCompanyStats = (companyId: string) => {
     const companyProjects = safeProjects.filter((p) => p.companyId === companyId)
@@ -161,7 +174,7 @@ export default function ManagementPage() {
               <Input
                 placeholder={`${t("common.search")}...`}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                 className="pl-9"
               />
             </div>
@@ -189,7 +202,7 @@ export default function ManagementPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((company) => {
+                paginated.map((company) => {
                   const stats = getCompanyStats(company.id)
                   return (
                     <TableRow key={company.id}>
@@ -234,6 +247,70 @@ export default function ManagementPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {filtered.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} of {filtered.length}
+                </span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                  <SelectTrigger className="w-[80px] h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>per page</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…")
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === "…" ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                    ) : (
+                      <Button
+                        key={item}
+                        variant={safePage === item ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8 text-sm"
+                        onClick={() => setCurrentPage(item as number)}
+                      >
+                        {item}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

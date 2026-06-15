@@ -306,7 +306,7 @@ export default function ProjectsPage() {
                 <TableHead>{t("projects.issues")}</TableHead>
                 <TableHead>{t("projects.startDate")}</TableHead>
                 <TableHead>{t("projects.deadline")}</TableHead>
-                <TableHead>{t("common.total")}</TableHead>
+                <TableHead>{t("projects.remaining")}</TableHead>
                 <TableHead className="w-[80px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -322,6 +322,7 @@ export default function ProjectsPage() {
                   const progress = getProgress(project)
                   const openIssues = getOpenIssuesCount(project)
                   const total = getTotal(project)
+                  const remaining = Math.max(0, total - (project.paidAmount || 0))
                   const companyName = getCompanyName(project.companyId)
                   return (
                     <TableRow key={project.id}>
@@ -360,7 +361,7 @@ export default function ProjectsPage() {
                       </TableCell>
                       <TableCell>{project.startDate || "-"}</TableCell>
                       <TableCell>{project.deadline || "-"}</TableCell>
-                      <TableCell className="font-medium">{total.toLocaleString()} EUR</TableCell>
+                      <TableCell className="font-medium">{remaining.toLocaleString()} EUR</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

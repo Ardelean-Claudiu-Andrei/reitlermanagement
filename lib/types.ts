@@ -243,6 +243,7 @@ export interface Project {
   finishDate: string | null
   warrantyExpiration: string | null // finishDate + 2 years
   installationCost?: number          // carried from quote, 0 if none
+  paidAmount?: number
   items: ProjectItem[]
   checklist: ChecklistItem[]
   issues: ProjectIssue[]

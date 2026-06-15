@@ -239,6 +239,8 @@ type TranslationKeys = {
   "projects.source": string
   "projects.noProjectsFound": string
   "projects.linkedQuote": string
+  "projects.paidAmount": string
+  "projects.remaining": string
   "projects.noProductsAdded": string
   "projects.noChecklistItems": string
   "projects.addChecklistItem": string
@@ -663,6 +665,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Source",
     "projects.noProjectsFound": "No projects found",
     "projects.linkedQuote": "Linked Quote",
+    "projects.paidAmount": "Paid Amount",
+    "projects.remaining": "Remaining to Pay",
     "projects.noProductsAdded": "No products added",
     "projects.noChecklistItems": "No checklist items",
     "projects.addChecklistItem": "Add Checklist Item",
@@ -1178,6 +1182,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Sursa",
     "projects.noProjectsFound": "Niciun proiect gasit",
     "projects.linkedQuote": "Oferta Asociata",
+    "projects.paidAmount": "Suma Platita",
+    "projects.remaining": "Mai Are De Platit",
     "projects.noProductsAdded": "Niciun produs adaugat",
     "projects.noChecklistItems": "Niciun element in lista",
     "projects.addChecklistItem": "Adauga Element Lista",
@@ -1606,6 +1612,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Forras",
     "projects.noProjectsFound": "Nem talalhato projekt",
     "projects.linkedQuote": "Kapcsolodo Arajanlat",
+    "projects.paidAmount": "Kifizetett Osszeg",
+    "projects.remaining": "Meg Fizetendo",
     "projects.noProductsAdded": "Meg nem adtak hozza termekett",
     "projects.noChecklistItems": "Nincs lista elem",
     "projects.addChecklistItem": "Lista Elem Hozzaadasa",
@@ -2034,6 +2042,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Quelle",
     "projects.noProjectsFound": "Keine Projekte gefunden",
     "projects.linkedQuote": "Verknupftes Angebot",
+    "projects.paidAmount": "Bezahlter Betrag",
+    "projects.remaining": "Noch Zu Zahlen",
     "projects.noProductsAdded": "Keine Produkte hinzugefugt",
     "projects.noChecklistItems": "Keine Checklistenpunkte",
     "projects.addChecklistItem": "Checklistenpunkt Hinzufugen",

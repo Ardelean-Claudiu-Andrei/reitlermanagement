@@ -6,6 +6,7 @@ import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project } from "@/lib/types"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -245,6 +246,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     parts,
     assemblies,
     quotes,
+    updateProject,
     updateProjectStatus,
     finishProject,
     addProjectIssue,
@@ -257,6 +259,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [newIssueDescription, setNewIssueDescription] = useState("")
   const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
+  const [paidAmountInput, setPaidAmountInput] = useState<string>("")
 
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
@@ -275,6 +278,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }, [id, contextProject])
 
   const project = contextProject ?? apiProject
+
+  useEffect(() => {
+    if (project) {
+      setPaidAmountInput(String(project.paidAmount ?? 0))
+    }
+  }, [project?.id])
 
   if (!project && fetchLoading) {
     return (
@@ -300,6 +309,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const subtotal = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const installationCost = project.installationCost || 0
   const total = subtotal + installationCost
+  const paidAmount = project.paidAmount ?? 0
+  const remaining = Math.max(0, total - paidAmount)
+
+  const handleSavePaidAmount = async () => {
+    const parsed = parseFloat(paidAmountInput)
+    const value = isNaN(parsed) || parsed < 0 ? 0 : parsed
+    await updateProject({ ...project, paidAmount: value })
+    toast.success(t("common.savedSuccessfully"))
+  }
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
 
@@ -440,7 +458,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -497,6 +515,35 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     incl. instalare {installationCost.toLocaleString()} EUR
                   </p>
                 )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">{t("projects.paidAmount")} (EUR)</p>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  value={paidAmountInput}
+                  onChange={(e) => setPaidAmountInput(e.target.value)}
+                  onBlur={handleSavePaidAmount}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("projects.remaining")}</p>
+                <p className={`font-medium ${remaining === 0 ? "text-green-600" : ""}`}>
+                  {remaining.toLocaleString()} EUR
+                </p>
               </div>
             </div>
           </CardContent>

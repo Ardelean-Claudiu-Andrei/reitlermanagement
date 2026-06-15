@@ -49,7 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
+import { Plus, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import type { UserWithInfo } from "@/lib/types"
 
@@ -115,79 +115,150 @@ export default function UsersPage() {
     viewer: "bg-muted text-muted-foreground hover:bg-muted",
   }
 
-  function UserTable({ data }: { data: UserWithInfo[] }) {
+  function PaginatedUserTable({ data }: { data: UserWithInfo[] }) {
+    const [pageSize, setPageSize] = useState(10)
+    const [currentPage, setCurrentPage] = useState(1)
+    const totalPages = Math.max(1, Math.ceil(data.length / pageSize))
+    const safePage = Math.min(currentPage, totalPages)
+    const paginated = data.slice((safePage - 1) * pageSize, safePage * pageSize)
+
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("common.name")}</TableHead>
-            <TableHead>{t("common.email")}</TableHead>
-            <TableHead>{t("users.role")}</TableHead>
-            <TableHead>{t("common.status")}</TableHead>
-            <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((item) => (
-            <TableRow key={item.user.id}>
-              <TableCell className="font-medium">{item.user.name}</TableCell>
-              <TableCell className="text-muted-foreground">{item.user.email}</TableCell>
-              <TableCell>
-                <Badge variant="outline" className={roleBadgeClass[item.additionalInformation.role]}>
-                  {item.additionalInformation.role}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={
-                    item.user.status === "active"
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800"
-                      : "bg-muted text-muted-foreground hover:bg-muted"
-                  }
-                >
-                  {item.user.status}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">{t("common.actions")}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}`)}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      {t("common.view")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}/edit`)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      {t("common.edit")}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setDeleteTarget(item.user.id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {t("common.delete")}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-          {data.length === 0 && (
+      <div>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                {t("users.noUsersFound")}
-              </TableCell>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.email")}</TableHead>
+              <TableHead>{t("users.role")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {paginated.map((item) => (
+              <TableRow key={item.user.id}>
+                <TableCell className="font-medium">{item.user.name}</TableCell>
+                <TableCell className="text-muted-foreground">{item.user.email}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={roleBadgeClass[item.additionalInformation.role]}>
+                    {item.additionalInformation.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={
+                      item.user.status === "active"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800"
+                        : "bg-muted text-muted-foreground hover:bg-muted"
+                    }
+                  >
+                    {item.user.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">{t("common.actions")}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}`)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t("common.view")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}/edit`)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t("common.edit")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setDeleteTarget(item.user.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t("common.delete")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+            {data.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  {t("users.noUsersFound")}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        {data.length > 0 && (
+          <div className="flex items-center justify-between pt-4 border-t mt-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, data.length)} of {data.length}
+              </span>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                <SelectTrigger className="w-[80px] h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>per page</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={safePage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…")
+                  acc.push(p)
+                  return acc
+                }, [])
+                .map((item, i) =>
+                  item === "…" ? (
+                    <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                  ) : (
+                    <Button
+                      key={item}
+                      variant={safePage === item ? "default" : "outline"}
+                      size="icon"
+                      className="h-8 w-8 text-sm"
+                      onClick={() => setCurrentPage(item as number)}
+                    >
+                      {item}
+                    </Button>
+                  )
+                )}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={safePage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -218,7 +289,7 @@ export default function UsersPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <UserTable data={employees} />
+              <PaginatedUserTable data={employees} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -231,7 +302,7 @@ export default function UsersPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <UserTable data={admins} />
+              <PaginatedUserTable data={admins} />
             </CardContent>
           </Card>
         </TabsContent>

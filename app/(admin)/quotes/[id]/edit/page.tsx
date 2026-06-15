@@ -24,8 +24,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Plus, Trash2, Save } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Save, Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 export default function QuoteEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +59,8 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
   })
 
   const [items, setItems] = useState<QuoteItem[]>([])
+  const [openProductIdx, setOpenProductIdx] = useState<number | null>(null)
+  const [productSearch, setProductSearch] = useState("")
 
   useEffect(() => {
     if (!isNew && existingQuote) {
@@ -300,21 +312,75 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
                 items.map((item, idx) => (
                   <TableRow key={idx}>
                     <TableCell>
-                      <Select
-                        value={item.productId || ""}
-                        onValueChange={(v) => handleProductChange(idx, v)}
+                      <Popover
+                        open={openProductIdx === idx}
+                        onOpenChange={(open) => {
+                          setOpenProductIdx(open ? idx : null)
+                          if (open) setProductSearch("")
+                        }}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("selectProduct")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between font-normal"
+                          >
+                            <span className="truncate">
+                              {item.productId
+                                ? (products.find((p) => p.id === item.productId)?.name ?? t("selectProduct"))
+                                : t("selectProduct")}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder={`${t("search")}...`}
+                              value={productSearch}
+                              onValueChange={setProductSearch}
+                            />
+                            <CommandList>
+                              <CommandEmpty>No products found.</CommandEmpty>
+                              <CommandGroup>
+                                {products
+                                  .filter((p) => {
+                                    const q = productSearch.toLowerCase()
+                                    return (
+                                      !q ||
+                                      p.name.toLowerCase().includes(q) ||
+                                      p.code.toLowerCase().includes(q)
+                                    )
+                                  })
+                                  .map((product) => (
+                                    <CommandItem
+                                      key={product.id}
+                                      value={product.id}
+                                      onSelect={() => {
+                                        handleProductChange(idx, product.id)
+                                        setOpenProductIdx(null)
+                                        setProductSearch("")
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4 shrink-0",
+                                          item.productId === product.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="truncate">{product.name}</span>
+                                        {product.code && (
+                                          <span className="text-xs text-muted-foreground">{product.code}</span>
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </TableCell>
                     <TableCell>
                       <Input

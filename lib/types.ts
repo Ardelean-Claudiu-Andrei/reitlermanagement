@@ -249,6 +249,8 @@ export interface Project {
   checklist: ChecklistItem[]
   issues: ProjectIssue[]
   activity: ActivityEntry[]
+  stepsCompleted: string[]
+  stepsTotal: number
   createdAt: string
   updatedAt: string
 }

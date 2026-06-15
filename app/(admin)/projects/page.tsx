@@ -123,9 +123,11 @@ export default function ProjectsPage() {
   }
 
   const getProgress = (project: typeof safeProjects[0]) => {
+    if (project.stepsTotal && project.stepsTotal > 0) {
+      return Math.round(((project.stepsCompleted?.length ?? 0) / project.stepsTotal) * 100)
+    }
     if (!project.checklist || project.checklist.length === 0) return 0
-    const done = project.checklist.filter((c) => c.done).length
-    return Math.round((done / project.checklist.length) * 100)
+    return Math.round((project.checklist.filter((c) => c.done).length / project.checklist.length) * 100)
   }
 
   const getOpenIssuesCount = (project: typeof safeProjects[0]) => {
@@ -231,6 +233,8 @@ export default function ProjectsPage() {
       items: projectItems,
       checklist: [],
       issues: [],
+      stepsCompleted: [],
+      stepsTotal: 0,
       activity: [
         {
           id: `a${Date.now()}`,

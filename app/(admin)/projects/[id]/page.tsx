@@ -33,7 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
 import {
   ArrowLeft,
   Building2,
@@ -145,13 +147,20 @@ function countNodeSteps(node: ProductNode): number {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StepRow({ step, index }: { step: AssemblyStep; index: number }) {
+type StepToggle = (stepId: string) => void
+
+function StepRow({ step, index, completed, onToggle }: { step: AssemblyStep; index: number; completed: boolean; onToggle: StepToggle }) {
   return (
-    <div className="flex items-start gap-3 py-2 border-b last:border-0">
+    <div className={`flex items-start gap-3 py-2 border-b last:border-0 ${completed ? "opacity-60" : ""}`}>
+      <Checkbox
+        checked={completed}
+        onCheckedChange={() => onToggle(step.id)}
+        className="mt-0.5 shrink-0"
+      />
       <span className="text-xs text-muted-foreground font-mono w-5 shrink-0 mt-0.5">{index + 1}.</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium">{step.name}</span>
+          <span className={`text-sm font-medium ${completed ? "line-through" : ""}`}>{step.name}</span>
           <Badge variant="secondary" className="text-xs">{step.type}</Badge>
         </div>
         {step.description && <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>}
@@ -160,7 +169,7 @@ function StepRow({ step, index }: { step: AssemblyStep; index: number }) {
   )
 }
 
-function ProductStepsBlock({ node }: { node: ProductNode }) {
+function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNode; stepsCompleted: Set<string>; onToggle: StepToggle }) {
   const hasAnySteps = countNodeSteps(node) > 0
   if (!hasAnySteps) return null
 
@@ -179,7 +188,7 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
         {node.productSteps.length > 0 && (
           <div className="py-1">
             {node.productSteps.map((step, idx) => (
-              <StepRow key={step.id} step={step} index={idx} />
+              <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
             ))}
           </div>
         )}
@@ -198,7 +207,9 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
               <div className="px-3">
                 {asmNode.steps.length > 0 && (
                   <div className="py-1">
-                    {asmNode.steps.map((step, idx) => <StepRow key={step.id} step={step} index={idx} />)}
+                    {asmNode.steps.map((step, idx) => (
+                      <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
+                    ))}
                   </div>
                 )}
                 {asmNode.parts.filter((p) => p.steps.length > 0).map((pNode) => (
@@ -209,7 +220,9 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
                       {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
                     </div>
                     <div className="px-2 py-1">
-                      {pNode.steps.map((step, idx) => <StepRow key={step.id} step={step} index={idx} />)}
+                      {pNode.steps.map((step, idx) => (
+                        <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -228,7 +241,9 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
               {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
             </div>
             <div className="px-3 py-1">
-              {pNode.steps.map((step, idx) => <StepRow key={step.id} step={step} index={idx} />)}
+              {pNode.steps.map((step, idx) => (
+                <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
+              ))}
             </div>
           </div>
         ))}
@@ -267,6 +282,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
   const [paidAmountInput, setPaidAmountInput] = useState<string>("")
+  const [stepsCompleted, setStepsCompleted] = useState<Set<string>>(new Set())
 
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
@@ -289,6 +305,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (project) {
       setPaidAmountInput(String(project.paidAmount ?? 0))
+      setStepsCompleted(new Set(project.stepsCompleted ?? []))
     }
   }, [project?.id])
 
@@ -356,6 +373,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     .map((product) => buildProductHierarchy(product, assemblies ?? [], parts ?? []))
 
   const totalStepCount = productNodes.reduce((s, n) => s + countNodeSteps(n), 0)
+  const completedStepCount = stepsCompleted.size
+  const progressPct = totalStepCount === 0 ? 0 : Math.round((completedStepCount / totalStepCount) * 100)
+
+  const toggleStep = async (stepId: string) => {
+    const next = new Set(stepsCompleted)
+    if (next.has(stepId)) next.delete(stepId)
+    else next.add(stepId)
+    setStepsCompleted(next)
+    await updateProject({
+      ...project,
+      stepsCompleted: Array.from(next),
+      stepsTotal: totalStepCount,
+    })
+  }
 
   const getProductName = (productId: string) =>
     products.find((p) => p.id === productId)?.name || productId
@@ -761,13 +792,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
+          {totalStepCount > 0 && (
+            <div className="flex items-center gap-3 pb-2 border-b">
+              <Progress value={progressPct} className="flex-1 h-2" />
+              <span className="text-sm font-medium shrink-0">{completedStepCount}/{totalStepCount} ({progressPct}%)</span>
+            </div>
+          )}
           {totalStepCount === 0 ? (
             <p className="text-center text-muted-foreground py-4">
               Nu există pași de producție configurați pentru produsele din acest proiect.
             </p>
           ) : (
             productNodes.map((node) => (
-              <ProductStepsBlock key={node.productId} node={node} />
+              <ProductStepsBlock key={node.productId} node={node} stepsCompleted={stepsCompleted} onToggle={toggleStep} />
             ))
           )}
         </CardContent>

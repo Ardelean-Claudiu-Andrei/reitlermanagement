@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 
 export default function ProductsPage() {
@@ -38,6 +38,8 @@ export default function ProductsPage() {
   const { t } = useLocale()
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const safeProducts = products ?? []
   const categories = [...new Set(safeProducts.map((p) => p.category).filter(Boolean))]
@@ -49,6 +51,10 @@ export default function ProductsPage() {
     const matchesCategory = categoryFilter === "all" || p.category === categoryFilter
     return matchesSearch && matchesCategory
   })
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   async function handleDelete(id: string) {
     try {
@@ -83,11 +89,11 @@ export default function ProductsPage() {
               <Input
                 placeholder={t("products.searchPlaceholder")}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                 className="pl-9"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setCurrentPage(1) }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder={t("products.category")} />
               </SelectTrigger>
@@ -123,7 +129,7 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((product) => (
+              {paginated.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-mono text-xs">{product.code}</TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
@@ -175,6 +181,69 @@ export default function ProductsPage() {
               )}
             </TableBody>
           </Table>
+
+          {filtered.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} of {filtered.length}
+                </span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                  <SelectTrigger className="w-[80px] h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>per page</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…")
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === "…" ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                    ) : (
+                      <Button
+                        key={item}
+                        variant={safePage === item ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8 text-sm"
+                        onClick={() => setCurrentPage(item as number)}
+                      >
+                        {item}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

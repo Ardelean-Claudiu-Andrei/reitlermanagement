@@ -282,6 +282,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingCards, setExportingCards] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
+  const [exportingProjectLaser, setExportingProjectLaser] = useState(false)
   const [paidAmountInput, setPaidAmountInput] = useState<string>("")
   const [stepsCompleted, setStepsCompleted] = useState<Set<string>>(new Set())
 
@@ -481,6 +482,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
     } finally {
       setExportingCards(false)
+    }
+  }
+
+  async function handleExportProjectLaserPdf() {
+    if (!project) return
+    setExportingProjectLaser(true)
+    try {
+      const blob = await projectsApi.exportLaserCuttingPdf(project.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `taiere-laser-${project.code}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Listă tăiere laser generată cu succes")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
+    } finally {
+      setExportingProjectLaser(false)
     }
   }
 
@@ -741,8 +761,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Products */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
           <CardTitle>{t("products")}</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={handleExportProjectLaserPdf}
+            disabled={exportingProjectLaser}
+          >
+            <Zap className="mr-1 h-3 w-3" />
+            {exportingProjectLaser ? "Se generează..." : "Tăiere Laser"}
+          </Button>
         </CardHeader>
         <CardContent>
           {project.items.length === 0 ? (

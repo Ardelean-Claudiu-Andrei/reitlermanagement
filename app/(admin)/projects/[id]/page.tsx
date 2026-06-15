@@ -359,7 +359,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       toast.error("Project name is required")
       return
     }
-    await updateProject({ ...project, ...editForm })
+    let warrantyExpiration = project.warrantyExpiration
+    if (editForm.finishDate) {
+      const fd = new Date(editForm.finishDate)
+      warrantyExpiration = new Date(fd.getFullYear() + 2, fd.getMonth(), fd.getDate()).toISOString().slice(0, 10)
+    }
+    await updateProject({ ...project, ...editForm, warrantyExpiration })
     toast.success(t("common.savedSuccessfully"))
     setEditDialogOpen(false)
   }

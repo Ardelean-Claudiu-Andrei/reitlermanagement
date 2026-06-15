@@ -1,11 +1,12 @@
 "use client"
 
 // Dashboard page for SMS Reitler
+import { useRef, useEffect } from "react"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/status-badge"
-import { FileText, Building2, FolderKanban, CheckCircle2, Clock, AlertTriangle } from "lucide-react"
+import { FileText, Building2, FolderKanban, CheckCircle2, Clock, AlertTriangle, ShieldAlert } from "lucide-react"
 import Link from "next/link"
 import {
   Table,
@@ -17,16 +18,91 @@ import {
 } from "@/components/ui/table"
 
 export default function DashboardPage() {
-  const { quotes, projects, companies } = useAppData()
+  const { quotes, projects, companies, updateProject } = useAppData()
   const { t } = useLocale()
 
   const safeQuotes = quotes ?? []
   const safeProjects = projects ?? []
   const safeCompanies = companies ?? []
 
+  const autoChecked = useRef(false)
+
+  useEffect(() => {
+    if (!projects || projects.length === 0 || autoChecked.current) return
+    autoChecked.current = true
+
+    const AUTO_MARKER = "[AUTO-WARRANTY]"
+    const now = new Date()
+
+    projects.forEach((p) => {
+      const expiry = p.warrantyExpiration
+        ? new Date(p.warrantyExpiration)
+        : p.finishDate
+          ? (() => { const fd = new Date(p.finishDate!); return new Date(fd.getFullYear() + 2, fd.getMonth(), fd.getDate()) })()
+          : null
+
+      if (!expiry || expiry > now) return
+      if (p.status === "maintenance" || p.status === "cancelled") return
+
+      const hadMaintenance = (p.activity ?? []).some((a) => a.action?.toLowerCase().includes("maintenance"))
+      if (p.status === "done" && hadMaintenance) return
+
+      // Already auto-handled — don't create a duplicate issue
+      if ((p.issues ?? []).some((i) => i.description?.includes(AUTO_MARKER))) return
+
+      const newIssue = {
+        id: `auto-warranty-${p.id}`,
+        description: `${AUTO_MARKER} Nicio acțiune nu a fost luată privind garanția sau mentenanța proiectului. Proiectul a fost mutat automat la finalizat.`,
+        solved: false,
+        solvedAt: null,
+        createdAt: now.toISOString(),
+      }
+
+      updateProject({
+        ...p,
+        status: "done",
+        issues: [...(p.issues ?? []), newIssue],
+      }).catch(console.error)
+    })
+  }, [projects])
+
   const activeProjects = safeProjects.filter((p) => p.status === "in-progress")
   const doneProjects = safeProjects.filter((p) => p.status === "done")
   const projectsWithIssues = safeProjects.filter((p) => p.issues?.some((i) => !i.solved))
+
+  const now = new Date()
+
+  function effectiveWarrantyExpiry(p: typeof safeProjects[0]): Date | null {
+    if (p.warrantyExpiration) return new Date(p.warrantyExpiration)
+    if (p.finishDate) {
+      const fd = new Date(p.finishDate)
+      return new Date(fd.getFullYear() + 2, fd.getMonth(), fd.getDate())
+    }
+    return null
+  }
+
+  const warrantyAlerts = safeProjects
+    .flatMap((p) => {
+      const expiry = effectiveWarrantyExpiry(p)
+      if (!expiry) return []
+      const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / 86400000)
+      if (daysUntil > 7) return []
+
+      // Hide while maintenance is actively in progress
+      if (p.status === "maintenance") return []
+      if (p.status === "cancelled") return []
+
+      // Hide if project already completed a done → maintenance → done cycle
+      // (warranty service was already provided)
+      const maintenanceWasCompleted =
+        p.status === "done" &&
+        (p.activity ?? []).some((a) => a.action?.toLowerCase().includes("maintenance"))
+      if (maintenanceWasCompleted) return []
+
+      const company = safeCompanies.find((c) => c.id === p.companyId)
+      return [{ project: p, expiry, daysUntil, company }]
+    })
+    .sort((a, b) => a.daysUntil - b.daysUntil)
 
   function getRelativeTime(isoDate: string): string {
     const diffDays = Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000)
@@ -127,6 +203,49 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {warrantyAlerts.length > 0 && (
+        <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base text-red-800 dark:text-red-200">
+              <ShieldAlert className="h-4 w-4" />
+              Garanție în expirare ({warrantyAlerts.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {warrantyAlerts.map(({ project: p, expiry, daysUntil, company }) => (
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.id}`}
+                  className="flex items-center justify-between rounded-md bg-red-100 px-3 py-2 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                      {p.code} — {p.name}
+                    </p>
+                    {company && (
+                      <p className="text-xs text-red-700 dark:text-red-300">{company.name}</p>
+                    )}
+                  </div>
+                  <div className="ml-4 shrink-0 text-right">
+                    <p className="text-xs font-mono text-red-800 dark:text-red-200">
+                      {expiry.toLocaleDateString("ro-RO")}
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      {daysUntil < 0
+                        ? `Expirat acum ${Math.abs(daysUntil)} zile`
+                        : daysUntil === 0
+                        ? "Expiră azi"
+                        : `Expiră în ${daysUntil} zile`}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -167,9 +286,9 @@ export default function DashboardPage() {
               </TableHeader>
               <TableBody>
                 {topProjects.map((project) => {
-                  const checklist = project.checklist ?? []
-                  const done = checklist.filter((c) => c.done).length
-                  const total = checklist.length
+                  const completedSteps = project.stepsCompleted?.length ?? 0
+                  const totalSteps = project.stepsTotal ?? 0
+                  const progressLabel = totalSteps > 0 ? `${completedSteps}/${totalSteps}` : "--"
                   return (
                     <TableRow key={project.id}>
                       <TableCell className="font-mono text-xs">
@@ -182,7 +301,7 @@ export default function DashboardPage() {
                         <StatusBadge status={project.status} />
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
-                        {total > 0 ? `${done}/${total}` : "--"}
+                        {progressLabel}
                       </TableCell>
                     </TableRow>
                   )

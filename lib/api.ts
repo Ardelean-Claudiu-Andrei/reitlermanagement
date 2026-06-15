@@ -268,6 +268,14 @@ export const projectsApi = {
     }
     return res.blob()
   },
+  exportProductionCardsPdf: async (id: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/projects/${id}/export-production-cards`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────

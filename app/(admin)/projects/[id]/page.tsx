@@ -280,6 +280,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
   const [exportingSteps, setExportingSteps] = useState(false)
+  const [exportingCards, setExportingCards] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
   const [paidAmountInput, setPaidAmountInput] = useState<string>("")
   const [stepsCompleted, setStepsCompleted] = useState<Set<string>>(new Set())
@@ -461,6 +462,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
     } finally {
       setExportingSteps(false)
+    }
+  }
+
+  async function handleExportCardsPdf() {
+    if (!project) return
+    setExportingCards(true)
+    try {
+      const blob = await projectsApi.exportProductionCardsPdf(project.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `fise-productie-${project.code}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Fișe de producție generate cu succes")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
+    } finally {
+      setExportingCards(false)
     }
   }
 
@@ -785,16 +805,26 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Boxes className="h-5 w-5" />
             Pași de producție{totalStepCount > 0 && ` (${totalStepCount})`}
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            onClick={handleExportStepsPdf}
-            disabled={exportingSteps}
-          >
-            <FileDown className="mr-1 h-3 w-3" />
-            {exportingSteps ? "Se generează..." : "Export lista de steps"}
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCardsPdf}
+              disabled={exportingCards}
+            >
+              <FileDown className="mr-1 h-3 w-3" />
+              {exportingCards ? "Se generează..." : "Fișe de producție"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportStepsPdf}
+              disabled={exportingSteps}
+            >
+              <FileDown className="mr-1 h-3 w-3" />
+              {exportingSteps ? "Se generează..." : "Export lista de steps"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {totalStepCount > 0 && (

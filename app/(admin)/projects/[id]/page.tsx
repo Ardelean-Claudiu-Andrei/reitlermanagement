@@ -594,29 +594,56 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* Issues Alert */}
-      {openIssues.length > 0 && (
-        <Card className="border-destructive">
-          <CardHeader className="py-3">
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              {t("projects.activeIssues")} ({openIssues.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Issues Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            {t("projects.issues")}
+            {openIssues.length > 0 && (
+              <Badge variant="destructive">{t("projects.activeIssue")}</Badge>
+            )}
+            {openIssues.length === 0 && project.issues.length > 0 && (
+              <Badge variant="outline">{t("projects.noActiveIssue")}</Badge>
+            )}
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setIssueDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("projects.reportIssue")}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {project.issues.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">{t("projects.noIssues")}</p>
+          ) : (
             <div className="space-y-2">
-              {openIssues.map((issue) => (
-                <div key={issue.id} className="flex items-center justify-between rounded-md bg-destructive/10 p-3">
-                  <span>{issue.description}</span>
-                  <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
-                    {t("projects.solve")}
-                  </Button>
+              {project.issues.map((issue) => (
+                <div
+                  key={issue.id}
+                  className={`flex items-center justify-between rounded-md border p-3 ${
+                    issue.solved ? "bg-muted/30" : ""
+                  }`}
+                >
+                  <div>
+                    <span className={issue.solved ? "line-through text-muted-foreground" : ""}>
+                      {issue.description}
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      {t("common.createdAt")}: {issue.createdAt}
+                      {issue.solvedAt && ` | ${t("projects.solved")}: ${issue.solvedAt}`}
+                    </p>
+                  </div>
+                  {!issue.solved && (
+                    <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
+                      {t("projects.solve")}
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Products */}
       <Card>
@@ -708,56 +735,29 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </CardContent>
       </Card>
 
-      {/* Issues Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            {t("projects.issues")}
-            {openIssues.length > 0 && (
-              <Badge variant="destructive">{t("projects.activeIssue")}</Badge>
-            )}
-            {openIssues.length === 0 && project.issues.length > 0 && (
-              <Badge variant="outline">{t("projects.noActiveIssue")}</Badge>
-            )}
-          </CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setIssueDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("projects.reportIssue")}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {project.issues.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">{t("projects.noIssues")}</p>
-          ) : (
+      {/* Issues Alert */}
+      {openIssues.length > 0 && (
+        <Card className="border-destructive">
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              {t("projects.activeIssues")} ({openIssues.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-2">
-              {project.issues.map((issue) => (
-                <div
-                  key={issue.id}
-                  className={`flex items-center justify-between rounded-md border p-3 ${
-                    issue.solved ? "bg-muted/30" : ""
-                  }`}
-                >
-                  <div>
-                    <span className={issue.solved ? "line-through text-muted-foreground" : ""}>
-                      {issue.description}
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      {t("common.createdAt")}: {issue.createdAt}
-                      {issue.solvedAt && ` | ${t("projects.solved")}: ${issue.solvedAt}`}
-                    </p>
-                  </div>
-                  {!issue.solved && (
-                    <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
-                      {t("projects.solve")}
-                    </Button>
-                  )}
+              {openIssues.map((issue) => (
+                <div key={issue.id} className="flex items-center justify-between rounded-md bg-destructive/10 p-3">
+                  <span>{issue.description}</span>
+                  <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
+                    {t("projects.solve")}
+                  </Button>
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activity Log */}
       <Card>

@@ -624,7 +624,7 @@ export default function ProjectsPage() {
                           <div className="flex-1">
                             <p className="font-medium">{product.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {product.code} — {(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR
+                              {product.code}{showPrices && ` — ${(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR`}
                             </p>
                           </div>
                           {invQty > 0 && (
@@ -703,7 +703,7 @@ export default function ProjectsPage() {
                 <p className="text-sm">
                   {t("products")}: {selectedProducts.length} {t("common.items")}
                 </p>
-                {selectedQuoteId && selectedQuoteId !== "none" && (() => {
+                {showPrices && selectedQuoteId && selectedQuoteId !== "none" && (() => {
                   const q = safeQuotes.find((q) => q.id === selectedQuoteId)
                   return q?.installation ? (
                     <p className="text-sm">Instalare: {q.installation.toLocaleString()} EUR</p>

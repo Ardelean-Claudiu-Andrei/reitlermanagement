@@ -325,13 +325,9 @@ export default function ProjectsPage() {
                   const remaining = Math.max(0, total - (project.paidAmount || 0))
                   const companyName = getCompanyName(project.companyId)
                   return (
-                    <TableRow key={project.id}>
+                    <TableRow key={project.id} className="cursor-pointer" onClick={() => router.push(`/projects/${project.id}`)}>
                       <TableCell className="font-mono text-sm">{project.code}</TableCell>
-                      <TableCell className="font-medium">
-                        <Link href={`/projects/${project.id}`} className="hover:underline">
-                          {project.name}
-                        </Link>
-                      </TableCell>
+                      <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>
                         {companyName ? (
                           companyName
@@ -362,7 +358,7 @@ export default function ProjectsPage() {
                       <TableCell>{project.startDate || "-"}</TableCell>
                       <TableCell>{project.deadline || "-"}</TableCell>
                       <TableCell className="font-medium">{remaining.toLocaleString()} EUR</TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">

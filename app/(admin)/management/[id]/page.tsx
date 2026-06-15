@@ -47,7 +47,10 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
       approved: "default",
       rejected: "destructive",
       "in-progress": "default",
+      "in-installation": "default",
       done: "secondary",
+      warranty: "outline",
+      maintenance: "secondary",
       cancelled: "destructive",
     }
     return <Badge variant={variants[status] || "secondary"}>{status}</Badge>

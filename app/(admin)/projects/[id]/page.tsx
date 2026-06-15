@@ -333,14 +333,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     products.find((p) => p.id === productId)?.name || productId
 
   const getStatusBadge = (status: ProjectStatus) => {
-    const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
       draft: { variant: "secondary", label: t("status.draft") },
       "in-progress": { variant: "default", label: t("status.inProgress") },
+      "in-installation": { variant: "default", label: t("status.inInstallation"), className: "bg-blue-600 hover:bg-blue-600 text-white border-blue-600" },
       done: { variant: "outline", label: t("status.done") },
+      warranty: { variant: "outline", label: t("status.warranty"), className: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800" },
+      maintenance: { variant: "outline", label: t("status.maintenance"), className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800" },
       cancelled: { variant: "destructive", label: t("status.cancelled") },
     }
-    const c = config[status] || { variant: "secondary", label: status }
-    return <Badge variant={c.variant}>{c.label}</Badge>
+    const c = config[status] || { variant: "secondary" as const, label: status }
+    return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>
   }
 
   const handleStatusChange = (status: ProjectStatus) => {
@@ -437,7 +440,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {project.status !== "done" && (
+          {!["done", "warranty", "maintenance", "cancelled"].includes(project.status) && (
             <Button variant="default" onClick={() => setFinishDialogOpen(true)}>
               <Flag className="mr-2 h-4 w-4" />
               {t("projects.finishProject")}
@@ -450,7 +453,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <SelectContent>
               <SelectItem value="draft">{t("status.draft")}</SelectItem>
               <SelectItem value="in-progress">{t("status.inProgress")}</SelectItem>
+              <SelectItem value="in-installation">{t("status.inInstallation")}</SelectItem>
               <SelectItem value="done">{t("status.done")}</SelectItem>
+              <SelectItem value="warranty">{t("status.warranty")}</SelectItem>
+              <SelectItem value="maintenance">{t("status.maintenance")}</SelectItem>
               <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
             </SelectContent>
           </Select>

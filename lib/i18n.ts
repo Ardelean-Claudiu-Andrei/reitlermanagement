@@ -117,7 +117,10 @@ type TranslationKeys = {
   "status.completed": string
   "status.cancelled": string
   "status.inProgress": string
+  "status.inInstallation": string
   "status.done": string
+  "status.warranty": string
+  "status.maintenance": string
 
   // Dashboard
   "dashboard.welcome": string
@@ -543,7 +546,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Completed",
     "status.cancelled": "Cancelled",
     "status.inProgress": "In Progress",
+    "status.inInstallation": "In Installation",
     "status.done": "Done",
+    "status.warranty": "Warranty",
+    "status.maintenance": "Maintenance",
 
     // Dashboard
     "dashboard.welcome": "Welcome to SMS Reitler - Offers & Production",
@@ -967,7 +973,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Finalizat",
     "status.cancelled": "Anulat",
     "status.inProgress": "In lucru",
+    "status.inInstallation": "In instalare",
     "status.done": "Terminat",
+    "status.warranty": "Garantie",
+    "status.maintenance": "Mentenanta",
 
     // Dashboard
     "dashboard.welcome": "Bun venit la SMS Reitler - Oferte & Productie",
@@ -1397,7 +1406,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Befejezve",
     "status.cancelled": "Torolve",
     "status.inProgress": "Folyamatban",
+    "status.inInstallation": "Telepites alatt",
     "status.done": "Kesz",
+    "status.warranty": "Garancia",
+    "status.maintenance": "Karbantartas",
 
     // Dashboard
     "dashboard.welcome": "Udvozoljuk az SMS Reitler - Arajanlatok & Termeles alkalmazasban",
@@ -1827,7 +1839,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Abgeschlossen",
     "status.cancelled": "Storniert",
     "status.inProgress": "In Bearbeitung",
+    "status.inInstallation": "In Installation",
     "status.done": "Fertig",
+    "status.warranty": "Garantie",
+    "status.maintenance": "Wartung",
 
     // Dashboard
     "dashboard.welcome": "Willkommen bei SMS Reitler - Angebote & Produktion",

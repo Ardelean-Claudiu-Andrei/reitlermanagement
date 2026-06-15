@@ -17,25 +17,25 @@ export const companies: Company[] = [
   {
     id: "comp1", name: "ABC Industries SRL", contactPerson: "Ion Popescu",
     email: "contact@abcindustries.ro", phone: "+40 721 123 456",
-    address: "Str. Industriei 15, Cluj-Napoca", cui: "RO12345678",
+    address: "Str. Industriei 15, Cluj-Napoca", cui: "RO12345678", details: "",
     createdAt: "2025-06-15", updatedAt: "2026-02-10",
   },
   {
     id: "comp2", name: "XYZ Manufacturing", contactPerson: "Maria Ionescu",
     email: "office@xyzmanufacturing.ro", phone: "+40 722 234 567",
-    address: "Bd. Muncii 42, Timisoara", cui: "RO23456789",
+    address: "Bd. Muncii 42, Timisoara", cui: "RO23456789", details: "",
     createdAt: "2025-08-20", updatedAt: "2026-02-15",
   },
   {
     id: "comp3", name: "Delta Tech KFT", contactPerson: "Kovács István",
     email: "info@deltatech.hu", phone: "+36 30 123 4567",
-    address: "Ipari út 8, Debrecen", cui: "HU34567890",
+    address: "Ipari út 8, Debrecen", cui: "HU34567890", details: "",
     createdAt: "2025-09-10", updatedAt: "2026-01-20",
   },
   {
     id: "comp4", name: "Gamma Solutions GmbH", contactPerson: "Hans Mueller",
     email: "kontakt@gammasolutions.de", phone: "+49 170 123 4567",
-    address: "Industriestr. 22, München", cui: "DE45678901",
+    address: "Industriestr. 22, München", cui: "DE45678901", details: "",
     createdAt: "2025-11-05", updatedAt: "2026-02-18",
   },
 ]

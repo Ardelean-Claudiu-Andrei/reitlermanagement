@@ -224,7 +224,7 @@ export interface ActivityEntry {
   timestamp: string
 }
 
-export type ProjectStatus = "draft" | "in-progress" | "done" | "cancelled"
+export type ProjectStatus = "draft" | "in-progress" | "in-installation" | "done" | "warranty" | "maintenance" | "cancelled"
 
 export type CreateProjectPayload = Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'activity'> & {
   activity: Array<{ id?: string; action: string; user: string; timestamp: string }>

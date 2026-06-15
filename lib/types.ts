@@ -264,12 +264,13 @@ export interface User {
   name: string
   email: string
   status: "active" | "inactive"
+  role?: import("@/lib/permissions").AppRole  // present on the login-response user object
 }
 
 export interface AdditionalInformation {
   userId: string
-  role: "admin" | "employee"
-  type: "admin" | "employee"
+  role: import("@/lib/permissions").AppRole
+  type: import("@/lib/permissions").AppRole
 }
 
 export interface UserWithInfo {

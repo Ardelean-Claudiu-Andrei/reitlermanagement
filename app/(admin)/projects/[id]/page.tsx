@@ -53,7 +53,9 @@ import {
   FileDown,
 } from "lucide-react"
 import { toast } from "sonner"
-import { projectsApi, productsApi } from "@/lib/api"
+import { projectsApi, productsApi, getCurrentUser } from "@/lib/api"
+import { canViewPrices } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
 
 // ─── Hierarchy types ──────────────────────────────────────────────────────────
 
@@ -255,10 +257,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   } = useAppData()
   const { t } = useLocale()
 
+  const showPrices = canViewPrices((getCurrentUser()?.role ?? "employee") as AppRole)
+
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "" })
+  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
   const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
@@ -328,6 +332,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       companyId: project.companyId,
       startDate: project.startDate || "",
       deadline: project.deadline || "",
+      finishDate: project.finishDate || "",
     })
     setEditDialogOpen(true)
   }
@@ -491,7 +496,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
+      <div className={`grid gap-4 md:grid-cols-3 ${showPrices ? "lg:grid-cols-7" : "lg:grid-cols-4"}`}>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -536,51 +541,57 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">{t("common.total")}</p>
-                <p className="font-medium">{total.toLocaleString()} EUR</p>
-                {installationCost > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    incl. instalare {installationCost.toLocaleString()} EUR
+        {showPrices && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Package className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("common.total")}</p>
+                  <p className="font-medium">{total.toLocaleString()} EUR</p>
+                  {installationCost > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      incl. instalare {installationCost.toLocaleString()} EUR
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {showPrices && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{t("projects.paidAmount")} (EUR)</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={paidAmountInput}
+                    onChange={(e) => setPaidAmountInput(e.target.value)}
+                    onBlur={handleSavePaidAmount}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {showPrices && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("projects.remaining")}</p>
+                  <p className={`font-medium ${remaining === 0 ? "text-green-600" : ""}`}>
+                    {remaining.toLocaleString()} EUR
                   </p>
-                )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">{t("projects.paidAmount")} (EUR)</p>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  value={paidAmountInput}
-                  onChange={(e) => setPaidAmountInput(e.target.value)}
-                  onBlur={handleSavePaidAmount}
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">{t("projects.remaining")}</p>
-                <p className={`font-medium ${remaining === 0 ? "text-green-600" : ""}`}>
-                  {remaining.toLocaleString()} EUR
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Warranty + Quote info */}
@@ -686,8 +697,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <TableRow>
                   <TableHead>{t("products.productName")}</TableHead>
                   <TableHead className="text-right">{t("common.quantity")}</TableHead>
-                  <TableHead className="text-right">{t("common.price")} (EUR)</TableHead>
-                  <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>
+                  {showPrices && <TableHead className="text-right">{t("common.price")} (EUR)</TableHead>}
+                  {showPrices && <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>}
                   <TableHead>{t("projects.source")}</TableHead>
                   <TableHead>{t("common.notes")}</TableHead>
                   <TableHead>{t("common.actions")}</TableHead>
@@ -700,8 +711,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{prod?.name || item.productId}</TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
+                      {showPrices && <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>}
+                      {showPrices && <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>}
                       <TableCell>
                         <Badge variant={item.fromInventory ? "secondary" : "outline"}>
                           {item.fromInventory ? t("projects.fromInventory") : t("projects.needsProduction")}
@@ -860,6 +871,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-finish">Data Finalizare</Label>
+              <Input
+                id="edit-finish"
+                type="date"
+                value={editForm.finishDate}
+                onChange={(e) => setEditForm({ ...editForm, finishDate: e.target.value })}
+              />
             </div>
           </div>
           <DialogFooter>

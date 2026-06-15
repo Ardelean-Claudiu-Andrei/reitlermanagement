@@ -60,12 +60,13 @@ export default function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "employee" })
+  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "engineer" })
 
   const safeUsers = usersWithInfo ?? []
 
-  const employees = safeUsers.filter((u) => u.additionalInformation.type === "employee")
   const admins = safeUsers.filter((u) => u.additionalInformation.type === "admin")
+  const engineers = safeUsers.filter((u) => u.additionalInformation.type === "engineer")
+  const production = safeUsers.filter((u) => u.additionalInformation.type === "production" || u.additionalInformation.type === "employee")
 
   function handleDelete() {
     if (deleteTarget) {
@@ -93,8 +94,8 @@ export default function UsersPage() {
         },
         additionalInformation: {
           userId: "",
-          role: newUser.role as "admin" | "employee",
-          type: newUser.role as "admin" | "employee",
+          role: newUser.role as import("@/lib/permissions").AppRole,
+          type: newUser.role as import("@/lib/permissions").AppRole,
         },
         password: newUser.password,
       }
@@ -110,9 +111,17 @@ export default function UsersPage() {
   }
 
   const roleBadgeClass: Record<string, string> = {
-    admin: "bg-foreground text-background hover:bg-foreground",
-    manager: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800",
-    viewer: "bg-muted text-muted-foreground hover:bg-muted",
+    admin:      "bg-foreground text-background hover:bg-foreground",
+    engineer:   "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800",
+    production: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-200 dark:border-amber-800",
+    employee:   "bg-muted text-muted-foreground hover:bg-muted",
+  }
+
+  const roleLabel: Record<string, string> = {
+    admin:      "Admin",
+    engineer:   "Inginer",
+    production: "Producție",
+    employee:   "Angajat",
   }
 
   function PaginatedUserTable({ data }: { data: UserWithInfo[] }) {
@@ -140,8 +149,8 @@ export default function UsersPage() {
                 <TableCell className="font-medium">{item.user.name}</TableCell>
                 <TableCell className="text-muted-foreground">{item.user.email}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={roleBadgeClass[item.additionalInformation.role]}>
-                    {item.additionalInformation.role}
+                  <Badge variant="outline" className={roleBadgeClass[item.additionalInformation.role] ?? ""}>
+                    {roleLabel[item.additionalInformation.role] ?? item.additionalInformation.role}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -275,21 +284,35 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="employees">
+      <Tabs defaultValue="production">
         <TabsList>
-          <TabsTrigger value="employees">{t("users.employees")} ({employees.length})</TabsTrigger>
+          <TabsTrigger value="production">Producție ({production.length})</TabsTrigger>
+          <TabsTrigger value="engineers">Ingineri ({engineers.length})</TabsTrigger>
           <TabsTrigger value="admins">{t("users.admins")} ({admins.length})</TabsTrigger>
         </TabsList>
-        <TabsContent value="employees" className="mt-4">
+        <TabsContent value="production" className="mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{t("users.employees")}</CardTitle>
-                <p className="text-sm text-muted-foreground">{employees.length} {t("users.usersCount")}</p>
+                <CardTitle className="text-base">Producție</CardTitle>
+                <p className="text-sm text-muted-foreground">{production.length} {t("users.usersCount")}</p>
               </div>
             </CardHeader>
             <CardContent>
-              <PaginatedUserTable data={employees} />
+              <PaginatedUserTable data={production} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="engineers" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Ingineri</CardTitle>
+                <p className="text-sm text-muted-foreground">{engineers.length} {t("users.usersCount")}</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <PaginatedUserTable data={engineers} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -374,7 +397,8 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">{t("users.employees")}</SelectItem>
+                  <SelectItem value="engineer">Inginer</SelectItem>
+                  <SelectItem value="production">Producție</SelectItem>
                   <SelectItem value="admin">{t("users.admins")}</SelectItem>
                 </SelectContent>
               </Select>

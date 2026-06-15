@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
@@ -47,6 +47,9 @@ import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User, ChevronsUpDown, C
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
+import { getCurrentUser } from "@/lib/api"
+import { canViewPrices } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -57,6 +60,12 @@ export default function ProjectsPage() {
   const [projectTypeFilter, setProjectTypeFilter] = useState<string>("all")
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const [showPrices, setShowPrices] = useState(true)
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    setShowPrices(canViewPrices((user?.role ?? "employee") as AppRole))
+  }, [])
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -318,7 +327,7 @@ export default function ProjectsPage() {
                 <TableHead>{t("projects.issues")}</TableHead>
                 <TableHead>{t("projects.startDate")}</TableHead>
                 <TableHead>{t("projects.deadline")}</TableHead>
-                <TableHead>{t("projects.remaining")}</TableHead>
+                {showPrices && <TableHead>{t("projects.remaining")}</TableHead>}
                 <TableHead className="w-[80px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -369,7 +378,7 @@ export default function ProjectsPage() {
                       </TableCell>
                       <TableCell>{project.startDate || "-"}</TableCell>
                       <TableCell>{project.deadline || "-"}</TableCell>
-                      <TableCell className="font-medium">{remaining.toLocaleString()} EUR</TableCell>
+                      {showPrices && <TableCell className="font-medium">{remaining.toLocaleString()} EUR</TableCell>}
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

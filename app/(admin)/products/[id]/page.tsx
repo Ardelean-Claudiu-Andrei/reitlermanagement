@@ -594,7 +594,7 @@ export default function ProductDetailPage() {
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle className="text-base">Fișiere atașate produsului</CardTitle>
-                <CardDescription>DXF, DPD, PDF — vizualizare. Pentru a gestiona fișierele, folosește pagina de editare.</CardDescription>
+                <CardDescription>DXF, PDF, imagini — vizualizare. Pentru a gestiona fișierele, folosește pagina de editare.</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={() => router.push(`/products/${product.id}/edit`)}>
                 <Pencil className="mr-1 h-3 w-3" />

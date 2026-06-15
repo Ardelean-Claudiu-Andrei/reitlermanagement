@@ -42,6 +42,7 @@ export type FileCategory =
   | "dxf"
   | "dpd"
   | "pdf"
+  | "image"
   | "welding_drawing"
   | "bending_drawing"
 

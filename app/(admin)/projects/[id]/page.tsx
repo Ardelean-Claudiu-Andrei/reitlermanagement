@@ -42,6 +42,7 @@ import {
   CalendarCheck,
   CalendarClock,
   AlertCircle,
+  Pencil,
   Plus,
   Shield,
   Package,
@@ -256,6 +257,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
   const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
@@ -317,6 +320,26 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const value = isNaN(parsed) || parsed < 0 ? 0 : parsed
     await updateProject({ ...project, paidAmount: value })
     toast.success(t("common.savedSuccessfully"))
+  }
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      name: project.name,
+      companyId: project.companyId,
+      startDate: project.startDate || "",
+      deadline: project.deadline || "",
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editForm.name.trim()) {
+      toast.error("Project name is required")
+      return
+    }
+    await updateProject({ ...project, ...editForm })
+    toast.success(t("common.savedSuccessfully"))
+    setEditDialogOpen(false)
   }
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
@@ -440,6 +463,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleOpenEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            {t("common.edit")}
+          </Button>
           {!["done", "warranty", "maintenance", "cancelled"].includes(project.status) && (
             <Button variant="default" onClick={() => setFinishDialogOpen(true)}>
               <Flag className="mr-2 h-4 w-4" />
@@ -780,6 +807,67 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("common.edit")}: {project.name}</DialogTitle>
+            <DialogDescription>Actualizează detaliile proiectului</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">{t("common.name")} *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("common.company")}</Label>
+              <Select
+                value={editForm.companyId || "personal"}
+                onValueChange={(v) => setEditForm({ ...editForm, companyId: v === "personal" ? null : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="personal">{t("projects.personal")}</SelectItem>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start">{t("common.startDate")}</Label>
+                <Input
+                  id="edit-start"
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-deadline">{t("projects.deadline")}</Label>
+                <Input
+                  id="edit-deadline"
+                  type="date"
+                  value={editForm.deadline}
+                  onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleSaveEdit}>{t("common.save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Report Issue Dialog */}
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>

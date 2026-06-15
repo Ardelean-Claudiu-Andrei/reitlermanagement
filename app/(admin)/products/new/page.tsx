@@ -229,7 +229,7 @@ export default function NewProductPage() {
           {/* Files info */}
           <div className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
             <Info className="h-4 w-4 shrink-0" />
-            Fișierele (DXF, DPD, PDF) pot fi încărcate imediat după salvare — vei fi redirecționat automat pe pagina de editare.
+            Fișierele (DXF, PDF, JPG, PNG) pot fi încărcate imediat după salvare — vei fi redirecționat automat pe pagina de editare.
           </div>
 
           {/* Actions */}

@@ -431,7 +431,7 @@ export default function PartsPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[1100px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingPart ? t("common.edit") : t("parts.addPart")}
@@ -618,7 +618,7 @@ export default function PartsPage() {
 
       {/* View Dialog */}
       <Dialog open={!!viewPart} onOpenChange={() => setViewPart(null)}>
-        <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[1100px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {viewPart?.name}

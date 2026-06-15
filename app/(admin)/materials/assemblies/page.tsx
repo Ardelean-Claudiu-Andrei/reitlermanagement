@@ -409,7 +409,7 @@ export default function AssembliesPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[1100px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingAssembly ? t("common.edit") : t("materials.addAssembly")}
@@ -591,7 +591,7 @@ export default function AssembliesPage() {
 
             {/* Files tab */}
             <TabsContent value="files" className="space-y-4">
-              <p className="text-sm text-muted-foreground">Fișiere atașate ansamblului (DXF, DPD, PDF)</p>
+              <p className="text-sm text-muted-foreground">Fișiere atașate ansamblului (DXF, PDF, imagini)</p>
               <EntityFileUploads
                 entityType="assembly"
                 entityId={editingAssembly?.id}

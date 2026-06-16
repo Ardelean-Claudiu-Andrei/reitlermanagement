@@ -55,7 +55,7 @@ import {
   FileDown,
 } from "lucide-react"
 import { toast } from "sonner"
-import { projectsApi, productsApi, getCurrentUser } from "@/lib/api"
+import { projectsApi, getCurrentUser } from "@/lib/api"
 import { canViewPrices } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 
@@ -149,12 +149,12 @@ function countNodeSteps(node: ProductNode): number {
 
 type StepToggle = (stepId: string) => void
 
-function StepRow({ step, index, completed, onToggle }: { step: AssemblyStep; index: number; completed: boolean; onToggle: StepToggle }) {
+function StepRow({ step, stepKey, index, completed, onToggle }: { step: AssemblyStep; stepKey: string; index: number; completed: boolean; onToggle: StepToggle }) {
   return (
     <div className={`flex items-start gap-3 py-2 border-b last:border-0 ${completed ? "opacity-60" : ""}`}>
       <Checkbox
         checked={completed}
-        onCheckedChange={() => onToggle(step.id)}
+        onCheckedChange={() => onToggle(stepKey)}
         className="mt-0.5 shrink-0"
       />
       <span className="text-xs text-muted-foreground font-mono w-5 shrink-0 mt-0.5">{index + 1}.</span>
@@ -187,9 +187,12 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
         {/* Product-level steps */}
         {node.productSteps.length > 0 && (
           <div className="py-1">
-            {node.productSteps.map((step, idx) => (
-              <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
-            ))}
+            {node.productSteps.map((step, idx) => {
+              const stepKey = `${node.productId}:product:${step.id}`
+              return (
+                <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+              )
+            })}
           </div>
         )}
 
@@ -207,9 +210,12 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
               <div className="px-3">
                 {asmNode.steps.length > 0 && (
                   <div className="py-1">
-                    {asmNode.steps.map((step, idx) => (
-                      <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
-                    ))}
+                    {asmNode.steps.map((step, idx) => {
+                      const stepKey = `${node.productId}:assembly:${asmNode.id}:${step.id}`
+                      return (
+                        <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                      )
+                    })}
                   </div>
                 )}
                 {asmNode.parts.filter((p) => p.steps.length > 0).map((pNode) => (
@@ -220,9 +226,12 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
                       {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
                     </div>
                     <div className="px-2 py-1">
-                      {pNode.steps.map((step, idx) => (
-                        <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
-                      ))}
+                      {pNode.steps.map((step, idx) => {
+                        const stepKey = `${node.productId}:assembly:${asmNode.id}:part:${pNode.id}:${step.id}`
+                        return (
+                          <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -241,9 +250,12 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
               {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
             </div>
             <div className="px-3 py-1">
-              {pNode.steps.map((step, idx) => (
-                <StepRow key={step.id} step={step} index={idx} completed={stepsCompleted.has(step.id)} onToggle={onToggle} />
-              ))}
+              {pNode.steps.map((step, idx) => {
+                const stepKey = `${node.productId}:directpart:${pNode.id}:${step.id}`
+                return (
+                  <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                )
+              })}
             </div>
           </div>
         ))}
@@ -279,9 +291,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
-  const [exportingSteps, setExportingSteps] = useState(false)
   const [exportingCards, setExportingCards] = useState(false)
-  const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
   const [exportingProjectLaser, setExportingProjectLaser] = useState(false)
   const [paidAmountInput, setPaidAmountInput] = useState<string>("")
   const [stepsCompleted, setStepsCompleted] = useState<Set<string>>(new Set())
@@ -447,25 +457,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     toast.success(t("projects.issueResolved"))
   }
 
-  async function handleExportStepsPdf() {
-    if (!project) return
-    setExportingSteps(true)
-    try {
-      const blob = await projectsApi.exportProductionStepsPdf(project.id)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `pasi-productie-${project.code}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success("PDF generat cu succes")
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
-    } finally {
-      setExportingSteps(false)
-    }
-  }
-
   async function handleExportCardsPdf() {
     if (!project) return
     setExportingCards(true)
@@ -501,24 +492,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
     } finally {
       setExportingProjectLaser(false)
-    }
-  }
-
-  async function handleExportLaserPdf(productId: string, productCode: string) {
-    setExportingLaserFor(productId)
-    try {
-      const blob = await productsApi.laserCuttingPdf(productId)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `laser-print-${productCode}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success("PDF laser generat cu succes")
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
-    } finally {
-      setExportingLaserFor(null)
     }
   }
 
@@ -787,7 +760,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   {showPrices && <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>}
                   <TableHead>{t("projects.source")}</TableHead>
                   <TableHead>{t("common.notes")}</TableHead>
-                  <TableHead>{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -805,20 +777,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.notes || "-"}</TableCell>
-                      <TableCell>
-                        {prod?.hasLaserCutting && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                            disabled={exportingLaserFor === item.productId}
-                            onClick={() => handleExportLaserPdf(item.productId, prod.code)}
-                          >
-                            <Zap className="mr-1 h-3 w-3" />
-                            {exportingLaserFor === item.productId ? "..." : "Export Print"}
-                          </Button>
-                        )}
-                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -844,15 +802,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             >
               <FileDown className="mr-1 h-3 w-3" />
               {exportingCards ? "Se generează..." : "Fișe de producție"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportStepsPdf}
-              disabled={exportingSteps}
-            >
-              <FileDown className="mr-1 h-3 w-3" />
-              {exportingSteps ? "Se generează..." : "Export lista de steps"}
             </Button>
           </div>
         </CardHeader>

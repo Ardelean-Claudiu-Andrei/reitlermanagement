@@ -1,12 +1,13 @@
 "use client"
 
 // Dashboard page for SMS Reitler
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
-import { FileText, Building2, FolderKanban, CheckCircle2, Clock, AlertTriangle, ShieldAlert } from "lucide-react"
+import { FileText, Building2, FolderKanban, CheckCircle2, Clock, AlertTriangle, ShieldAlert, FileDown, BarChart3 } from "lucide-react"
 import Link from "next/link"
 import {
   Table,
@@ -16,10 +17,41 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getCurrentUser, reportsApi, type WeeklyReportSummary } from "@/lib/api"
+import { canViewReports } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
+import { toast } from "sonner"
 
 export default function DashboardPage() {
   const { quotes, projects, companies, updateProject } = useAppData()
   const { t } = useLocale()
+
+  const isAdmin = canViewReports((getCurrentUser()?.role ?? "employee") as AppRole)
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyReportSummary[]>([])
+  const [exportingWeek, setExportingWeek] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isAdmin) return
+    reportsApi.listWeekly().then((res) => setWeeklyReports(res.weeks)).catch(console.error)
+  }, [isAdmin])
+
+  async function handleExportWeeklyReport(weekStart: string) {
+    setExportingWeek(weekStart)
+    try {
+      const blob = await reportsApi.exportWeeklyPdf(weekStart)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `raport-saptamanal-${weekStart}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Raport generat cu succes")
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Eroare la generare raport")
+    } finally {
+      setExportingWeek(null)
+    }
+  }
 
   const safeQuotes = quotes ?? []
   const safeProjects = projects ?? []
@@ -242,6 +274,50 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAdmin && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              Rapoarte săptămânale
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {weeklyReports.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">—</p>
+            ) : (
+              <div className="space-y-2">
+                {weeklyReports.map((w) => (
+                  <div
+                    key={w.weekStart}
+                    className="flex items-center justify-between rounded-md border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {w.weekStart} — {w.weekEnd}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {w.progressedCount} proiecte cu progres · {w.finalizedCount} finalizate
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={exportingWeek === w.weekStart}
+                      onClick={() => handleExportWeeklyReport(w.weekStart)}
+                    >
+                      <FileDown className="mr-1 h-3 w-3" />
+                      {exportingWeek === w.weekStart ? "..." : "Descarcă PDF"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

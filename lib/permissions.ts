@@ -12,6 +12,10 @@ export function canViewPrices(role: AppRole): boolean {
   return role === "admin"
 }
 
+export function canViewReports(role: AppRole): boolean {
+  return role === "admin"
+}
+
 export function canAccess(role: AppRole, pathname: string): boolean {
   if (role === "admin") return true
   return ACCESS[role]?.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/")) ?? false

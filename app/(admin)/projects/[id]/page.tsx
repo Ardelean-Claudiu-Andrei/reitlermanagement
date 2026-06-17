@@ -618,6 +618,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     type="number"
                     min={0}
                     value={paidAmountInput}
+                    onFocus={() => { if (paidAmountInput === "0") setPaidAmountInput("") }}
                     onChange={(e) => setPaidAmountInput(e.target.value)}
                     onBlur={handleSavePaidAmount}
                     className="h-8 text-sm"

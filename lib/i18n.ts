@@ -50,6 +50,7 @@ type TranslationKeys = {
   "nav.users": string
   "nav.reports": string
   "nav.companies": string
+  "nav.production": string
 
   // Common
   "common.add": string
@@ -479,6 +480,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Users",
     "nav.reports": "Reports",
     "nav.companies": "Companies",
+    "nav.production": "Production",
 
     // Common
     "common.add": "Add",
@@ -906,6 +908,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Utilizatori",
     "nav.reports": "Rapoarte",
     "nav.companies": "Companii",
+    "nav.production": "Producție",
 
     // Common
     "common.add": "Adauga",
@@ -1339,6 +1342,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Felhasznalok",
     "nav.reports": "Jelentesek",
     "nav.companies": "Cegek",
+    "nav.production": "Gyartas",
 
     // Common
     "common.add": "Hozzaadas",
@@ -1772,6 +1776,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Benutzer",
     "nav.reports": "Berichte",
     "nav.companies": "Unternehmen",
+    "nav.production": "Produktion",
 
     // Common
     "common.add": "Hinzufugen",

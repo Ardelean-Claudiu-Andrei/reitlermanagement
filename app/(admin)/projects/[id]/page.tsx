@@ -56,7 +56,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { projectsApi, getCurrentUser } from "@/lib/api"
-import { canViewPrices } from "@/lib/permissions"
+import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 
 // ─── Hierarchy types ──────────────────────────────────────────────────────────
@@ -284,7 +284,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   } = useAppData()
   const { t } = useLocale()
 
-  const showPrices = canViewPrices((getCurrentUser()?.role ?? "employee") as AppRole)
+  const currentRole = (getCurrentUser()?.role ?? "employee") as AppRole
+  const showPrices = canViewPrices(currentRole)
+  const canEdit = canEditProject(currentRole)
+  const canResolve = canResolveIssues(currentRole)
 
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
@@ -517,30 +520,34 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleOpenEdit}>
-            <Pencil className="mr-2 h-4 w-4" />
-            {t("common.edit")}
-          </Button>
-          {!["done", "warranty", "maintenance", "cancelled"].includes(project.status) && (
+          {canEdit && (
+            <Button variant="outline" onClick={handleOpenEdit}>
+              <Pencil className="mr-2 h-4 w-4" />
+              {t("common.edit")}
+            </Button>
+          )}
+          {canEdit && !["done", "warranty", "maintenance", "cancelled"].includes(project.status) && (
             <Button variant="default" onClick={() => setFinishDialogOpen(true)}>
               <Flag className="mr-2 h-4 w-4" />
               {t("projects.finishProject")}
             </Button>
           )}
-          <Select value={project.status} onValueChange={(v) => handleStatusChange(v as ProjectStatus)}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">{t("status.draft")}</SelectItem>
-              <SelectItem value="in-progress">{t("status.inProgress")}</SelectItem>
-              <SelectItem value="in-installation">{t("status.inInstallation")}</SelectItem>
-              <SelectItem value="done">{t("status.done")}</SelectItem>
-              <SelectItem value="warranty">{t("status.warranty")}</SelectItem>
-              <SelectItem value="maintenance">{t("status.maintenance")}</SelectItem>
-              <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
-            </SelectContent>
-          </Select>
+          {canEdit && (
+            <Select value={project.status} onValueChange={(v) => handleStatusChange(v as ProjectStatus)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">{t("status.draft")}</SelectItem>
+                <SelectItem value="in-progress">{t("status.inProgress")}</SelectItem>
+                <SelectItem value="in-installation">{t("status.inInstallation")}</SelectItem>
+                <SelectItem value="done">{t("status.done")}</SelectItem>
+                <SelectItem value="warranty">{t("status.warranty")}</SelectItem>
+                <SelectItem value="maintenance">{t("status.maintenance")}</SelectItem>
+                <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -721,7 +728,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       {issue.solvedAt && ` | ${t("projects.solved")}: ${issue.solvedAt}`}
                     </p>
                   </div>
-                  {!issue.solved && (
+                  {!issue.solved && canResolve && (
                     <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
                       {t("projects.solve")}
                     </Button>

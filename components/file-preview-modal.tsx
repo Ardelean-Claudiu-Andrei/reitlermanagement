@@ -12,6 +12,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   dxf: "DXF",
   dpd: "DPD",
   pdf: "PDF",
+  image: "Imagine",
   welding_drawing: "Desen sudură",
   bending_drawing: "Desen îndoire",
 }
@@ -53,11 +54,14 @@ export function FilePreviewModal({
 
   const url = getUploadFileUrl(file.url)
   const type = detectType(file)
-  const isWide = type === "image" || type === "pdf" || type === "dxf"
+  const dialogClass =
+    type === "pdf" || type === "dxf" ? "sm:max-w-4xl" :
+    type === "image" ? "sm:max-w-2xl" :
+    "sm:max-w-md"
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className={isWide ? "max-w-4xl" : "max-w-md"}>
+      <DialogContent className={dialogClass}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 min-w-0">
             <Badge variant="outline" className="shrink-0">
@@ -71,12 +75,12 @@ export function FilePreviewModal({
 
         {/* ── Image ── */}
         {type === "image" && (
-          <div className="flex items-center justify-center max-h-[70vh] overflow-auto rounded border bg-muted/20 p-2">
+          <div className="flex items-center justify-center max-h-[80vh] overflow-auto rounded border bg-muted/20 p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
               alt={file.originalFilename}
-              className="max-w-full max-h-[65vh] rounded object-contain"
+              className="max-w-full max-h-[75vh] rounded object-contain"
             />
           </div>
         )}

@@ -50,6 +50,7 @@ type TranslationKeys = {
   "nav.users": string
   "nav.reports": string
   "nav.companies": string
+  "nav.production": string
 
   // Common
   "common.add": string
@@ -117,7 +118,10 @@ type TranslationKeys = {
   "status.completed": string
   "status.cancelled": string
   "status.inProgress": string
+  "status.inInstallation": string
   "status.done": string
+  "status.warranty": string
+  "status.maintenance": string
 
   // Dashboard
   "dashboard.welcome": string
@@ -165,6 +169,7 @@ type TranslationKeys = {
   "companies.contactPerson": string
   "companies.associatedProjects": string
   "companies.associatedQuotes": string
+  "companies.details": string
 
   // Quotes
   "quotes.title": string
@@ -238,6 +243,8 @@ type TranslationKeys = {
   "projects.source": string
   "projects.noProjectsFound": string
   "projects.linkedQuote": string
+  "projects.paidAmount": string
+  "projects.remaining": string
   "projects.noProductsAdded": string
   "projects.noChecklistItems": string
   "projects.addChecklistItem": string
@@ -473,6 +480,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Users",
     "nav.reports": "Reports",
     "nav.companies": "Companies",
+    "nav.production": "Production",
 
     // Common
     "common.add": "Add",
@@ -540,7 +548,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Completed",
     "status.cancelled": "Cancelled",
     "status.inProgress": "In Progress",
+    "status.inInstallation": "In Installation",
     "status.done": "Done",
+    "status.warranty": "Warranty",
+    "status.maintenance": "Maintenance",
 
     // Dashboard
     "dashboard.welcome": "Welcome to SMS Reitler - Offers & Production",
@@ -588,6 +599,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Contact Person",
     "companies.associatedProjects": "Associated Projects",
     "companies.associatedQuotes": "Associated Quotes",
+    "companies.details": "Details",
 
     // Quotes
     "quotes.title": "Quotes",
@@ -661,6 +673,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Source",
     "projects.noProjectsFound": "No projects found",
     "projects.linkedQuote": "Linked Quote",
+    "projects.paidAmount": "Paid Amount",
+    "projects.remaining": "Remaining to Pay",
     "projects.noProductsAdded": "No products added",
     "projects.noChecklistItems": "No checklist items",
     "projects.addChecklistItem": "Add Checklist Item",
@@ -894,6 +908,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Utilizatori",
     "nav.reports": "Rapoarte",
     "nav.companies": "Companii",
+    "nav.production": "Producție",
 
     // Common
     "common.add": "Adauga",
@@ -961,7 +976,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Finalizat",
     "status.cancelled": "Anulat",
     "status.inProgress": "In lucru",
+    "status.inInstallation": "In instalare",
     "status.done": "Terminat",
+    "status.warranty": "Garantie",
+    "status.maintenance": "Mentenanta",
 
     // Dashboard
     "dashboard.welcome": "Bun venit la SMS Reitler - Oferte & Productie",
@@ -1009,6 +1027,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Persoana de contact",
     "companies.associatedProjects": "Proiecte Asociate",
     "companies.associatedQuotes": "Oferte Asociate",
+    "companies.details": "Detalii",
 
     // Quotes
     "quotes.title": "Oferte",
@@ -1175,6 +1194,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Sursa",
     "projects.noProjectsFound": "Niciun proiect gasit",
     "projects.linkedQuote": "Oferta Asociata",
+    "projects.paidAmount": "Suma Platita",
+    "projects.remaining": "Mai Are De Platit",
     "projects.noProductsAdded": "Niciun produs adaugat",
     "projects.noChecklistItems": "Niciun element in lista",
     "projects.addChecklistItem": "Adauga Element Lista",
@@ -1321,6 +1342,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Felhasznalok",
     "nav.reports": "Jelentesek",
     "nav.companies": "Cegek",
+    "nav.production": "Gyartas",
 
     // Common
     "common.add": "Hozzaadas",
@@ -1388,7 +1410,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Befejezve",
     "status.cancelled": "Torolve",
     "status.inProgress": "Folyamatban",
+    "status.inInstallation": "Telepites alatt",
     "status.done": "Kesz",
+    "status.warranty": "Garancia",
+    "status.maintenance": "Karbantartas",
 
     // Dashboard
     "dashboard.welcome": "Udvozoljuk az SMS Reitler - Arajanlatok & Termeles alkalmazasban",
@@ -1436,6 +1461,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Kapcsolattarto",
     "companies.associatedProjects": "Kapcsolodo Projektek",
     "companies.associatedQuotes": "Kapcsolodo Arajanlatok",
+    "companies.details": "Reszletek",
 
     // Quotes
     "quotes.title": "Arajanlatok",
@@ -1602,6 +1628,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Forras",
     "projects.noProjectsFound": "Nem talalhato projekt",
     "projects.linkedQuote": "Kapcsolodo Arajanlat",
+    "projects.paidAmount": "Kifizetett Osszeg",
+    "projects.remaining": "Meg Fizetendo",
     "projects.noProductsAdded": "Meg nem adtak hozza termekett",
     "projects.noChecklistItems": "Nincs lista elem",
     "projects.addChecklistItem": "Lista Elem Hozzaadasa",
@@ -1748,6 +1776,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "nav.users": "Benutzer",
     "nav.reports": "Berichte",
     "nav.companies": "Unternehmen",
+    "nav.production": "Produktion",
 
     // Common
     "common.add": "Hinzufugen",
@@ -1815,7 +1844,10 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "status.completed": "Abgeschlossen",
     "status.cancelled": "Storniert",
     "status.inProgress": "In Bearbeitung",
+    "status.inInstallation": "In Installation",
     "status.done": "Fertig",
+    "status.warranty": "Garantie",
+    "status.maintenance": "Wartung",
 
     // Dashboard
     "dashboard.welcome": "Willkommen bei SMS Reitler - Angebote & Produktion",
@@ -1863,6 +1895,7 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "companies.contactPerson": "Kontaktperson",
     "companies.associatedProjects": "Zugehorige Projekte",
     "companies.associatedQuotes": "Zugehorige Angebote",
+    "companies.details": "Details",
 
     // Quotes
     "quotes.title": "Angebote",
@@ -2029,6 +2062,8 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "projects.source": "Quelle",
     "projects.noProjectsFound": "Keine Projekte gefunden",
     "projects.linkedQuote": "Verknupftes Angebot",
+    "projects.paidAmount": "Bezahlter Betrag",
+    "projects.remaining": "Noch Zu Zahlen",
     "projects.noProductsAdded": "Keine Produkte hinzugefugt",
     "projects.noChecklistItems": "Keine Checklistenpunkte",
     "projects.addChecklistItem": "Checklistenpunkt Hinzufugen",

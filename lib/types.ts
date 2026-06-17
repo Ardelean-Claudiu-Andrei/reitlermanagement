@@ -10,6 +10,7 @@ export interface Company {
   phone: string
   address: string
   cui: string
+  details: string
   createdAt: string
   updatedAt: string
 }
@@ -41,6 +42,7 @@ export type FileCategory =
   | "dxf"
   | "dpd"
   | "pdf"
+  | "image"
   | "welding_drawing"
   | "bending_drawing"
 
@@ -223,7 +225,7 @@ export interface ActivityEntry {
   timestamp: string
 }
 
-export type ProjectStatus = "draft" | "in-progress" | "done" | "cancelled"
+export type ProjectStatus = "draft" | "in-progress" | "in-installation" | "done" | "warranty" | "maintenance" | "cancelled"
 
 export type CreateProjectPayload = Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'activity'> & {
   activity: Array<{ id?: string; action: string; user: string; timestamp: string }>
@@ -242,10 +244,13 @@ export interface Project {
   finishDate: string | null
   warrantyExpiration: string | null // finishDate + 2 years
   installationCost?: number          // carried from quote, 0 if none
+  paidAmount?: number
   items: ProjectItem[]
   checklist: ChecklistItem[]
   issues: ProjectIssue[]
   activity: ActivityEntry[]
+  stepsCompleted: string[]
+  stepsTotal: number
   createdAt: string
   updatedAt: string
 }
@@ -261,12 +266,13 @@ export interface User {
   name: string
   email: string
   status: "active" | "inactive"
+  role?: import("@/lib/permissions").AppRole  // present on the login-response user object
 }
 
 export interface AdditionalInformation {
   userId: string
-  role: "admin" | "employee"
-  type: "admin" | "employee"
+  role: import("@/lib/permissions").AppRole
+  type: import("@/lib/permissions").AppRole
 }
 
 export interface UserWithInfo {

@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, GripVertical, ChevronsUpDown, Check } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, GripVertical, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
@@ -64,6 +64,8 @@ export default function AssembliesPage() {
   const { assemblies, parts, addAssembly, updateAssembly, deleteAssembly } = useAppData()
   const { t } = useLocale()
   const [search, setSearch] = useState("")
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAssembly, setEditingAssembly] = useState<Assembly | null>(null)
   const [viewAssembly, setViewAssembly] = useState<Assembly | null>(null)
@@ -87,6 +89,10 @@ export default function AssembliesPage() {
       a.name.toLowerCase().includes(search.toLowerCase()) ||
       a.code.toLowerCase().includes(search.toLowerCase())
   )
+
+  const totalPages = Math.max(1, Math.ceil(filteredAssemblies.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginated = filteredAssemblies.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   function openNewDialog() {
     setEditingAssembly(null)
@@ -262,7 +268,7 @@ export default function AssembliesPage() {
               <Input
                 placeholder={t("materials.searchAssemblies")}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                 className="pl-9"
               />
             </div>
@@ -282,7 +288,7 @@ export default function AssembliesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAssemblies.map((assembly) => (
+              {paginated.map((assembly) => (
                 <TableRow key={assembly.id}>
                   <TableCell className="font-mono text-xs">{assembly.code}</TableCell>
                   <TableCell className="font-medium">{assembly.name}</TableCell>
@@ -335,12 +341,75 @@ export default function AssembliesPage() {
               )}
             </TableBody>
           </Table>
+
+          {filteredAssemblies.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredAssemblies.length)} of {filteredAssemblies.length}
+                </span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                  <SelectTrigger className="w-[80px] h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>per page</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…")
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === "…" ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                    ) : (
+                      <Button
+                        key={item}
+                        variant={safePage === item ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8 text-sm"
+                        onClick={() => setCurrentPage(item as number)}
+                      >
+                        {item}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[1100px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingAssembly ? t("common.edit") : t("materials.addAssembly")}
@@ -522,7 +591,7 @@ export default function AssembliesPage() {
 
             {/* Files tab */}
             <TabsContent value="files" className="space-y-4">
-              <p className="text-sm text-muted-foreground">Fișiere atașate ansamblului (DXF, DPD, PDF)</p>
+              <p className="text-sm text-muted-foreground">Fișiere atașate ansamblului (DXF, PDF, imagini)</p>
               <EntityFileUploads
                 entityType="assembly"
                 entityId={editingAssembly?.id}

@@ -268,6 +268,22 @@ export const projectsApi = {
     }
     return res.blob()
   },
+  exportProductionCardsPdf: async (id: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/projects/${id}/export-production-cards`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
+  exportLaserCuttingPdf: async (id: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/projects/${id}/export-laser-cutting`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -305,6 +321,55 @@ export const statsApi = {
     draftQuotes: number
     doneProjects: number
   }> => request('/api/stats'),
+}
+
+// ─── Weekly Reports ────────────────────────────────────────────────────────────
+
+export interface WeeklyReportSummary {
+  weekStart: string
+  weekEnd: string
+  availableAt: string
+  progressedCount: number
+  finalizedCount: number
+}
+
+export interface WeeklyReportItem {
+  id: string
+  code: string
+  name: string
+  status: string
+  companyName: string
+  progressPct?: number
+  lastAction?: string
+  lastActionAt?: string
+  change?: string
+  changedAt?: string
+  startDate?: string
+}
+
+export interface WeeklyReport {
+  weekStart: string
+  weekEnd: string
+  generatedAt: string
+  progressedProjects: WeeklyReportItem[]
+  finalizedProjects: WeeklyReportItem[]
+  inProgressProjects: WeeklyReportItem[]
+  startingNextWeekProjects: WeeklyReportItem[]
+}
+
+export const reportsApi = {
+  listWeekly: (): Promise<{ weeks: WeeklyReportSummary[] }> => request('/api/reports/weekly'),
+
+  getWeekly: (weekStart: string): Promise<WeeklyReport> => request(`/api/reports/weekly/${weekStart}`),
+
+  exportWeeklyPdf: async (weekStart: string): Promise<Blob> => {
+    const res = await apiFetch(`/api/reports/weekly/${weekStart}/export`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Settings / Branding ─────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Building2, Phone, MapPin, User, FolderKanban, FileText } from "lucide-react"
+import { ArrowLeft, Building2, Phone, MapPin, User, FolderKanban, FileText, AlignLeft } from "lucide-react"
 
 export default function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -47,7 +47,10 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
       approved: "default",
       rejected: "destructive",
       "in-progress": "default",
+      "in-installation": "default",
       done: "secondary",
+      warranty: "outline",
+      maintenance: "secondary",
       cancelled: "destructive",
     }
     return <Badge variant={variants[status] || "secondary"}>{status}</Badge>
@@ -112,6 +115,21 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
       </div>
+
+      {/* Details */}
+      {company.details && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlignLeft className="h-5 w-5 text-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">{t("companies.details")}</p>
+                <p className="text-sm whitespace-pre-wrap">{company.details}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Associated Projects */}
       <Card>

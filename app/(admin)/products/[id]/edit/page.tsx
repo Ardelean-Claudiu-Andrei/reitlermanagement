@@ -677,7 +677,7 @@ export default function EditProductPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Fișiere</CardTitle>
-              <CardDescription>DXF, DPD, PDF atașate produsului — detectate automat după extensie</CardDescription>
+              <CardDescription>DXF, PDF, imagini atașate produsului — detectate automat după extensie</CardDescription>
             </CardHeader>
             <CardContent>
               <EntityFileUploads

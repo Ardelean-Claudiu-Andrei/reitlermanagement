@@ -6,6 +6,7 @@ import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project } from "@/lib/types"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -32,7 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
 import {
   ArrowLeft,
   Building2,
@@ -41,6 +44,7 @@ import {
   CalendarCheck,
   CalendarClock,
   AlertCircle,
+  Pencil,
   Plus,
   Shield,
   Package,
@@ -51,7 +55,9 @@ import {
   FileDown,
 } from "lucide-react"
 import { toast } from "sonner"
-import { projectsApi, productsApi } from "@/lib/api"
+import { projectsApi, getCurrentUser } from "@/lib/api"
+import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
 
 // ─── Hierarchy types ──────────────────────────────────────────────────────────
 
@@ -141,13 +147,20 @@ function countNodeSteps(node: ProductNode): number {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StepRow({ step, index }: { step: AssemblyStep; index: number }) {
+type StepToggle = (stepId: string) => void
+
+function StepRow({ step, stepKey, index, completed, onToggle }: { step: AssemblyStep; stepKey: string; index: number; completed: boolean; onToggle: StepToggle }) {
   return (
-    <div className="flex items-start gap-3 py-2 border-b last:border-0">
+    <div className={`flex items-start gap-3 py-2 border-b last:border-0 ${completed ? "opacity-60" : ""}`}>
+      <Checkbox
+        checked={completed}
+        onCheckedChange={() => onToggle(stepKey)}
+        className="mt-0.5 shrink-0"
+      />
       <span className="text-xs text-muted-foreground font-mono w-5 shrink-0 mt-0.5">{index + 1}.</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium">{step.name}</span>
+          <span className={`text-sm font-medium ${completed ? "line-through" : ""}`}>{step.name}</span>
           <Badge variant="secondary" className="text-xs">{step.type}</Badge>
         </div>
         {step.description && <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>}
@@ -156,7 +169,7 @@ function StepRow({ step, index }: { step: AssemblyStep; index: number }) {
   )
 }
 
-function ProductStepsBlock({ node }: { node: ProductNode }) {
+function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNode; stepsCompleted: Set<string>; onToggle: StepToggle }) {
   const hasAnySteps = countNodeSteps(node) > 0
   if (!hasAnySteps) return null
 
@@ -174,9 +187,12 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
         {/* Product-level steps */}
         {node.productSteps.length > 0 && (
           <div className="py-1">
-            {node.productSteps.map((step, idx) => (
-              <StepRow key={step.id} step={step} index={idx} />
-            ))}
+            {node.productSteps.map((step, idx) => {
+              const stepKey = `${node.productId}:product:${step.id}`
+              return (
+                <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+              )
+            })}
           </div>
         )}
 
@@ -194,7 +210,12 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
               <div className="px-3">
                 {asmNode.steps.length > 0 && (
                   <div className="py-1">
-                    {asmNode.steps.map((step, idx) => <StepRow key={step.id} step={step} index={idx} />)}
+                    {asmNode.steps.map((step, idx) => {
+                      const stepKey = `${node.productId}:assembly:${asmNode.id}:${step.id}`
+                      return (
+                        <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                      )
+                    })}
                   </div>
                 )}
                 {asmNode.parts.filter((p) => p.steps.length > 0).map((pNode) => (
@@ -205,7 +226,12 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
                       {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
                     </div>
                     <div className="px-2 py-1">
-                      {pNode.steps.map((step, idx) => <StepRow key={step.id} step={step} index={idx} />)}
+                      {pNode.steps.map((step, idx) => {
+                        const stepKey = `${node.productId}:assembly:${asmNode.id}:part:${pNode.id}:${step.id}`
+                        return (
+                          <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -224,7 +250,12 @@ function ProductStepsBlock({ node }: { node: ProductNode }) {
               {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
             </div>
             <div className="px-3 py-1">
-              {pNode.steps.map((step, idx) => <StepRow key={step.id} step={step} index={idx} />)}
+              {pNode.steps.map((step, idx) => {
+                const stepKey = `${node.productId}:directpart:${pNode.id}:${step.id}`
+                return (
+                  <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                )
+              })}
             </div>
           </div>
         ))}
@@ -245,6 +276,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     parts,
     assemblies,
     quotes,
+    updateProject,
     updateProjectStatus,
     finishProject,
     addProjectIssue,
@@ -252,11 +284,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   } = useAppData()
   const { t } = useLocale()
 
+  const currentRole = (getCurrentUser()?.role ?? "employee") as AppRole
+  const showPrices = canViewPrices(currentRole)
+  const canEdit = canEditProject(currentRole)
+  const canResolve = canResolveIssues(currentRole)
+
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
-  const [exportingSteps, setExportingSteps] = useState(false)
-  const [exportingLaserFor, setExportingLaserFor] = useState<string | null>(null)
+  const [exportingCards, setExportingCards] = useState(false)
+  const [exportingProjectLaser, setExportingProjectLaser] = useState(false)
+  const [paidAmountInput, setPaidAmountInput] = useState<string>("")
+  const [stepsCompleted, setStepsCompleted] = useState<Set<string>>(new Set())
 
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
@@ -275,6 +316,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }, [id, contextProject])
 
   const project = contextProject ?? apiProject
+
+  useEffect(() => {
+    if (project) {
+      setPaidAmountInput(String(project.paidAmount ?? 0))
+      setStepsCompleted(new Set(project.stepsCompleted ?? []))
+    }
+  }, [project?.id])
 
   if (!project && fetchLoading) {
     return (
@@ -300,6 +348,41 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const subtotal = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const installationCost = project.installationCost || 0
   const total = subtotal + installationCost
+  const paidAmount = project.paidAmount ?? 0
+  const remaining = Math.max(0, total - paidAmount)
+
+  const handleSavePaidAmount = async () => {
+    const parsed = parseFloat(paidAmountInput)
+    const value = isNaN(parsed) || parsed < 0 ? 0 : parsed
+    await updateProject({ ...project, paidAmount: value })
+    toast.success(t("common.savedSuccessfully"))
+  }
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      name: project.name,
+      companyId: project.companyId,
+      startDate: project.startDate || "",
+      deadline: project.deadline || "",
+      finishDate: project.finishDate || "",
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editForm.name.trim()) {
+      toast.error("Project name is required")
+      return
+    }
+    let warrantyExpiration = project.warrantyExpiration
+    if (editForm.finishDate) {
+      const fd = new Date(editForm.finishDate)
+      warrantyExpiration = new Date(fd.getFullYear() + 2, fd.getMonth(), fd.getDate()).toISOString().slice(0, 10)
+    }
+    await updateProject({ ...project, ...editForm, warrantyExpiration })
+    toast.success(t("common.savedSuccessfully"))
+    setEditDialogOpen(false)
+  }
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
 
@@ -310,19 +393,36 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     .map((product) => buildProductHierarchy(product, assemblies ?? [], parts ?? []))
 
   const totalStepCount = productNodes.reduce((s, n) => s + countNodeSteps(n), 0)
+  const completedStepCount = stepsCompleted.size
+  const progressPct = totalStepCount === 0 ? 0 : Math.round((completedStepCount / totalStepCount) * 100)
+
+  const toggleStep = async (stepId: string) => {
+    const next = new Set(stepsCompleted)
+    if (next.has(stepId)) next.delete(stepId)
+    else next.add(stepId)
+    setStepsCompleted(next)
+    await updateProject({
+      ...project,
+      stepsCompleted: Array.from(next),
+      stepsTotal: totalStepCount,
+    })
+  }
 
   const getProductName = (productId: string) =>
     products.find((p) => p.id === productId)?.name || productId
 
   const getStatusBadge = (status: ProjectStatus) => {
-    const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
       draft: { variant: "secondary", label: t("status.draft") },
       "in-progress": { variant: "default", label: t("status.inProgress") },
+      "in-installation": { variant: "default", label: t("status.inInstallation"), className: "bg-blue-600 hover:bg-blue-600 text-white border-blue-600" },
       done: { variant: "outline", label: t("status.done") },
+      warranty: { variant: "outline", label: t("status.warranty"), className: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800" },
+      maintenance: { variant: "outline", label: t("status.maintenance"), className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800" },
       cancelled: { variant: "destructive", label: t("status.cancelled") },
     }
-    const c = config[status] || { variant: "secondary", label: status }
-    return <Badge variant={c.variant}>{c.label}</Badge>
+    const c = config[status] || { variant: "secondary" as const, label: status }
+    return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>
   }
 
   const handleStatusChange = (status: ProjectStatus) => {
@@ -360,40 +460,41 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     toast.success(t("projects.issueResolved"))
   }
 
-  async function handleExportStepsPdf() {
+  async function handleExportCardsPdf() {
     if (!project) return
-    setExportingSteps(true)
+    setExportingCards(true)
     try {
-      const blob = await projectsApi.exportProductionStepsPdf(project.id)
+      const blob = await projectsApi.exportProductionCardsPdf(project.id)
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `pasi-productie-${project.code}.pdf`
+      a.download = `fise-productie-${project.code}.pdf`
       a.click()
       URL.revokeObjectURL(url)
-      toast.success("PDF generat cu succes")
+      toast.success("Fișe de producție generate cu succes")
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
     } finally {
-      setExportingSteps(false)
+      setExportingCards(false)
     }
   }
 
-  async function handleExportLaserPdf(productId: string, productCode: string) {
-    setExportingLaserFor(productId)
+  async function handleExportProjectLaserPdf() {
+    if (!project) return
+    setExportingProjectLaser(true)
     try {
-      const blob = await productsApi.laserCuttingPdf(productId)
+      const blob = await projectsApi.exportLaserCuttingPdf(project.id)
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `laser-print-${productCode}.pdf`
+      a.download = `taiere-laser-${project.code}.pdf`
       a.click()
       URL.revokeObjectURL(url)
-      toast.success("PDF laser generat cu succes")
+      toast.success("Listă tăiere laser generată cu succes")
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
     } finally {
-      setExportingLaserFor(null)
+      setExportingProjectLaser(false)
     }
   }
 
@@ -419,28 +520,39 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {project.status !== "done" && (
+          {canEdit && (
+            <Button variant="outline" onClick={handleOpenEdit}>
+              <Pencil className="mr-2 h-4 w-4" />
+              {t("common.edit")}
+            </Button>
+          )}
+          {canEdit && !["done", "warranty", "maintenance", "cancelled"].includes(project.status) && (
             <Button variant="default" onClick={() => setFinishDialogOpen(true)}>
               <Flag className="mr-2 h-4 w-4" />
               {t("projects.finishProject")}
             </Button>
           )}
-          <Select value={project.status} onValueChange={(v) => handleStatusChange(v as ProjectStatus)}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">{t("status.draft")}</SelectItem>
-              <SelectItem value="in-progress">{t("status.inProgress")}</SelectItem>
-              <SelectItem value="done">{t("status.done")}</SelectItem>
-              <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
-            </SelectContent>
-          </Select>
+          {canEdit && (
+            <Select value={project.status} onValueChange={(v) => handleStatusChange(v as ProjectStatus)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">{t("status.draft")}</SelectItem>
+                <SelectItem value="in-progress">{t("status.inProgress")}</SelectItem>
+                <SelectItem value="in-installation">{t("status.inInstallation")}</SelectItem>
+                <SelectItem value="done">{t("status.done")}</SelectItem>
+                <SelectItem value="warranty">{t("status.warranty")}</SelectItem>
+                <SelectItem value="maintenance">{t("status.maintenance")}</SelectItem>
+                <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <div className={`grid gap-4 md:grid-cols-3 ${showPrices ? "lg:grid-cols-7" : "lg:grid-cols-4"}`}>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -485,22 +597,58 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">{t("common.total")}</p>
-                <p className="font-medium">{total.toLocaleString()} EUR</p>
-                {installationCost > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    incl. instalare {installationCost.toLocaleString()} EUR
-                  </p>
-                )}
+        {showPrices && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Package className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("common.total")}</p>
+                  <p className="font-medium">{total.toLocaleString()} EUR</p>
+                  {installationCost > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      incl. instalare {installationCost.toLocaleString()} EUR
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+        {showPrices && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{t("projects.paidAmount")} (EUR)</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={paidAmountInput}
+                    onFocus={() => { if (paidAmountInput === "0") setPaidAmountInput("") }}
+                    onChange={(e) => setPaidAmountInput(e.target.value)}
+                    onBlur={handleSavePaidAmount}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {showPrices && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">{t("projects.remaining")}</p>
+                  <p className={`font-medium ${remaining === 0 ? "text-green-600" : ""}`}>
+                    {remaining.toLocaleString()} EUR
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Warranty + Quote info */}
@@ -541,120 +689,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* Issues Alert */}
-      {openIssues.length > 0 && (
-        <Card className="border-destructive">
-          <CardHeader className="py-3">
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              {t("projects.activeIssues")} ({openIssues.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {openIssues.map((issue) => (
-                <div key={issue.id} className="flex items-center justify-between rounded-md bg-destructive/10 p-3">
-                  <span>{issue.description}</span>
-                  <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
-                    {t("projects.solve")}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Products */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("products")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {project.items.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">{t("projects.noProductsAdded")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("products.productName")}</TableHead>
-                  <TableHead className="text-right">{t("common.quantity")}</TableHead>
-                  <TableHead className="text-right">{t("common.price")} (EUR)</TableHead>
-                  <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>
-                  <TableHead>{t("projects.source")}</TableHead>
-                  <TableHead>{t("common.notes")}</TableHead>
-                  <TableHead>{t("common.actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {project.items.map((item, idx) => {
-                  const prod = products?.find((p) => p.id === item.productId)
-                  return (
-                    <TableRow key={idx}>
-                      <TableCell className="font-medium">{prod?.name || item.productId}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant={item.fromInventory ? "secondary" : "outline"}>
-                          {item.fromInventory ? t("projects.fromInventory") : t("projects.needsProduction")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{item.notes || "-"}</TableCell>
-                      <TableCell>
-                        {prod?.hasLaserCutting && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                            disabled={exportingLaserFor === item.productId}
-                            onClick={() => handleExportLaserPdf(item.productId, prod.code)}
-                          >
-                            <Zap className="mr-1 h-3 w-3" />
-                            {exportingLaserFor === item.productId ? "..." : "Export Print"}
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Production Steps */}
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <Boxes className="h-5 w-5" />
-            Pași de producție{totalStepCount > 0 && ` (${totalStepCount})`}
-          </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            onClick={handleExportStepsPdf}
-            disabled={exportingSteps}
-          >
-            <FileDown className="mr-1 h-3 w-3" />
-            {exportingSteps ? "Se generează..." : "Export lista de steps"}
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {totalStepCount === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              Nu există pași de producție configurați pentru produsele din acest proiect.
-            </p>
-          ) : (
-            productNodes.map((node) => (
-              <ProductStepsBlock key={node.productId} node={node} />
-            ))
-          )}
-        </CardContent>
-      </Card>
-
       {/* Issues Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -694,7 +728,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       {issue.solvedAt && ` | ${t("projects.solved")}: ${issue.solvedAt}`}
                     </p>
                   </div>
-                  {!issue.solved && (
+                  {!issue.solved && canResolve && (
                     <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
                       {t("projects.solve")}
                     </Button>
@@ -705,6 +739,122 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           )}
         </CardContent>
       </Card>
+
+      {/* Products */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle>{t("products")}</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={handleExportProjectLaserPdf}
+            disabled={exportingProjectLaser}
+          >
+            <Zap className="mr-1 h-3 w-3" />
+            {exportingProjectLaser ? "Se generează..." : "Tăiere Laser"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {project.items.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">{t("projects.noProductsAdded")}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("products.productName")}</TableHead>
+                  <TableHead className="text-right">{t("common.quantity")}</TableHead>
+                  {showPrices && <TableHead className="text-right">{t("common.price")} (EUR)</TableHead>}
+                  {showPrices && <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>}
+                  <TableHead>{t("projects.source")}</TableHead>
+                  <TableHead>{t("common.notes")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {project.items.map((item, idx) => {
+                  const prod = products?.find((p) => p.id === item.productId)
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium">{prod?.name || item.productId}</TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      {showPrices && <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>}
+                      {showPrices && <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>}
+                      <TableCell>
+                        <Badge variant={item.fromInventory ? "secondary" : "outline"}>
+                          {item.fromInventory ? t("projects.fromInventory") : t("projects.needsProduction")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{item.notes || "-"}</TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Production Steps */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <CardTitle className="flex items-center gap-2">
+            <Boxes className="h-5 w-5" />
+            Pași de producție{totalStepCount > 0 && ` (${totalStepCount})`}
+          </CardTitle>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCardsPdf}
+              disabled={exportingCards}
+            >
+              <FileDown className="mr-1 h-3 w-3" />
+              {exportingCards ? "Se generează..." : "Fișe de producție"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {totalStepCount > 0 && (
+            <div className="flex items-center gap-3 pb-2 border-b">
+              <Progress value={progressPct} className="flex-1 h-2" />
+              <span className="text-sm font-medium shrink-0">{completedStepCount}/{totalStepCount} ({progressPct}%)</span>
+            </div>
+          )}
+          {totalStepCount === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              Nu există pași de producție configurați pentru produsele din acest proiect.
+            </p>
+          ) : (
+            productNodes.map((node) => (
+              <ProductStepsBlock key={node.productId} node={node} stepsCompleted={stepsCompleted} onToggle={toggleStep} />
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Issues Alert */}
+      {openIssues.length > 0 && (
+        <Card className="border-destructive">
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              {t("projects.activeIssues")} ({openIssues.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {openIssues.map((issue) => (
+                <div key={issue.id} className="flex items-center justify-between rounded-md bg-destructive/10 p-3">
+                  <span>{issue.description}</span>
+                  <Button size="sm" variant="outline" onClick={() => handleResolveIssue(issue.id)}>
+                    {t("projects.solve")}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Activity Log */}
       <Card>
@@ -727,6 +877,76 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Project Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("common.edit")}: {project.name}</DialogTitle>
+            <DialogDescription>Actualizează detaliile proiectului</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">{t("common.name")} *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("common.company")}</Label>
+              <Select
+                value={editForm.companyId || "personal"}
+                onValueChange={(v) => setEditForm({ ...editForm, companyId: v === "personal" ? null : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="personal">{t("projects.personal")}</SelectItem>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start">{t("common.startDate")}</Label>
+                <Input
+                  id="edit-start"
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-deadline">{t("projects.deadline")}</Label>
+                <Input
+                  id="edit-deadline"
+                  type="date"
+                  value={editForm.deadline}
+                  onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-finish">Data Finalizare</Label>
+              <Input
+                id="edit-finish"
+                type="date"
+                value={editForm.finishDate}
+                onChange={(e) => setEditForm({ ...editForm, finishDate: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleSaveEdit}>{t("common.save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Report Issue Dialog */}
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>

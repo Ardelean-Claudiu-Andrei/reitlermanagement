@@ -10,21 +10,36 @@ import {
   FileText,
   Package,
   Boxes,
-  Wrench,
   Settings,
   ChevronDown,
   Users,
   Puzzle,
+  Factory,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useLocale } from "@/lib/locale-context"
+import { getCurrentUser } from "@/lib/api"
+import { canAccess } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
 
 export function Sidebar() {
   const pathname = usePathname()
   const { t } = useLocale()
   const [managementOpen, setManagementOpen] = useState(true)
+  const [productionOpen, setProductionOpen] = useState(true)
   const [materialsOpen, setMaterialsOpen] = useState(true)
+  const [role] = useState<AppRole>(() => {
+    if (typeof window === "undefined") return "employee"
+    return ((getCurrentUser()?.role ?? "employee") as AppRole)
+  })
+
+  const isAdmin = role === "admin"
+  const showDashboard = canAccess(role, "/dashboard")
+  const showSettings = canAccess(role, "/settings")
+  const showManagement = isAdmin || role === "engineer"
+  const showMaterials = isAdmin || role === "engineer"
+  const productionOnly = !showDashboard && !showSettings && !showManagement
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard"
@@ -40,6 +55,21 @@ export function Sidebar() {
     pathname.startsWith("/products")
 
   const isMaterialsActive = pathname.startsWith("/materials")
+
+  const navLink = (href: string, icon: React.ReactNode, label: string) => (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+        isActive(href)
+          ? "bg-secondary text-foreground"
+          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+      )}
+    >
+      {icon}
+      {label}
+    </Link>
+  )
 
   return (
     <aside className="flex h-full w-[220px] flex-col border-r border-border bg-card">
@@ -58,165 +88,123 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {/* Dashboard */}
-        <Link
-          href="/dashboard"
-          className={cn(
-            "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-            isActive("/dashboard")
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-          )}
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          {t("dashboard")}
-        </Link>
-
-        {/* Management Section (Dropdown) */}
-        <div className="mt-4">
-          <button
-            onClick={() => setManagementOpen(!managementOpen)}
-            className={cn(
-              "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-              isManagementActive
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+        {productionOnly ? (
+          /* Production-only view: just the Production section */
+          <div>
+            <button
+              onClick={() => setProductionOpen(!productionOpen)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                isManagementActive
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              )}
+            >
+              <span className="flex items-center gap-2.5">
+                <Factory className="h-4 w-4" />
+                {t("nav.production")}
+              </span>
+              <ChevronDown className={cn("h-3 w-3 transition-transform", !productionOpen && "-rotate-90")} />
+            </button>
+            {productionOpen && (
+              <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
+                {navLink("/projects", <FolderKanban className="h-4 w-4" />, t("nav.projects"))}
+              </div>
             )}
-          >
-            <span className="flex items-center gap-2.5">
-              <Building2 className="h-4 w-4" />
-              {t("management")}
-            </span>
-            <ChevronDown className={cn("h-3 w-3 transition-transform", !managementOpen && "-rotate-90")} />
-          </button>
-          {managementOpen && (
-            <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
-              <Link
-                href="/management"
+          </div>
+        ) : (
+          <>
+            {/* Dashboard */}
+            {showDashboard && navLink("/dashboard", <LayoutDashboard className="h-4 w-4" />, t("nav.dashboard"))}
+
+            {/* Management Section — admin + engineer only */}
+            {showManagement && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setManagementOpen(!managementOpen)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                    isManagementActive
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Building2 className="h-4 w-4" />
+                    {t("nav.management")}
+                  </span>
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", !managementOpen && "-rotate-90")} />
+                </button>
+                {managementOpen && (
+                  <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
+                    {isAdmin && navLink("/management", <Building2 className="h-4 w-4" />, t("nav.companies"))}
+                    {isAdmin && navLink("/users", <Users className="h-4 w-4" />, t("nav.users"))}
+                    {isAdmin && navLink("/quotes", <FileText className="h-4 w-4" />, t("nav.quotes"))}
+                    {(isAdmin || role === "engineer") && navLink("/products", <Package className="h-4 w-4" />, t("nav.products"))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Production Section */}
+            <div className="mt-4">
+              <button
+                onClick={() => setProductionOpen(!productionOpen)}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/management")
+                  "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                  pathname.startsWith("/projects")
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
-                <Building2 className="h-4 w-4" />
-                {t("companies")}
-              </Link>
-              <Link
-                href="/users"
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/users")
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <Users className="h-4 w-4" />
-                {t("users")}
-              </Link>
-              <Link
-                href="/projects"
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/projects")
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <FolderKanban className="h-4 w-4" />
-                {t("projects")}
-              </Link>
-              <Link
-                href="/quotes"
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/quotes")
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <FileText className="h-4 w-4" />
-                {t("quotes")}
-              </Link>
-              <Link
-                href="/products"
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/products")
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <Package className="h-4 w-4" />
-                {t("products")}
-              </Link>
+                <span className="flex items-center gap-2.5">
+                  <Factory className="h-4 w-4" />
+                  {t("nav.production")}
+                </span>
+                <ChevronDown className={cn("h-3 w-3 transition-transform", !productionOpen && "-rotate-90")} />
+              </button>
+              {productionOpen && (
+                <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
+                  {navLink("/projects", <FolderKanban className="h-4 w-4" />, t("nav.projects"))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Materials Section (Dropdown with Assemblies + Parts/Piese) */}
-        <div className="mt-4">
-          <button
-            onClick={() => setMaterialsOpen(!materialsOpen)}
-            className={cn(
-              "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-              isMaterialsActive
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            {/* Materials Section — admin + engineer only */}
+            {showMaterials && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setMaterialsOpen(!materialsOpen)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
+                    isMaterialsActive
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Boxes className="h-4 w-4" />
+                    {t("nav.materials")}
+                  </span>
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", !materialsOpen && "-rotate-90")} />
+                </button>
+                {materialsOpen && (
+                  <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
+                    {navLink("/materials/assemblies", <Boxes className="h-4 w-4" />, t("nav.assemblies"))}
+                    {navLink("/materials/parts", <Puzzle className="h-4 w-4" />, t("parts"))}
+                  </div>
+                )}
+              </div>
             )}
-          >
-            <span className="flex items-center gap-2.5">
-              <Boxes className="h-4 w-4" />
-              {t("materials")}
-            </span>
-            <ChevronDown className={cn("h-3 w-3 transition-transform", !materialsOpen && "-rotate-90")} />
-          </button>
-          {materialsOpen && (
-            <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
-              <Link
-                href="/materials/assemblies"
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/materials/assemblies")
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <Boxes className="h-4 w-4" />
-                {t("assemblies")}
-              </Link>
-              <Link
-                href="/materials/parts"
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  isActive("/materials/parts")
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <Puzzle className="h-4 w-4" />
-                {t("parts")}
-              </Link>
-            </div>
-          )}
-        </div>
 
-        {/* Settings at bottom */}
-        <div className="mt-4">
-          <Link
-            href="/settings"
-            className={cn(
-              "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-              isActive("/settings")
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            {/* Settings */}
+            {showSettings && (
+              <div className="mt-4">
+                {navLink("/settings", <Settings className="h-4 w-4" />, t("nav.settings"))}
+              </div>
             )}
-          >
-            <Settings className="h-4 w-4" />
-            {t("settings")}
-          </Link>
-        </div>
+          </>
+        )}
       </nav>
     </aside>
   )

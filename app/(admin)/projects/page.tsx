@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
@@ -43,10 +43,13 @@ import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User, ChevronsUpDown, Check } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
+import { getCurrentUser } from "@/lib/api"
+import { canViewPrices } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -55,6 +58,14 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [projectTypeFilter, setProjectTypeFilter] = useState<string>("all")
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [showPrices, setShowPrices] = useState(true)
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    setShowPrices(canViewPrices((user?.role ?? "employee") as AppRole))
+  }, [])
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -64,6 +75,7 @@ export default function ProjectsPage() {
   const [selectedQuoteId, setSelectedQuoteId] = useState<string>("")
   const [selectedProducts, setSelectedProducts] = useState<{ productId: string; fromInventory: boolean; quantity: number }[]>([])
   const [projectName, setProjectName] = useState("")
+  const [projectStartDate, setProjectStartDate] = useState(new Date().toISOString().split("T")[0])
   const [projectDeadline, setProjectDeadline] = useState("")
   const [companyComboOpen, setCompanyComboOpen] = useState(false)
   const [quoteComboOpen, setQuoteComboOpen] = useState(false)
@@ -87,26 +99,35 @@ export default function ProjectsPage() {
     return matchesSearch && matchesStatus && matchesType
   })
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize)
+
   const getCompanyName = (companyId: string | null) => {
     if (!companyId) return null
     return safeCompanies.find((c) => c.id === companyId)?.name || companyId
   }
 
   const getStatusBadge = (status: ProjectStatus) => {
-    const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
       draft: { variant: "secondary", label: t("status.draft") },
       "in-progress": { variant: "default", label: t("status.inProgress") },
+      "in-installation": { variant: "default", label: t("status.inInstallation"), className: "bg-blue-600 hover:bg-blue-600 text-white border-blue-600" },
       done: { variant: "outline", label: t("status.done") },
+      warranty: { variant: "outline", label: t("status.warranty"), className: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800" },
+      maintenance: { variant: "outline", label: t("status.maintenance"), className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800" },
       cancelled: { variant: "destructive", label: t("status.cancelled") },
     }
-    const c = config[status] || { variant: "secondary", label: status }
-    return <Badge variant={c.variant}>{c.label}</Badge>
+    const c = config[status] || { variant: "secondary" as const, label: status }
+    return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>
   }
 
   const getProgress = (project: typeof safeProjects[0]) => {
+    if (project.stepsTotal && project.stepsTotal > 0) {
+      return Math.round(((project.stepsCompleted?.length ?? 0) / project.stepsTotal) * 100)
+    }
     if (!project.checklist || project.checklist.length === 0) return 0
-    const done = project.checklist.filter((c) => c.done).length
-    return Math.round((done / project.checklist.length) * 100)
+    return Math.round((project.checklist.filter((c) => c.done).length / project.checklist.length) * 100)
   }
 
   const getOpenIssuesCount = (project: typeof safeProjects[0]) => {
@@ -156,6 +177,7 @@ export default function ProjectsPage() {
     setSelectedQuoteId("")
     setSelectedProducts([])
     setProjectName("")
+    setProjectStartDate(new Date().toISOString().split("T")[0])
     setProjectDeadline("")
     setCompanyComboOpen(false)
     setQuoteComboOpen(false)
@@ -203,7 +225,7 @@ export default function ProjectsPage() {
       companyId: isPersonal ? null : selectedCompanyId || null,
       quoteId: selectedQuoteId && selectedQuoteId !== "none" ? selectedQuoteId : null,
       status: "draft" as const,
-      startDate: today,
+      startDate: projectStartDate || today,
       deadline: projectDeadline || today,
       finishDate: null,
       warrantyExpiration: null,
@@ -211,6 +233,8 @@ export default function ProjectsPage() {
       items: projectItems,
       checklist: [],
       issues: [],
+      stepsCompleted: [],
+      stepsTotal: 0,
       activity: [
         {
           id: `a${Date.now()}`,
@@ -264,11 +288,11 @@ export default function ProjectsPage() {
               <Input
                 placeholder={`${t("common.search")}...`}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
                 className="pl-9"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1) }}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder={t("common.status")} />
               </SelectTrigger>
@@ -276,11 +300,14 @@ export default function ProjectsPage() {
                 <SelectItem value="all">{t("common.all")}</SelectItem>
                 <SelectItem value="draft">{t("status.draft")}</SelectItem>
                 <SelectItem value="in-progress">{t("status.inProgress")}</SelectItem>
+                <SelectItem value="in-installation">{t("status.inInstallation")}</SelectItem>
                 <SelectItem value="done">{t("status.done")}</SelectItem>
+                <SelectItem value="warranty">{t("status.warranty")}</SelectItem>
+                <SelectItem value="maintenance">{t("status.maintenance")}</SelectItem>
                 <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={projectTypeFilter} onValueChange={setProjectTypeFilter}>
+            <Select value={projectTypeFilter} onValueChange={(v) => { setProjectTypeFilter(v); setCurrentPage(1) }}>
               <SelectTrigger className="w-[170px]">
                 <SelectValue placeholder={t("projects.projectType")} />
               </SelectTrigger>
@@ -302,32 +329,30 @@ export default function ProjectsPage() {
                 <TableHead>{t("common.status")}</TableHead>
                 <TableHead>{t("common.progress")}</TableHead>
                 <TableHead>{t("projects.issues")}</TableHead>
+                <TableHead>{t("projects.startDate")}</TableHead>
                 <TableHead>{t("projects.deadline")}</TableHead>
-                <TableHead>{t("common.total")}</TableHead>
+                {showPrices && <TableHead>{t("projects.remaining")}</TableHead>}
                 <TableHead className="w-[80px]">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                     {t("projects.noProjectsFound")}
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((project) => {
+                paginated.map((project) => {
                   const progress = getProgress(project)
                   const openIssues = getOpenIssuesCount(project)
                   const total = getTotal(project)
+                  const remaining = Math.max(0, total - (project.paidAmount || 0))
                   const companyName = getCompanyName(project.companyId)
                   return (
-                    <TableRow key={project.id}>
+                    <TableRow key={project.id} className="cursor-pointer" onClick={() => router.push(`/projects/${project.id}`)}>
                       <TableCell className="font-mono text-sm">{project.code}</TableCell>
-                      <TableCell className="font-medium">
-                        <Link href={`/projects/${project.id}`} className="hover:underline">
-                          {project.name}
-                        </Link>
-                      </TableCell>
+                      <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>
                         {companyName ? (
                           companyName
@@ -355,9 +380,10 @@ export default function ProjectsPage() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell>{project.deadline}</TableCell>
-                      <TableCell className="font-medium">{total.toLocaleString()} EUR</TableCell>
-                      <TableCell>
+                      <TableCell>{project.startDate || "-"}</TableCell>
+                      <TableCell>{project.deadline || "-"}</TableCell>
+                      {showPrices && <TableCell className="font-medium">{remaining.toLocaleString()} EUR</TableCell>}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -380,6 +406,70 @@ export default function ProjectsPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {filtered.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} of {filtered.length}
+                </span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                  <SelectTrigger className="w-[80px] h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>per page</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…")
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === "…" ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                    ) : (
+                      <Button
+                        key={item}
+                        variant={safePage === item ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8 text-sm"
+                        onClick={() => setCurrentPage(item as number)}
+                      >
+                        {item}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={safePage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -538,7 +628,7 @@ export default function ProjectsPage() {
                           <div className="flex-1">
                             <p className="font-medium">{product.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {product.code} — {(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR
+                              {product.code}{showPrices && ` — ${(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR`}
                             </p>
                           </div>
                           {invQty > 0 && (
@@ -588,13 +678,23 @@ export default function ProjectsPage() {
                   placeholder={t("projects.projectNamePlaceholder")}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>{t("projects.deadline")}</Label>
-                <Input
-                  type="date"
-                  value={projectDeadline}
-                  onChange={(e) => setProjectDeadline(e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("projects.startDate")}</Label>
+                  <Input
+                    type="date"
+                    value={projectStartDate}
+                    onChange={(e) => setProjectStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("projects.deadline")}</Label>
+                  <Input
+                    type="date"
+                    value={projectDeadline}
+                    onChange={(e) => setProjectDeadline(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
                 <p className="font-medium">{t("projects.summary")}</p>
@@ -607,7 +707,7 @@ export default function ProjectsPage() {
                 <p className="text-sm">
                   {t("products")}: {selectedProducts.length} {t("common.items")}
                 </p>
-                {selectedQuoteId && selectedQuoteId !== "none" && (() => {
+                {showPrices && selectedQuoteId && selectedQuoteId !== "none" && (() => {
                   const q = safeQuotes.find((q) => q.id === selectedQuoteId)
                   return q?.installation ? (
                     <p className="text-sm">Instalare: {q.installation.toLocaleString()} EUR</p>

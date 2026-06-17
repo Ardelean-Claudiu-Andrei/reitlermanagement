@@ -13,15 +13,18 @@ const CATEGORY_LABELS: Record<FileCategory, string> = {
   dxf: "DXF",
   dpd: "DPD",
   pdf: "PDF",
+  image: "Imagine",
   welding_drawing: "Desen sudură",
   bending_drawing: "Desen îndoire",
 }
 
-function detectFileCategory(file: File): "dxf" | "dpd" | "pdf" | null {
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png"])
+
+function detectFileCategory(file: File): "dxf" | "pdf" | "image" | null {
   const ext = file.name.split(".").pop()?.toLowerCase()
   if (ext === "dxf") return "dxf"
-  if (ext === "dpd") return "dpd"
   if (ext === "pdf") return "pdf"
+  if (ext && IMAGE_EXTS.has(ext)) return "image"
   return null
 }
 
@@ -53,7 +56,7 @@ export function EntityFileUploads({
   }, [entityType, entityId])
 
   const generalFiles = files.filter((f) =>
-    f.fileCategory === "dxf" || f.fileCategory === "dpd" || f.fileCategory === "pdf"
+    f.fileCategory === "dxf" || f.fileCategory === "dpd" || f.fileCategory === "pdf" || f.fileCategory === "image"
   )
   const weldingFiles = files.filter((f) => f.fileCategory === "welding_drawing")
   const bendingFiles = files.filter((f) => f.fileCategory === "bending_drawing")
@@ -94,7 +97,7 @@ export function EntityFileUploads({
     if (!file) return
     const cat = detectFileCategory(file)
     if (!cat) {
-      toast.error("Tip de fișier neacceptat. Sunt permise doar DXF, DPD sau PDF.")
+      toast.error("Tip de fișier neacceptat. Sunt permise DXF, PDF, JPG sau PNG.")
       return
     }
     handleUpload(cat, file)
@@ -115,15 +118,15 @@ export function EntityFileUploads({
   }
 
   // ─── Edit view ─────────────────────────────────────────────────────────────
-  const isGeneralUploading = uploadingCategory === "dxf" || uploadingCategory === "dpd" || uploadingCategory === "pdf"
+  const isGeneralUploading = uploadingCategory === "dxf" || uploadingCategory === "pdf" || uploadingCategory === "image"
 
   return (
     <>
       <div className="space-y-4">
-        {/* General files: DXF / DPD / PDF */}
+        {/* General files: DXF / PDF / Images */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">DXF, DPD, PDF — detectate automat după extensie</p>
+            <p className="text-sm text-muted-foreground">DXF, PDF, JPG, PNG — detectate automat după extensie</p>
             <Button
               type="button"
               variant="outline"
@@ -182,7 +185,7 @@ export function EntityFileUploads({
           <input
             ref={generalInputRef}
             type="file"
-            accept=".dxf,.dpd,.pdf"
+            accept=".dxf,.pdf,.jpg,.jpeg,.png"
             className="hidden"
             onChange={handleGeneralInput}
           />

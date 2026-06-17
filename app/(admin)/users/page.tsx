@@ -49,7 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react"
+import { Plus, MoreHorizontal, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import type { UserWithInfo } from "@/lib/types"
 
@@ -60,12 +60,13 @@ export default function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "employee" })
+  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "engineer" })
 
   const safeUsers = usersWithInfo ?? []
 
-  const employees = safeUsers.filter((u) => u.additionalInformation.type === "employee")
   const admins = safeUsers.filter((u) => u.additionalInformation.type === "admin")
+  const engineers = safeUsers.filter((u) => u.additionalInformation.type === "engineer")
+  const production = safeUsers.filter((u) => u.additionalInformation.type === "production" || u.additionalInformation.type === "employee")
 
   function handleDelete() {
     if (deleteTarget) {
@@ -93,8 +94,8 @@ export default function UsersPage() {
         },
         additionalInformation: {
           userId: "",
-          role: newUser.role as "admin" | "employee",
-          type: newUser.role as "admin" | "employee",
+          role: newUser.role as import("@/lib/permissions").AppRole,
+          type: newUser.role as import("@/lib/permissions").AppRole,
         },
         password: newUser.password,
       }
@@ -110,84 +111,163 @@ export default function UsersPage() {
   }
 
   const roleBadgeClass: Record<string, string> = {
-    admin: "bg-foreground text-background hover:bg-foreground",
-    manager: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800",
-    viewer: "bg-muted text-muted-foreground hover:bg-muted",
+    admin:      "bg-foreground text-background hover:bg-foreground",
+    engineer:   "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-800",
+    production: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-200 dark:border-amber-800",
+    employee:   "bg-muted text-muted-foreground hover:bg-muted",
   }
 
-  function UserTable({ data }: { data: UserWithInfo[] }) {
+  const roleLabel: Record<string, string> = {
+    admin:      "Admin",
+    engineer:   "Inginer",
+    production: "Producție",
+    employee:   "Angajat",
+  }
+
+  function PaginatedUserTable({ data }: { data: UserWithInfo[] }) {
+    const [pageSize, setPageSize] = useState(10)
+    const [currentPage, setCurrentPage] = useState(1)
+    const totalPages = Math.max(1, Math.ceil(data.length / pageSize))
+    const safePage = Math.min(currentPage, totalPages)
+    const paginated = data.slice((safePage - 1) * pageSize, safePage * pageSize)
+
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("common.name")}</TableHead>
-            <TableHead>{t("common.email")}</TableHead>
-            <TableHead>{t("users.role")}</TableHead>
-            <TableHead>{t("common.status")}</TableHead>
-            <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((item) => (
-            <TableRow key={item.user.id}>
-              <TableCell className="font-medium">{item.user.name}</TableCell>
-              <TableCell className="text-muted-foreground">{item.user.email}</TableCell>
-              <TableCell>
-                <Badge variant="outline" className={roleBadgeClass[item.additionalInformation.role]}>
-                  {item.additionalInformation.role}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={
-                    item.user.status === "active"
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800"
-                      : "bg-muted text-muted-foreground hover:bg-muted"
-                  }
-                >
-                  {item.user.status}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">{t("common.actions")}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}`)}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      {t("common.view")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}/edit`)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      {t("common.edit")}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setDeleteTarget(item.user.id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {t("common.delete")}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-          {data.length === 0 && (
+      <div>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                {t("users.noUsersFound")}
-              </TableCell>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.email")}</TableHead>
+              <TableHead>{t("users.role")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {paginated.map((item) => (
+              <TableRow key={item.user.id}>
+                <TableCell className="font-medium">{item.user.name}</TableCell>
+                <TableCell className="text-muted-foreground">{item.user.email}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={roleBadgeClass[item.additionalInformation.role] ?? ""}>
+                    {roleLabel[item.additionalInformation.role] ?? item.additionalInformation.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={
+                      item.user.status === "active"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800"
+                        : "bg-muted text-muted-foreground hover:bg-muted"
+                    }
+                  >
+                    {item.user.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">{t("common.actions")}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}`)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t("common.view")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => router.push(`/users/${item.user.id}/edit`)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t("common.edit")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setDeleteTarget(item.user.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t("common.delete")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+            {data.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  {t("users.noUsersFound")}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        {data.length > 0 && (
+          <div className="flex items-center justify-between pt-4 border-t mt-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, data.length)} of {data.length}
+              </span>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                <SelectTrigger className="w-[80px] h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>per page</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={safePage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…")
+                  acc.push(p)
+                  return acc
+                }, [])
+                .map((item, i) =>
+                  item === "…" ? (
+                    <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                  ) : (
+                    <Button
+                      key={item}
+                      variant={safePage === item ? "default" : "outline"}
+                      size="icon"
+                      className="h-8 w-8 text-sm"
+                      onClick={() => setCurrentPage(item as number)}
+                    >
+                      {item}
+                    </Button>
+                  )
+                )}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={safePage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -204,21 +284,35 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="employees">
+      <Tabs defaultValue="production">
         <TabsList>
-          <TabsTrigger value="employees">{t("users.employees")} ({employees.length})</TabsTrigger>
+          <TabsTrigger value="production">Producție ({production.length})</TabsTrigger>
+          <TabsTrigger value="engineers">Ingineri ({engineers.length})</TabsTrigger>
           <TabsTrigger value="admins">{t("users.admins")} ({admins.length})</TabsTrigger>
         </TabsList>
-        <TabsContent value="employees" className="mt-4">
+        <TabsContent value="production" className="mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{t("users.employees")}</CardTitle>
-                <p className="text-sm text-muted-foreground">{employees.length} {t("users.usersCount")}</p>
+                <CardTitle className="text-base">Producție</CardTitle>
+                <p className="text-sm text-muted-foreground">{production.length} {t("users.usersCount")}</p>
               </div>
             </CardHeader>
             <CardContent>
-              <UserTable data={employees} />
+              <PaginatedUserTable data={production} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="engineers" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Ingineri</CardTitle>
+                <p className="text-sm text-muted-foreground">{engineers.length} {t("users.usersCount")}</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <PaginatedUserTable data={engineers} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -231,7 +325,7 @@ export default function UsersPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <UserTable data={admins} />
+              <PaginatedUserTable data={admins} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -303,7 +397,8 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">{t("users.employees")}</SelectItem>
+                  <SelectItem value="engineer">Inginer</SelectItem>
+                  <SelectItem value="production">Producție</SelectItem>
                   <SelectItem value="admin">{t("users.admins")}</SelectItem>
                 </SelectContent>
               </Select>

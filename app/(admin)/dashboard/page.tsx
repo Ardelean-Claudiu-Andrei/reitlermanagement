@@ -6,6 +6,7 @@ import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/status-badge"
 import { FileText, Building2, FolderKanban, CheckCircle2, Clock, AlertTriangle, ShieldAlert, FileDown, BarChart3 } from "lucide-react"
 import Link from "next/link"
@@ -29,6 +30,9 @@ export default function DashboardPage() {
   const isAdmin = canViewReports((getCurrentUser()?.role ?? "employee") as AppRole)
   const [weeklyReports, setWeeklyReports] = useState<WeeklyReportSummary[]>([])
   const [exportingWeek, setExportingWeek] = useState<string | null>(null)
+  const [reportsPage, setReportsPage] = useState(1)
+  const [reportsSearch, setReportsSearch] = useState("")
+  const REPORTS_PER_PAGE = 5
 
   useEffect(() => {
     if (!isAdmin) return
@@ -289,35 +293,71 @@ export default function DashboardPage() {
           <CardContent>
             {weeklyReports.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">—</p>
-            ) : (
-              <div className="space-y-2">
-                {weeklyReports.map((w) => (
-                  <div
-                    key={w.weekStart}
-                    className="flex items-center justify-between rounded-md border px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {w.weekStart} — {w.weekEnd}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {w.progressedCount} proiecte cu progres · {w.finalizedCount} finalizate
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      disabled={exportingWeek === w.weekStart}
-                      onClick={() => handleExportWeeklyReport(w.weekStart)}
-                    >
-                      <FileDown className="mr-1 h-3 w-3" />
-                      {exportingWeek === w.weekStart ? "..." : "Descarcă PDF"}
-                    </Button>
+            ) : (() => {
+              const filtered = reportsSearch.trim()
+                ? weeklyReports.filter((w) => w.weekStart.includes(reportsSearch) || w.weekEnd.includes(reportsSearch))
+                : weeklyReports
+              const totalPages = Math.ceil(filtered.length / REPORTS_PER_PAGE)
+              const pageItems = filtered.slice((reportsPage - 1) * REPORTS_PER_PAGE, reportsPage * REPORTS_PER_PAGE)
+              return (
+                <>
+                  <div className="mb-3">
+                    <Input
+                      placeholder="Caută săptămână (ex: 2026-06)..."
+                      value={reportsSearch}
+                      onChange={(e) => { setReportsSearch(e.target.value); setReportsPage(1) }}
+                      className="h-8 text-sm"
+                    />
                   </div>
-                ))}
-              </div>
-            )}
+                  {filtered.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">Niciun rezultat.</p>
+                  ) : null}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Săptămâna</TableHead>
+                        <TableHead>Progres</TableHead>
+                        <TableHead>Finalizate</TableHead>
+                        <TableHead className="text-right"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pageItems.map((w) => (
+                        <TableRow key={w.weekStart}>
+                          <TableCell className="font-medium text-sm">
+                            {w.weekStart} — {w.weekEnd}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{w.progressedCount}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{w.finalizedCount}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={exportingWeek === w.weekStart}
+                              onClick={() => handleExportWeeklyReport(w.weekStart)}
+                            >
+                              <FileDown className="mr-1 h-3 w-3" />
+                              {exportingWeek === w.weekStart ? "..." : "Descarcă PDF"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-3">
+                      <p className="text-xs text-muted-foreground">
+                        {(reportsPage - 1) * REPORTS_PER_PAGE + 1}–{Math.min(reportsPage * REPORTS_PER_PAGE, filtered.length)} din {filtered.length}
+                      </p>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" disabled={reportsPage === 1} onClick={() => setReportsPage(p => p - 1)}>‹</Button>
+                        <Button variant="outline" size="sm" disabled={reportsPage === totalPages} onClick={() => setReportsPage(p => p + 1)}>›</Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </CardContent>
         </Card>
       )}

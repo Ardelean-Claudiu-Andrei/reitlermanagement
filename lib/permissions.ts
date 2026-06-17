@@ -3,7 +3,7 @@ export type AppRole = "admin" | "engineer" | "production" | "employee"
 /** Routes (path prefixes) each role may visit */
 const ACCESS: Record<AppRole, string[]> = {
   admin:      [],              // empty = unrestricted
-  engineer:   ["/dashboard", "/projects", "/materials", "/settings"],
+  engineer:   ["/dashboard", "/projects", "/products", "/materials", "/settings"],
   production: ["/projects"],
   employee:   ["/projects"],
 }

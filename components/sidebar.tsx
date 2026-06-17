@@ -140,7 +140,7 @@ export function Sidebar() {
                     {isAdmin && navLink("/management", <Building2 className="h-4 w-4" />, t("nav.companies"))}
                     {isAdmin && navLink("/users", <Users className="h-4 w-4" />, t("nav.users"))}
                     {isAdmin && navLink("/quotes", <FileText className="h-4 w-4" />, t("nav.quotes"))}
-                    {isAdmin && navLink("/products", <Package className="h-4 w-4" />, t("nav.products"))}
+                    {(isAdmin || role === "engineer") && navLink("/products", <Package className="h-4 w-4" />, t("nav.products"))}
                   </div>
                 )}
               </div>

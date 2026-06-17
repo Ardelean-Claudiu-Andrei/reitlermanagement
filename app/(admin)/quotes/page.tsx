@@ -187,7 +187,7 @@ export default function QuotesPage() {
                       <TableCell>{quote.deliveryTimeWeeks} {t("quotes.deliveryWeeks")}</TableCell>
                       <TableCell>{getStatusBadge(quote.status)}</TableCell>
                       <TableCell className="font-medium">{total.toLocaleString()} EUR</TableCell>
-                      <TableCell>{quote.createdAt}</TableCell>
+                      <TableCell>{quote.createdAt?.slice(0, 10)}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

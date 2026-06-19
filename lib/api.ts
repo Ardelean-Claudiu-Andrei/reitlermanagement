@@ -16,7 +16,7 @@ import type {
   FileCategory,
 } from "./types"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
 export function getUploadFileUrl(url?: string | null): string {
   if (!url) return "#"

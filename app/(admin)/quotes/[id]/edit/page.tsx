@@ -61,6 +61,8 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
   const [items, setItems] = useState<QuoteItem[]>([])
   const [openProductIdx, setOpenProductIdx] = useState<number | null>(null)
   const [productSearch, setProductSearch] = useState("")
+  const [openCompany, setOpenCompany] = useState(false)
+  const [companySearch, setCompanySearch] = useState("")
 
   useEffect(() => {
     if (!isNew && existingQuote) {
@@ -202,22 +204,51 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
             </div>
             <div className="space-y-2">
               <Label htmlFor="company">{t("company")}</Label>
-              <Select
-                value={formData.companyId || "personal"}
-                onValueChange={(v) => setFormData({ ...formData, companyId: v === "personal" ? null : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectCompany")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="personal">Personal / Internal</SelectItem>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={openCompany} onOpenChange={(open) => { setOpenCompany(open); if (open) setCompanySearch("") }}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    <span className="truncate">
+                      {formData.companyId
+                        ? (companies.find((c) => c.id === formData.companyId)?.name ?? t("selectCompany"))
+                        : "Personal / Internal"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder={`${t("common.search")}...`}
+                      value={companySearch}
+                      onValueChange={setCompanySearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No companies found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="personal"
+                          onSelect={() => { setFormData({ ...formData, companyId: null }); setOpenCompany(false); setCompanySearch("") }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4 shrink-0", !formData.companyId ? "opacity-100" : "opacity-0")} />
+                          Personal / Internal
+                        </CommandItem>
+                        {companies
+                          .filter((c) => !companySearch || c.name.toLowerCase().includes(companySearch.toLowerCase()))
+                          .map((company) => (
+                            <CommandItem
+                              key={company.id}
+                              value={company.id}
+                              onSelect={() => { setFormData({ ...formData, companyId: company.id }); setOpenCompany(false); setCompanySearch("") }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4 shrink-0", formData.companyId === company.id ? "opacity-100" : "opacity-0")} />
+                              {company.name}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
           <div className="space-y-2">
@@ -273,6 +304,7 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
                 type="number"
                 min={0}
                 value={formData.installation}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => setFormData({ ...formData, installation: parseFloat(e.target.value) || 0 })}
               />
             </div>
@@ -336,7 +368,7 @@ export default function QuoteEditPage({ params }: { params: Promise<{ id: string
                         <PopoverContent className="w-[300px] p-0" align="start">
                           <Command shouldFilter={false}>
                             <CommandInput
-                              placeholder={`${t("search")}...`}
+                              placeholder={`${t("common.search")}...`}
                               value={productSearch}
                               onValueChange={setProductSearch}
                             />

@@ -168,7 +168,7 @@ export default function SettingsPage() {
             {headerUrl && (
               <div className="flex items-center gap-4">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${headerUrl}`}
+                  src={headerUrl}
                   alt="Antet ofertă"
                   className="h-16 max-w-[240px] object-contain rounded border"
                 />
@@ -198,7 +198,7 @@ export default function SettingsPage() {
             {signatureUrl && (
               <div className="flex items-center gap-4">
                 <img
-                  src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${signatureUrl}`}
+                  src={signatureUrl}
                   alt="Semnătură ofertă"
                   className="h-20 max-w-[200px] object-contain rounded border"
                 />

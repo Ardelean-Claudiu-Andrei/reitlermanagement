@@ -292,7 +292,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "" })
+  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "", finalPrice: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
   const [exportingCards, setExportingCards] = useState(false)
   const [exportingProjectLaser, setExportingProjectLaser] = useState(false)
@@ -347,7 +347,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const quote = project.quoteId ? quotes.find((q) => q.id === project.quoteId) : null
   const subtotal = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const installationCost = project.installationCost || 0
-  const total = subtotal + installationCost
+  const computedTotal = subtotal + installationCost
+  const total = project.finalPrice != null ? project.finalPrice : computedTotal
   const paidAmount = project.paidAmount ?? 0
   const remaining = Math.max(0, total - paidAmount)
 
@@ -365,6 +366,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       startDate: project.startDate || "",
       deadline: project.deadline || "",
       finishDate: project.finishDate || "",
+      finalPrice: project.finalPrice != null ? String(project.finalPrice) : "",
     })
     setEditDialogOpen(true)
   }
@@ -379,7 +381,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       const fd = new Date(editForm.finishDate)
       warrantyExpiration = new Date(fd.getFullYear() + 2, fd.getMonth(), fd.getDate()).toISOString().slice(0, 10)
     }
-    await updateProject({ ...project, ...editForm, warrantyExpiration })
+    const parsedFinalPrice = editForm.finalPrice !== "" ? parseFloat(editForm.finalPrice) : null
+    const finalPrice = parsedFinalPrice != null && !isNaN(parsedFinalPrice) ? parsedFinalPrice : null
+    const { finalPrice: _fp, ...restForm } = editForm
+    await updateProject({ ...project, ...restForm, warrantyExpiration, finalPrice })
     toast.success(t("common.savedSuccessfully"))
     setEditDialogOpen(false)
   }
@@ -603,12 +608,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("common.total")}</p>
+                  <p className="text-xs text-muted-foreground">Preț proiect (EUR)</p>
                   <p className="font-medium">{total.toLocaleString()} EUR</p>
-                  {installationCost > 0 && (
+                  {project.finalPrice == null && installationCost > 0 && (
                     <p className="text-xs text-muted-foreground">
                       incl. instalare {installationCost.toLocaleString()} EUR
                     </p>
+                  )}
+                  {project.finalPrice == null && (
+                    <p className="text-xs text-muted-foreground italic">calculat din produse</p>
                   )}
                 </div>
               </div>
@@ -940,6 +948,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 onChange={(e) => setEditForm({ ...editForm, finishDate: e.target.value })}
               />
             </div>
+            {showPrices && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-final-price">Preț proiect (EUR)</Label>
+                <Input
+                  id="edit-final-price"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="Introduceți prețul proiectului"
+                  value={editForm.finalPrice}
+                  onChange={(e) => setEditForm({ ...editForm, finalPrice: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">Lăsați gol pentru a calcula automat din produse.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t("common.cancel")}</Button>

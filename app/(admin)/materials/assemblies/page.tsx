@@ -53,7 +53,7 @@ import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, Grip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
-import type { Assembly, AssemblyPart, AssemblyStep, AssemblyCompositionType } from "@/lib/types"
+import type { Assembly, AssemblyPart, AssemblyChildEntry, AssemblyStep, AssemblyCompositionType } from "@/lib/types"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 
 const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
@@ -100,6 +100,7 @@ export default function AssembliesPage() {
     setFormName("")
     setFormNotes("")
     setFormParts([])
+    setFormChildAssemblies([])
     setFormCompositionType("standalone")
     setFormPhysicalLocation("")
     setFormSteps([])
@@ -112,6 +113,7 @@ export default function AssembliesPage() {
     setFormName(assembly.name)
     setFormNotes(assembly.notes)
     setFormParts([...assembly.parts])
+    setFormChildAssemblies([...(assembly.childAssemblies || [])])
     setFormCompositionType(assembly.compositionType || "standalone")
     setFormPhysicalLocation(assembly.physicalLocation || "")
     setFormSteps([...(assembly.productionSteps || [])])
@@ -130,6 +132,7 @@ export default function AssembliesPage() {
         name: formName.trim(),
         description: editingAssembly?.description ?? { ro: "", hu: "", de: "", en: "" },
         parts: formParts,
+        childAssemblies: formChildAssemblies,
         compositionType: formCompositionType,
         physicalLocation: formPhysicalLocation,
         productionSteps: formSteps,
@@ -177,6 +180,8 @@ export default function AssembliesPage() {
   }
 
   const [openPartCombobox, setOpenPartCombobox] = useState<number | null>(null)
+  const [openChildAssemblyCombobox, setOpenChildAssemblyCombobox] = useState<number | null>(null)
+  const [formChildAssemblies, setFormChildAssemblies] = useState<AssemblyChildEntry[]>([])
 
   // ─── Parts within assembly ────────────────────────────────────────────────
 
@@ -193,6 +198,27 @@ export default function AssembliesPage() {
 
   function removeFormPart(index: number) {
     setFormParts(formParts.filter((_, i) => i !== index))
+  }
+
+  // ─── Child assemblies ─────────────────────────────────────────────────────
+
+  function addChildAssemblyToForm() {
+    setFormChildAssemblies([...formChildAssemblies, { assemblyId: "", quantity: 1 }])
+  }
+
+  function updateFormChildAssembly(index: number, field: "assemblyId" | "quantity", value: string | number) {
+    const updated = [...formChildAssemblies]
+    if (field === "assemblyId") updated[index].assemblyId = value as string
+    else updated[index].quantity = value as number
+    setFormChildAssemblies(updated)
+  }
+
+  function removeFormChildAssembly(index: number) {
+    setFormChildAssemblies(formChildAssemblies.filter((_, i) => i !== index))
+  }
+
+  function getAssemblyName(assemblyId: string) {
+    return safeAssemblies.find((a) => a.id === assemblyId)?.name ?? t("common.unknown")
   }
 
   // ─── Production steps ─────────────────────────────────────────────────────
@@ -294,7 +320,11 @@ export default function AssembliesPage() {
                   <TableCell className="font-medium">{assembly.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
-                      {assembly.compositionType === "from_parts" ? "Din piese" : "Independent"}
+                      {assembly.compositionType === "from_parts"
+                        ? "Din piese"
+                        : assembly.compositionType === "from_assemblies"
+                        ? "Din ansamble"
+                        : "Independent"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">{assembly.physicalLocation || "—"}</TableCell>
@@ -447,6 +477,7 @@ export default function AssembliesPage() {
                     <SelectContent>
                       <SelectItem value="standalone">Independent (fără piese)</SelectItem>
                       <SelectItem value="from_parts">Din piese</SelectItem>
+                      <SelectItem value="from_assemblies">Din ansamble</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -536,6 +567,88 @@ export default function AssembliesPage() {
                   })}
                 </div>
               )}
+
+              <div className="pt-2 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Sub-ansamble</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addChildAssemblyToForm}
+                    disabled={safeAssemblies.filter((a) => a.id !== editingAssembly?.id).length === 0}
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    Adaugă sub-ansamblu
+                  </Button>
+                </div>
+                {formChildAssemblies.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Niciun sub-ansamblu adăugat.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {formChildAssemblies.map((ca, idx) => {
+                      const selectedChild = safeAssemblies.find((a) => a.id === ca.assemblyId)
+                      const availableAssemblies = safeAssemblies.filter((a) => a.id !== editingAssembly?.id)
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Popover
+                            open={openChildAssemblyCombobox === idx}
+                            onOpenChange={(open) => setOpenChildAssemblyCombobox(open ? idx : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                role="combobox"
+                                className="flex-1 justify-between font-normal"
+                              >
+                                {selectedChild
+                                  ? `${selectedChild.name}${selectedChild.code ? ` — ${selectedChild.code}` : ""}`
+                                  : "Caută ansamblu după nume sau cod..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[380px] p-0">
+                              <Command>
+                                <CommandInput placeholder="Caută ansamblu după nume sau cod..." />
+                                <CommandList>
+                                  <CommandEmpty>Niciun ansamblu găsit.</CommandEmpty>
+                                  <CommandGroup>
+                                    {availableAssemblies.map((a) => (
+                                      <CommandItem
+                                        key={a.id}
+                                        value={`${a.name} ${a.code ?? ""}`}
+                                        onSelect={() => {
+                                          updateFormChildAssembly(idx, "assemblyId", a.id)
+                                          setOpenChildAssemblyCombobox(null)
+                                        }}
+                                      >
+                                        <Check className={`mr-2 h-4 w-4 ${ca.assemblyId === a.id ? "opacity-100" : "opacity-0"}`} />
+                                        <span className="font-medium">{a.name}</span>
+                                        {a.code && <span className="ml-2 text-xs text-muted-foreground font-mono">{a.code}</span>}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={ca.quantity}
+                            onChange={(e) => updateFormChildAssembly(idx, "quantity", parseInt(e.target.value) || 1)}
+                            className="w-20"
+                          />
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeFormChildAssembly(idx)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             {/* Production steps tab */}
@@ -620,7 +733,11 @@ export default function AssembliesPage() {
               <Badge variant="outline" className="text-xs font-mono font-normal">{viewAssembly?.code}</Badge>
             </DialogTitle>
             <DialogDescription>
-              {viewAssembly?.compositionType === "from_parts" ? "Ansamblu din piese" : "Ansamblu independent"}
+              {viewAssembly?.compositionType === "from_parts"
+                ? "Ansamblu din piese"
+                : viewAssembly?.compositionType === "from_assemblies"
+                ? "Ansamblu din sub-ansamble"
+                : "Ansamblu independent"}
             </DialogDescription>
           </DialogHeader>
           {viewAssembly && (
@@ -641,7 +758,13 @@ export default function AssembliesPage() {
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Tip compoziție</p>
-                    <p>{viewAssembly.compositionType === "from_parts" ? "Din piese" : "Independent"}</p>
+                    <p>
+                      {viewAssembly.compositionType === "from_parts"
+                        ? "Din piese"
+                        : viewAssembly.compositionType === "from_assemblies"
+                        ? "Din ansamble"
+                        : "Independent"}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
@@ -657,7 +780,7 @@ export default function AssembliesPage() {
               </TabsContent>
 
               {/* Parts */}
-              <TabsContent value="parts">
+              <TabsContent value="parts" className="space-y-4">
                 {viewAssembly.parts?.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nicio piesă adăugată.</p>
                 ) : (
@@ -690,6 +813,34 @@ export default function AssembliesPage() {
                         })}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+                {(viewAssembly.childAssemblies?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Sub-ansamble</p>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ansamblu</TableHead>
+                            <TableHead>Cod</TableHead>
+                            <TableHead className="text-right">Cantitate</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {viewAssembly.childAssemblies.map((ca, idx) => {
+                            const child = safeAssemblies.find((a) => a.id === ca.assemblyId)
+                            return (
+                              <TableRow key={idx}>
+                                <TableCell className="font-medium">{child?.name ?? ca.assemblyId}</TableCell>
+                                <TableCell className="font-mono text-xs text-muted-foreground">{child?.code ?? "—"}</TableCell>
+                                <TableCell className="text-right font-mono">{ca.quantity}</TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 )}
               </TabsContent>

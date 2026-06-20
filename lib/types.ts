@@ -36,7 +36,7 @@ export type AssemblyStepType =
   | "welding"
   | "assembly"
 
-export type AssemblyCompositionType = "from_parts" | "standalone"
+export type AssemblyCompositionType = "from_parts" | "from_assemblies" | "standalone"
 
 export type FileCategory =
   | "dxf"
@@ -103,12 +103,18 @@ export interface AssemblyPart {
   quantity: number
 }
 
+export interface AssemblyChildEntry {
+  assemblyId: string
+  quantity: number
+}
+
 export interface Assembly {
   id: string
   code: string
   name: string
   description: MultiLangText
   parts: AssemblyPart[]
+  childAssemblies: AssemblyChildEntry[]
   compositionType: AssemblyCompositionType
   physicalLocation: string
   productionSteps: AssemblyStep[]

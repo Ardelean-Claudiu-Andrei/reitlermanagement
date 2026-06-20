@@ -119,6 +119,9 @@ export interface Assembly {
   childAssemblies: AssemblyChildEntry[]
   compositionType: AssemblyCompositionType
   physicalLocation: string
+  weldingDrawingLocation: string
+  technicalDrawingLocation: string
+  cadLocation: string
   productionSteps: AssemblyStep[]
   notes: string
   createdAt: string

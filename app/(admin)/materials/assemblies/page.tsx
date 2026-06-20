@@ -79,6 +79,9 @@ export default function AssembliesPage() {
   const [formParts, setFormParts] = useState<AssemblyPart[]>([])
   const [formCompositionType, setFormCompositionType] = useState<AssemblyCompositionType>("standalone")
   const [formPhysicalLocation, setFormPhysicalLocation] = useState("")
+  const [formWeldingDrawingLocation, setFormWeldingDrawingLocation] = useState("")
+  const [formTechnicalDrawingLocation, setFormTechnicalDrawingLocation] = useState("")
+  const [formCadLocation, setFormCadLocation] = useState("")
   const [formSteps, setFormSteps] = useState<AssemblyStep[]>([])
 
   const safeAssemblies = assemblies ?? []
@@ -103,6 +106,9 @@ export default function AssembliesPage() {
     setFormChildAssemblies([])
     setFormCompositionType("standalone")
     setFormPhysicalLocation("")
+    setFormWeldingDrawingLocation("")
+    setFormTechnicalDrawingLocation("")
+    setFormCadLocation("")
     setFormSteps([])
     setDialogOpen(true)
   }
@@ -116,6 +122,9 @@ export default function AssembliesPage() {
     setFormChildAssemblies([...(assembly.childAssemblies || [])])
     setFormCompositionType(assembly.compositionType || "standalone")
     setFormPhysicalLocation(assembly.physicalLocation || "")
+    setFormWeldingDrawingLocation(assembly.weldingDrawingLocation || "")
+    setFormTechnicalDrawingLocation(assembly.technicalDrawingLocation || "")
+    setFormCadLocation(assembly.cadLocation || "")
     setFormSteps([...(assembly.productionSteps || [])])
     setDialogOpen(true)
   }
@@ -135,6 +144,9 @@ export default function AssembliesPage() {
         childAssemblies: formChildAssemblies,
         compositionType: formCompositionType,
         physicalLocation: formPhysicalLocation,
+        weldingDrawingLocation: formWeldingDrawingLocation,
+        technicalDrawingLocation: formTechnicalDrawingLocation,
+        cadLocation: formCadLocation,
         productionSteps: formSteps,
         notes: formNotes,
       }
@@ -450,6 +462,7 @@ export default function AssembliesPage() {
           <Tabs defaultValue="general">
             <TabsList className="mb-4">
               <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="drawings">Desene</TabsTrigger>
               <TabsTrigger value="parts">Piese</TabsTrigger>
               <TabsTrigger value="steps">Pași producție</TabsTrigger>
               <TabsTrigger value="files">Fișiere</TabsTrigger>
@@ -493,6 +506,34 @@ export default function AssembliesPage() {
               <div className="space-y-2">
                 <Label>{t("common.notes")}</Label>
                 <Textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} />
+              </div>
+            </TabsContent>
+
+            {/* Drawings tab */}
+            <TabsContent value="drawings" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Locație desen sudură</Label>
+                <Input
+                  value={formWeldingDrawingLocation}
+                  onChange={(e) => setFormWeldingDrawingLocation(e.target.value)}
+                  placeholder="ex: \\server\desene\sudura\ASM-001.pdf"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Locație desen tehnic</Label>
+                <Input
+                  value={formTechnicalDrawingLocation}
+                  onChange={(e) => setFormTechnicalDrawingLocation(e.target.value)}
+                  placeholder="ex: \\server\desene\tehnice\ASM-001.pdf"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Locație CAD</Label>
+                <Input
+                  value={formCadLocation}
+                  onChange={(e) => setFormCadLocation(e.target.value)}
+                  placeholder="ex: \\server\cad\ASM-001.step"
+                />
               </div>
             </TabsContent>
 
@@ -770,6 +811,24 @@ export default function AssembliesPage() {
                     <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
                     <p>{viewAssembly.physicalLocation || "—"}</p>
                   </div>
+                  {viewAssembly.weldingDrawingLocation && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație desen sudură</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewAssembly.weldingDrawingLocation}</p>
+                    </div>
+                  )}
+                  {viewAssembly.technicalDrawingLocation && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație desen tehnic</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewAssembly.technicalDrawingLocation}</p>
+                    </div>
+                  )}
+                  {viewAssembly.cadLocation && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație CAD</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewAssembly.cadLocation}</p>
+                    </div>
+                  )}
                 </div>
                 {viewAssembly.notes && (
                   <div>

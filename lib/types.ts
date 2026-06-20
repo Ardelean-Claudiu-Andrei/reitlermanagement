@@ -90,6 +90,8 @@ export interface Part {
   requiresLaserCutting: boolean
   weldingDrawingLocation: string
   bendingDrawingLocation: string
+  cadLocation: string
+  technicalDrawingLocation: string
   productionSteps: AssemblyStep[]
   notes: string
   fileName: string
@@ -117,6 +119,9 @@ export interface Assembly {
   childAssemblies: AssemblyChildEntry[]
   compositionType: AssemblyCompositionType
   physicalLocation: string
+  weldingDrawingLocation: string
+  technicalDrawingLocation: string
+  cadLocation: string
   productionSteps: AssemblyStep[]
   notes: string
   createdAt: string

@@ -75,6 +75,8 @@ const EMPTY_PART: Omit<Part, "id" | "createdAt" | "updatedAt"> = {
   requiresLaserCutting: false,
   weldingDrawingLocation: "",
   bendingDrawingLocation: "",
+  cadLocation: "",
+  technicalDrawingLocation: "",
   productionSteps: [],
   notes: "",
   fileName: "",
@@ -141,6 +143,8 @@ export default function PartsPage() {
       requiresLaserCutting: part.requiresLaserCutting || false,
       weldingDrawingLocation: part.weldingDrawingLocation || "",
       bendingDrawingLocation: part.bendingDrawingLocation || "",
+      cadLocation: part.cadLocation || "",
+      technicalDrawingLocation: part.technicalDrawingLocation || "",
       productionSteps: part.productionSteps || [],
       notes: part.notes || "",
       fileName: part.fileName || "",
@@ -541,6 +545,22 @@ export default function PartsPage() {
                   placeholder="ex: \\server\desene\indoire\PSA-001.pdf"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Locație CAD</Label>
+                <Input
+                  value={form.cadLocation}
+                  onChange={(e) => setField("cadLocation", e.target.value)}
+                  placeholder="ex: \\server\cad\PSA-001.step"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Locație desen tehnic</Label>
+                <Input
+                  value={form.technicalDrawingLocation}
+                  onChange={(e) => setField("technicalDrawingLocation", e.target.value)}
+                  placeholder="ex: \\server\desene\tehnice\PSA-001.pdf"
+                />
+              </div>
             </TabsContent>
 
             {/* Production steps tab */}
@@ -680,6 +700,18 @@ export default function PartsPage() {
                     <div className="col-span-2">
                       <p className="text-xs text-muted-foreground mb-0.5">Locație desen îndoire</p>
                       <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewPart.bendingDrawingLocation}</p>
+                    </div>
+                  )}
+                  {viewPart.cadLocation && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație CAD</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewPart.cadLocation}</p>
+                    </div>
+                  )}
+                  {viewPart.technicalDrawingLocation && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație desen tehnic</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewPart.technicalDrawingLocation}</p>
                     </div>
                   )}
                 </div>

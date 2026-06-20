@@ -90,6 +90,8 @@ export interface Part {
   requiresLaserCutting: boolean
   weldingDrawingLocation: string
   bendingDrawingLocation: string
+  cadLocation: string
+  technicalDrawingLocation: string
   productionSteps: AssemblyStep[]
   notes: string
   fileName: string

@@ -74,6 +74,7 @@ type AssemblyNode = {
   code: string
   steps: AssemblyStep[]
   parts: PartNode[]
+  childAssemblies: AssemblyNode[]
 }
 
 type ProductNode = {
@@ -83,6 +84,45 @@ type ProductNode = {
   productSteps: AssemblyStep[]
   assemblies: AssemblyNode[]
   directParts: PartNode[]
+}
+
+function buildAssemblyNode(
+  asm: Assembly,
+  safeAssemblies: Assembly[],
+  safeParts: Part[],
+  depth: number = 0,
+  visited: Set<string> = new Set(),
+): AssemblyNode {
+  if (depth > 8 || visited.has(asm.id)) {
+    return { id: asm.id, name: asm.name, code: asm.code, steps: [], parts: [], childAssemblies: [] }
+  }
+  const nextVisited = new Set(visited)
+  nextVisited.add(asm.id)
+
+  const parts: PartNode[] = (asm.parts ?? [])
+    .map((ap): PartNode | null => {
+      const part = safeParts.find((p) => p.id === ap.partId)
+      if (!part) return null
+      return { id: part.id, name: part.name, requiresLaserCutting: part.requiresLaserCutting, steps: part.productionSteps ?? [] }
+    })
+    .filter((p): p is PartNode => p !== null)
+
+  const childAssemblies: AssemblyNode[] = (asm.childAssemblies ?? [])
+    .map((entry): AssemblyNode | null => {
+      const child = safeAssemblies.find((a) => a.id === entry.assemblyId)
+      if (!child) return null
+      return buildAssemblyNode(child, safeAssemblies, safeParts, depth + 1, nextVisited)
+    })
+    .filter((a): a is AssemblyNode => a !== null)
+
+  return {
+    id: asm.id,
+    name: asm.name,
+    code: asm.code,
+    steps: asm.productionSteps ?? [],
+    parts,
+    childAssemblies,
+  }
 }
 
 function buildProductHierarchy(
@@ -95,24 +135,7 @@ function buildProductHierarchy(
   const assemblies: AssemblyNode[] = (product.assemblyIds ?? [])
     .map((id) => safeAssemblies.find((a) => a.id === id))
     .filter((a): a is Assembly => !!a)
-    .map((asm): AssemblyNode => ({
-      id: asm.id,
-      name: asm.name,
-      code: asm.code,
-      steps: asm.productionSteps ?? [],
-      parts: (asm.parts ?? [])
-        .map((ap): PartNode | null => {
-          const part = safeParts.find((p) => p.id === ap.partId)
-          if (!part) return null
-          return {
-            id: part.id,
-            name: part.name,
-            requiresLaserCutting: part.requiresLaserCutting,
-            steps: part.productionSteps ?? [],
-          }
-        })
-        .filter((p): p is PartNode => p !== null),
-    }))
+    .map((asm) => buildAssemblyNode(asm, safeAssemblies, safeParts))
 
   const directParts: PartNode[] = (product.partIds ?? [])
     .map((id) => safeParts.find((p) => p.id === id))
@@ -134,13 +157,18 @@ function buildProductHierarchy(
   }
 }
 
+function countAssemblySteps(asmNode: AssemblyNode): number {
+  return (
+    asmNode.steps.length +
+    asmNode.parts.reduce((s, p) => s + p.steps.length, 0) +
+    asmNode.childAssemblies.reduce((s, c) => s + countAssemblySteps(c), 0)
+  )
+}
+
 function countNodeSteps(node: ProductNode): number {
   return (
     node.productSteps.length +
-    node.assemblies.reduce(
-      (s, a) => s + a.steps.length + a.parts.reduce((sp, p) => sp + p.steps.length, 0),
-      0,
-    ) +
+    node.assemblies.reduce((s, a) => s + countAssemblySteps(a), 0) +
     node.directParts.reduce((s, p) => s + p.steps.length, 0)
   )
 }
@@ -164,6 +192,84 @@ function StepRow({ step, stepKey, index, completed, onToggle }: { step: Assembly
           <Badge variant="secondary" className="text-xs">{step.type}</Badge>
         </div>
         {step.description && <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>}
+      </div>
+    </div>
+  )
+}
+
+function AssemblyBlock({
+  asmNode,
+  productId,
+  pathKey,
+  stepsCompleted,
+  onToggle,
+  depth,
+}: {
+  asmNode: AssemblyNode
+  productId: string
+  pathKey: string
+  stepsCompleted: Set<string>
+  onToggle: StepToggle
+  depth: number
+}) {
+  const hasContent =
+    asmNode.steps.length > 0 ||
+    asmNode.parts.some((p) => p.steps.length > 0) ||
+    asmNode.childAssemblies.some((c) => countAssemblySteps(c) > 0)
+  if (!hasContent) return null
+
+  const indent = depth === 0 ? "ml-2" : "ml-4"
+
+  return (
+    <div className={`${indent} rounded-md border my-2`}>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-t-md border-b">
+        <Boxes className="h-3 w-3 text-muted-foreground" />
+        <span className="text-xs font-semibold">{asmNode.name}</span>
+        <span className="text-xs font-mono text-muted-foreground">{asmNode.code}</span>
+        {depth > 0 && <Badge variant="outline" className="text-xs ml-auto">Sub-ansamblu</Badge>}
+      </div>
+      <div className="px-3">
+        {/* Assembly steps */}
+        {asmNode.steps.length > 0 && (
+          <div className="py-1">
+            {asmNode.steps.map((step, idx) => {
+              const stepKey = `${productId}:${pathKey}:${step.id}`
+              return (
+                <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+              )
+            })}
+          </div>
+        )}
+        {/* Parts of this assembly */}
+        {asmNode.parts.filter((p) => p.steps.length > 0).map((pNode) => (
+          <div key={pNode.id} className="ml-2 rounded border my-1">
+            <div className="flex items-center gap-2 px-2 py-1 bg-muted/20 rounded-t border-b">
+              <Wrench className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium">{pNode.name}</span>
+              {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
+            </div>
+            <div className="px-2 py-1">
+              {pNode.steps.map((step, idx) => {
+                const stepKey = `${productId}:${pathKey}:part:${pNode.id}:${step.id}`
+                return (
+                  <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        {/* Child assemblies — rendered recursively */}
+        {asmNode.childAssemblies.map((child) => (
+          <AssemblyBlock
+            key={child.id}
+            asmNode={child}
+            productId={productId}
+            pathKey={`${pathKey}:child:${child.id}`}
+            stepsCompleted={stepsCompleted}
+            onToggle={onToggle}
+            depth={depth + 1}
+          />
+        ))}
       </div>
     </div>
   )
@@ -196,49 +302,18 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
           </div>
         )}
 
-        {/* Assemblies */}
-        {node.assemblies.map((asmNode) => {
-          const asmHasSteps = asmNode.steps.length > 0 || asmNode.parts.some((p) => p.steps.length > 0)
-          if (!asmHasSteps) return null
-          return (
-            <div key={asmNode.id} className="ml-2 rounded-md border my-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-t-md border-b">
-                <Boxes className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-semibold">{asmNode.name}</span>
-                <span className="text-xs font-mono text-muted-foreground">{asmNode.code}</span>
-              </div>
-              <div className="px-3">
-                {asmNode.steps.length > 0 && (
-                  <div className="py-1">
-                    {asmNode.steps.map((step, idx) => {
-                      const stepKey = `${node.productId}:assembly:${asmNode.id}:${step.id}`
-                      return (
-                        <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
-                      )
-                    })}
-                  </div>
-                )}
-                {asmNode.parts.filter((p) => p.steps.length > 0).map((pNode) => (
-                  <div key={pNode.id} className="ml-2 rounded border my-1">
-                    <div className="flex items-center gap-2 px-2 py-1 bg-muted/20 rounded-t border-b">
-                      <Wrench className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs font-medium">{pNode.name}</span>
-                      {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
-                    </div>
-                    <div className="px-2 py-1">
-                      {pNode.steps.map((step, idx) => {
-                        const stepKey = `${node.productId}:assembly:${asmNode.id}:part:${pNode.id}:${step.id}`
-                        return (
-                          <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
+        {/* Assemblies (recursive) */}
+        {node.assemblies.map((asmNode) => (
+          <AssemblyBlock
+            key={asmNode.id}
+            asmNode={asmNode}
+            productId={node.productId}
+            pathKey={`assembly:${asmNode.id}`}
+            stepsCompleted={stepsCompleted}
+            onToggle={onToggle}
+            depth={0}
+          />
+        ))}
 
         {/* Direct parts */}
         {node.directParts.filter((p) => p.steps.length > 0).map((pNode) => (
@@ -292,7 +367,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [issueDialogOpen, setIssueDialogOpen] = useState(false)
   const [finishDialogOpen, setFinishDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "" })
+  const [editForm, setEditForm] = useState({ name: "", companyId: "" as string | null, startDate: "", deadline: "", finishDate: "", finalPrice: "" })
   const [newIssueDescription, setNewIssueDescription] = useState("")
   const [exportingCards, setExportingCards] = useState(false)
   const [exportingProjectLaser, setExportingProjectLaser] = useState(false)
@@ -347,7 +422,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const quote = project.quoteId ? quotes.find((q) => q.id === project.quoteId) : null
   const subtotal = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const installationCost = project.installationCost || 0
-  const total = subtotal + installationCost
+  const computedTotal = subtotal + installationCost
+  const total = project.finalPrice != null ? project.finalPrice : computedTotal
   const paidAmount = project.paidAmount ?? 0
   const remaining = Math.max(0, total - paidAmount)
 
@@ -365,6 +441,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       startDate: project.startDate || "",
       deadline: project.deadline || "",
       finishDate: project.finishDate || "",
+      finalPrice: project.finalPrice != null ? String(project.finalPrice) : "",
     })
     setEditDialogOpen(true)
   }
@@ -379,7 +456,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       const fd = new Date(editForm.finishDate)
       warrantyExpiration = new Date(fd.getFullYear() + 2, fd.getMonth(), fd.getDate()).toISOString().slice(0, 10)
     }
-    await updateProject({ ...project, ...editForm, warrantyExpiration })
+    const parsedFinalPrice = editForm.finalPrice !== "" ? parseFloat(editForm.finalPrice) : null
+    const finalPrice = parsedFinalPrice != null && !isNaN(parsedFinalPrice) ? parsedFinalPrice : null
+    const { finalPrice: _fp, ...restForm } = editForm
+    await updateProject({ ...project, ...restForm, warrantyExpiration, finalPrice })
     toast.success(t("common.savedSuccessfully"))
     setEditDialogOpen(false)
   }
@@ -603,12 +683,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("common.total")}</p>
+                  <p className="text-xs text-muted-foreground">Preț proiect (EUR)</p>
                   <p className="font-medium">{total.toLocaleString()} EUR</p>
-                  {installationCost > 0 && (
+                  {project.finalPrice == null && installationCost > 0 && (
                     <p className="text-xs text-muted-foreground">
                       incl. instalare {installationCost.toLocaleString()} EUR
                     </p>
+                  )}
+                  {project.finalPrice == null && (
+                    <p className="text-xs text-muted-foreground italic">calculat din produse</p>
                   )}
                 </div>
               </div>
@@ -940,6 +1023,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 onChange={(e) => setEditForm({ ...editForm, finishDate: e.target.value })}
               />
             </div>
+            {showPrices && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-final-price">Preț proiect (EUR)</Label>
+                <Input
+                  id="edit-final-price"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="Introduceți prețul proiectului"
+                  value={editForm.finalPrice}
+                  onChange={(e) => setEditForm({ ...editForm, finalPrice: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">Lăsați gol pentru a calcula automat din produse.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t("common.cancel")}</Button>

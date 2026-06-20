@@ -38,6 +38,7 @@ export default function NewProjectPage() {
     companyId: "" as string | null,
     startDate: new Date().toISOString().split("T")[0],
     deadline: "",
+    finalPrice: "",
   })
 
   const [items, setItems] = useState<ProjectItem[]>([])
@@ -94,6 +95,9 @@ export default function NewProjectPage() {
 
     const today = new Date().toISOString().split("T")[0]
 
+    const parsedFinalPrice = formData.finalPrice !== "" ? parseFloat(formData.finalPrice) : null
+    const finalPrice = parsedFinalPrice != null && !isNaN(parsedFinalPrice) ? parsedFinalPrice : null
+
     const newProject: Omit<Project, 'id'> = {
       code: `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
       name: formData.name,
@@ -104,6 +108,7 @@ export default function NewProjectPage() {
       deadline: formData.deadline,
       finishDate: null,
       warrantyExpiration: null,
+      finalPrice,
       items,
       checklist: [],
       issues: [],
@@ -115,6 +120,8 @@ export default function NewProjectPage() {
           timestamp: new Date().toLocaleString(),
         },
       ],
+      stepsCompleted: [],
+      stepsTotal: 0,
       createdAt: today,
       updatedAt: today,
     }
@@ -195,6 +202,18 @@ export default function NewProjectPage() {
                 onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="finalPrice">Preț proiect (EUR)</Label>
+            <Input
+              id="finalPrice"
+              type="number"
+              min={0}
+              step={0.01}
+              placeholder="Opțional — lăsați gol pentru a calcula din produse"
+              value={formData.finalPrice}
+              onChange={(e) => setFormData({ ...formData, finalPrice: e.target.value })}
+            />
           </div>
         </CardContent>
       </Card>

@@ -86,18 +86,20 @@ export default function ProjectsPage() {
   const safeProducts = products ?? []
   const safeInventory = inventory ?? []
 
-  // Filter projects
-  const filtered = safeProjects.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.code.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter
-    const matchesType =
-      projectTypeFilter === "all" ||
-      (projectTypeFilter === "personal" && p.companyId === null) ||
-      (projectTypeFilter === "company" && p.companyId !== null)
-    return matchesSearch && matchesStatus && matchesType
-  })
+  // Filter projects — newest first
+  const filtered = safeProjects
+    .filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.code.toLowerCase().includes(search.toLowerCase())
+      const matchesStatus = statusFilter === "all" || p.status === statusFilter
+      const matchesType =
+        projectTypeFilter === "all" ||
+        (projectTypeFilter === "personal" && p.companyId === null) ||
+        (projectTypeFilter === "company" && p.companyId !== null)
+      return matchesSearch && matchesStatus && matchesType
+    })
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(currentPage, totalPages)

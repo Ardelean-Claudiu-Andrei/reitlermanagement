@@ -956,6 +956,26 @@ export default function ProjectsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Șterge proiect</DialogTitle>
+            <DialogDescription>
+              Ești sigur că vrei să ștergi proiectul{" "}
+              <strong>„{projectToDelete?.name}"</strong>? Acțiunea este ireversibilă.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Anulează
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteProject}>
+              Șterge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

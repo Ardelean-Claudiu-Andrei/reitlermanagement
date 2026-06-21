@@ -64,6 +64,7 @@ import type { AppRole } from "@/lib/permissions"
 type PartNode = {
   id: string
   name: string
+  quantity: number
   requiresLaserCutting: boolean
   steps: AssemblyStep[]
 }
@@ -72,6 +73,7 @@ type AssemblyNode = {
   id: string
   name: string
   code: string
+  quantity: number
   steps: AssemblyStep[]
   parts: PartNode[]
   childAssemblies: AssemblyNode[]
@@ -81,6 +83,7 @@ type ProductNode = {
   productId: string
   productName: string
   productCode: string
+  quantity: number
   productSteps: AssemblyStep[]
   assemblies: AssemblyNode[]
   directParts: PartNode[]
@@ -88,13 +91,14 @@ type ProductNode = {
 
 function buildAssemblyNode(
   asm: Assembly,
+  quantity: number,
   safeAssemblies: Assembly[],
   safeParts: Part[],
   depth: number = 0,
   visited: Set<string> = new Set(),
 ): AssemblyNode {
   if (depth > 8 || visited.has(asm.id)) {
-    return { id: asm.id, name: asm.name, code: asm.code, steps: [], parts: [], childAssemblies: [] }
+    return { id: asm.id, name: asm.name, code: asm.code, quantity, steps: [], parts: [], childAssemblies: [] }
   }
   const nextVisited = new Set(visited)
   nextVisited.add(asm.id)
@@ -103,7 +107,13 @@ function buildAssemblyNode(
     .map((ap): PartNode | null => {
       const part = safeParts.find((p) => p.id === ap.partId)
       if (!part) return null
-      return { id: part.id, name: part.name, requiresLaserCutting: part.requiresLaserCutting, steps: part.productionSteps ?? [] }
+      return {
+        id: part.id,
+        name: part.name,
+        quantity: (ap.quantity ?? 1) * quantity,
+        requiresLaserCutting: part.requiresLaserCutting,
+        steps: part.productionSteps ?? [],
+      }
     })
     .filter((p): p is PartNode => p !== null)
 
@@ -111,7 +121,7 @@ function buildAssemblyNode(
     .map((entry): AssemblyNode | null => {
       const child = safeAssemblies.find((a) => a.id === entry.assemblyId)
       if (!child) return null
-      return buildAssemblyNode(child, safeAssemblies, safeParts, depth + 1, nextVisited)
+      return buildAssemblyNode(child, (entry.quantity ?? 1) * quantity, safeAssemblies, safeParts, depth + 1, nextVisited)
     })
     .filter((a): a is AssemblyNode => a !== null)
 
@@ -119,6 +129,7 @@ function buildAssemblyNode(
     id: asm.id,
     name: asm.name,
     code: asm.code,
+    quantity,
     steps: asm.productionSteps ?? [],
     parts,
     childAssemblies,
@@ -127,30 +138,49 @@ function buildAssemblyNode(
 
 function buildProductHierarchy(
   product: Product,
+  itemQuantity: number,
   safeAssemblies: Assembly[],
   safeParts: Part[],
 ): ProductNode {
   const productSteps: AssemblyStep[] = product.productionSteps ?? product.assemblySteps ?? []
 
-  const assemblies: AssemblyNode[] = (product.assemblyIds ?? [])
-    .map((id) => safeAssemblies.find((a) => a.id === id))
-    .filter((a): a is Assembly => !!a)
-    .map((asm) => buildAssemblyNode(asm, safeAssemblies, safeParts))
+  const asmEntries =
+    product.productAssemblies && product.productAssemblies.length > 0
+      ? product.productAssemblies
+      : (product.assemblyIds ?? []).map((id) => ({ assemblyId: id, quantity: 1 }))
 
-  const directParts: PartNode[] = (product.partIds ?? [])
-    .map((id) => safeParts.find((p) => p.id === id))
-    .filter((p): p is Part => p !== undefined)
-    .map((part): PartNode => ({
-      id: part.id,
-      name: part.name,
-      requiresLaserCutting: part.requiresLaserCutting,
-      steps: part.productionSteps ?? [],
-    }))
+  const assemblies: AssemblyNode[] = asmEntries
+    .map((entry): AssemblyNode | null => {
+      const asm = safeAssemblies.find((a) => a.id === entry.assemblyId)
+      if (!asm) return null
+      return buildAssemblyNode(asm, (entry.quantity ?? 1) * itemQuantity, safeAssemblies, safeParts)
+    })
+    .filter((a): a is AssemblyNode => a !== null)
+
+  const partEntries =
+    product.productParts && product.productParts.length > 0
+      ? product.productParts
+      : (product.partIds ?? []).map((id) => ({ partId: id, quantity: 1 }))
+
+  const directParts: PartNode[] = partEntries
+    .map((entry): PartNode | null => {
+      const part = safeParts.find((p) => p.id === entry.partId)
+      if (!part) return null
+      return {
+        id: part.id,
+        name: part.name,
+        quantity: (entry.quantity ?? 1) * itemQuantity,
+        requiresLaserCutting: part.requiresLaserCutting,
+        steps: part.productionSteps ?? [],
+      }
+    })
+    .filter((p): p is PartNode => p !== null)
 
   return {
     productId: product.id,
     productName: product.name,
     productCode: product.code,
+    quantity: itemQuantity,
     productSteps,
     assemblies,
     directParts,
@@ -226,6 +256,7 @@ function AssemblyBlock({
         <Boxes className="h-3 w-3 text-muted-foreground" />
         <span className="text-xs font-semibold">{asmNode.name}</span>
         <span className="text-xs font-mono text-muted-foreground">{asmNode.code}</span>
+        <Badge variant="secondary" className="text-xs">× {asmNode.quantity}</Badge>
         {depth > 0 && <Badge variant="outline" className="text-xs ml-auto">Sub-ansamblu</Badge>}
       </div>
       <div className="px-3">
@@ -246,6 +277,7 @@ function AssemblyBlock({
             <div className="flex items-center gap-2 px-2 py-1 bg-muted/20 rounded-t border-b">
               <Wrench className="h-3 w-3 text-muted-foreground" />
               <span className="text-xs font-medium">{pNode.name}</span>
+              <Badge variant="secondary" className="text-xs">× {pNode.quantity}</Badge>
               {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
             </div>
             <div className="px-2 py-1">
@@ -286,6 +318,7 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
         <Package className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-bold">{node.productName}</span>
         <span className="text-xs font-mono text-muted-foreground">{node.productCode}</span>
+        <Badge variant="secondary" className="text-xs">× {node.quantity}</Badge>
         <Badge variant="secondary" className="text-xs ml-auto">{countNodeSteps(node)} pași</Badge>
       </div>
 
@@ -321,6 +354,7 @@ function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNo
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-t-md border-b">
               <Wrench className="h-3 w-3 text-muted-foreground" />
               <span className="text-xs font-semibold">{pNode.name}</span>
+              <Badge variant="secondary" className="text-xs">× {pNode.quantity}</Badge>
               <Badge variant="outline" className="text-xs">Piesă directă</Badge>
               {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
             </div>
@@ -468,9 +502,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   // Build hierarchical production steps for all products in this project
   const productNodes: ProductNode[] = project.items
-    .map((item) => products?.find((p) => p.id === item.productId))
-    .filter((p): p is Product => !!p)
-    .map((product) => buildProductHierarchy(product, assemblies ?? [], parts ?? []))
+    .map((item): ProductNode | null => {
+      const product = products?.find((p) => p.id === item.productId)
+      if (!product) return null
+      return buildProductHierarchy(product, item.quantity, assemblies ?? [], parts ?? [])
+    })
+    .filter((n): n is ProductNode => n !== null)
 
   const totalStepCount = productNodes.reduce((s, n) => s + countNodeSteps(n), 0)
   const completedStepCount = stepsCompleted.size

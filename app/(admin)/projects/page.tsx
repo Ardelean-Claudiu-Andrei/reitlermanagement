@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
-import type { ProjectStatus, ProjectItem } from "@/lib/types"
+import type { ProjectStatus, ProjectItem, Assembly, Part } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -36,6 +36,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
@@ -43,17 +44,17 @@ import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, AlertCircle, User, ChevronsUpDown, Check, ChevronLeft, ChevronRight, X, Package, Boxes, Wrench, Trash2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
 import { getCurrentUser } from "@/lib/api"
-import { canViewPrices } from "@/lib/permissions"
+import { canViewPrices, canEditProject } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 
 export default function ProjectsPage() {
   const router = useRouter()
-  const { projects, companies, quotes, products, inventory, addProject } = useAppData()
+  const { projects, companies, quotes, products, assemblies, parts, inventory, addProject, deleteProject, reloadProjects } = useAppData()
   const { t } = useLocale()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -61,11 +62,28 @@ export default function ProjectsPage() {
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
   const [showPrices, setShowPrices] = useState(true)
+  const [canEdit, setCanEdit] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     const user = getCurrentUser()
-    setShowPrices(canViewPrices((user?.role ?? "employee") as AppRole))
+    const role = (user?.role ?? "employee") as AppRole
+    setShowPrices(canViewPrices(role))
+    setCanEdit(canEditProject(role))
   }, [])
+
+  // Auto-refresh: on mount, on window focus, and every 60 s
+  useEffect(() => {
+    reloadProjects()
+    const onFocus = () => reloadProjects()
+    window.addEventListener("focus", onFocus)
+    const interval = setInterval(() => reloadProjects(), 60_000)
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      clearInterval(interval)
+    }
+  }, [reloadProjects])
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -73,7 +91,14 @@ export default function ProjectsPage() {
   const [isPersonal, setIsPersonal] = useState(false)
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("")
   const [selectedQuoteId, setSelectedQuoteId] = useState<string>("")
-  const [selectedProducts, setSelectedProducts] = useState<{ productId: string; fromInventory: boolean; quantity: number }[]>([])
+  type WizardItem =
+    | { type: "product";  productId: string;  quantity: number; fromInventory: boolean }
+    | { type: "assembly"; assemblyId: string; quantity: number }
+    | { type: "part";     partId: string;     quantity: number }
+
+  const [selectedItems, setSelectedItems] = useState<WizardItem[]>([])
+  const [entityTab, setEntityTab] = useState<"product" | "assembly" | "part">("product")
+  const [entitySearch, setEntitySearch] = useState("")
   const [projectName, setProjectName] = useState("")
   const [projectStartDate, setProjectStartDate] = useState(new Date().toISOString().split("T")[0])
   const [projectDeadline, setProjectDeadline] = useState("")
@@ -84,20 +109,24 @@ export default function ProjectsPage() {
   const safeCompanies = companies ?? []
   const safeQuotes = quotes ?? []
   const safeProducts = products ?? []
+  const safeAssemblies = assemblies ?? []
+  const safeParts = parts ?? []
   const safeInventory = inventory ?? []
 
-  // Filter projects
-  const filtered = safeProjects.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.code.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter
-    const matchesType =
-      projectTypeFilter === "all" ||
-      (projectTypeFilter === "personal" && p.companyId === null) ||
-      (projectTypeFilter === "company" && p.companyId !== null)
-    return matchesSearch && matchesStatus && matchesType
-  })
+  // Filter projects — newest first
+  const filtered = safeProjects
+    .filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.code.toLowerCase().includes(search.toLowerCase())
+      const matchesStatus = statusFilter === "all" || p.status === statusFilter
+      const matchesType =
+        projectTypeFilter === "all" ||
+        (projectTypeFilter === "personal" && p.companyId === null) ||
+        (projectTypeFilter === "company" && p.companyId !== null)
+      return matchesSearch && matchesStatus && matchesType
+    })
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(currentPage, totalPages)
@@ -151,31 +180,93 @@ export default function ProjectsPage() {
     return inv?.quantity || 0
   }
 
-  // Handle product selection toggle
-  const toggleProduct = (productId: string) => {
-    setSelectedProducts((prev) => {
-      const exists = prev.find((p) => p.productId === productId)
-      if (exists) {
-        return prev.filter((p) => p.productId !== productId)
+  // ── Entity item helpers ────────────────────────────────────────────────────
+
+  const isItemSelected = (type: "product" | "assembly" | "part", id: string) =>
+    selectedItems.some((it) =>
+      it.type === type &&
+      (type === "product" ? (it as { type: "product"; productId: string }).productId === id :
+       type === "assembly" ? (it as { type: "assembly"; assemblyId: string }).assemblyId === id :
+       (it as { type: "part"; partId: string }).partId === id)
+    )
+
+  const toggleItem = (type: "product" | "assembly" | "part", id: string) => {
+    setSelectedItems((prev) => {
+      const already = isItemSelected(type, id)
+      if (already) {
+        return prev.filter((it) => !(
+          it.type === type &&
+          (type === "product" ? (it as { type: "product"; productId: string }).productId === id :
+           type === "assembly" ? (it as { type: "assembly"; assemblyId: string }).assemblyId === id :
+           (it as { type: "part"; partId: string }).partId === id)
+        ))
       }
-      return [...prev, { productId, fromInventory: false, quantity: 1 }]
+      if (type === "product")  return [...prev, { type: "product",  productId: id,  quantity: 1, fromInventory: false }]
+      if (type === "assembly") return [...prev, { type: "assembly", assemblyId: id, quantity: 1 }]
+      return [...prev, { type: "part", partId: id, quantity: 1 }]
     })
   }
 
-  // Update product settings
-  const updateProductSelection = (productId: string, field: "fromInventory" | "quantity", value: boolean | number) => {
-    setSelectedProducts((prev) =>
-      prev.map((p) => (p.productId === productId ? { ...p, [field]: value } : p))
+  const updateItemQty = (type: "product" | "assembly" | "part", id: string, quantity: number) => {
+    setSelectedItems((prev) =>
+      prev.map((it) => {
+        if (it.type !== type) return it
+        if (type === "product" && (it as { type: "product"; productId: string }).productId === id) return { ...it, quantity }
+        if (type === "assembly" && (it as { type: "assembly"; assemblyId: string }).assemblyId === id) return { ...it, quantity }
+        if (type === "part" && (it as { type: "part"; partId: string }).partId === id) return { ...it, quantity }
+        return it
+      })
     )
   }
 
-  // Reset wizard
+  const updateItemFromInventory = (productId: string, fromInventory: boolean) => {
+    setSelectedItems((prev) =>
+      prev.map((it) =>
+        it.type === "product" && (it as { type: "product"; productId: string }).productId === productId
+          ? { ...it, fromInventory }
+          : it
+      )
+    )
+  }
+
+  const removeItem = (type: "product" | "assembly" | "part", id: string) => toggleItem(type, id)
+
+  const getItemQty = (type: "product" | "assembly" | "part", id: string): number => {
+    const found = selectedItems.find((it) =>
+      it.type === type &&
+      (type === "product" ? (it as { type: "product"; productId: string }).productId === id :
+       type === "assembly" ? (it as { type: "assembly"; assemblyId: string }).assemblyId === id :
+       (it as { type: "part"; partId: string }).partId === id)
+    )
+    return found?.quantity ?? 1
+  }
+
+  // ── Delete handler ─────────────────────────────────────────────────────────
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return
+    try {
+      await deleteProject(projectToDelete.id)
+      await reloadProjects()
+      toast.success(`Proiectul „${projectToDelete.name}" a fost șters`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Eroare la ștergere")
+    } finally {
+      setProjectToDelete(null)
+      setDeleteDialogOpen(false)
+    }
+  }
+
+  // ── Wizard helpers ─────────────────────────────────────────────────────────
+
   const resetWizard = () => {
     setWizardStep(1)
     setIsPersonal(false)
     setSelectedCompanyId("")
     setSelectedQuoteId("")
-    setSelectedProducts([])
+    setSelectedItems([])
+    setEntityTab("product")
+    setEntitySearch("")
     setProjectName("")
     setProjectStartDate(new Date().toISOString().split("T")[0])
     setProjectDeadline("")
@@ -183,13 +274,13 @@ export default function ProjectsPage() {
     setQuoteComboOpen(false)
   }
 
-  // Advance wizard step, pre-filling products from quote on step 2→3
   const handleNextStep = () => {
     if (wizardStep === 2) {
       const quote = safeQuotes.find((q) => q.id === selectedQuoteId)
       if (quote && selectedQuoteId !== "none" && quote.items?.length > 0) {
-        setSelectedProducts(
+        setSelectedItems(
           quote.items.map((item) => ({
+            type: "product" as const,
             productId: item.productId,
             fromInventory: false,
             quantity: item.quantity || 1,
@@ -200,69 +291,64 @@ export default function ProjectsPage() {
     setWizardStep((s) => s + 1)
   }
 
-  
-  // Create project
   const handleCreateProject = async () => {
-  try {
-    const selectedQuote = safeQuotes.find((q) => q.id === selectedQuoteId)
-    const today = new Date().toISOString().split("T")[0]
+    try {
+      const selectedQuote = safeQuotes.find((q) => q.id === selectedQuoteId)
+      const today = new Date().toISOString().split("T")[0]
 
-    const projectItems: ProjectItem[] = selectedProducts.map((sp) => {
-      const product = safeProducts.find((p) => p.id === sp.productId)
-      const quoteItem = selectedQuote?.items?.find((item) => item.productId === sp.productId)
-      return {
-        productId: sp.productId,
-        quantity: sp.quantity,
-        unitPrice: quoteItem?.unitPrice ?? product?.basePrice ?? 0,
-        notes: quoteItem?.notes ?? "",
-        fromInventory: sp.fromInventory,
+      const projectItems = selectedItems.map((si) => {
+        if (si.type === "assembly") {
+          return { type: "assembly", assemblyId: si.assemblyId, quantity: si.quantity, unitPrice: 0, notes: "", fromInventory: false }
+        }
+        if (si.type === "part") {
+          return { type: "part", partId: si.partId, quantity: si.quantity, unitPrice: 0, notes: "", fromInventory: false }
+        }
+        const product = safeProducts.find((p) => p.id === si.productId)
+        const quoteItem = selectedQuote?.items?.find((item) => item.productId === si.productId)
+        return {
+          type: "product",
+          productId: si.productId,
+          quantity: si.quantity,
+          unitPrice: quoteItem?.unitPrice ?? product?.basePrice ?? 0,
+          notes: quoteItem?.notes ?? "",
+          fromInventory: si.fromInventory,
+        }
+      })
+
+      const projectPayload = {
+        code: `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
+        name: projectName || (selectedQuote?.name ? `Project: ${selectedQuote.name}` : `Project ${safeProjects.length + 1}`),
+        companyId: isPersonal ? null : selectedCompanyId || null,
+        quoteId: selectedQuoteId && selectedQuoteId !== "none" ? selectedQuoteId : null,
+        status: "draft" as const,
+        startDate: projectStartDate || today,
+        deadline: projectDeadline || today,
+        finishDate: null,
+        warrantyExpiration: null,
+        installationCost: (selectedQuoteId && selectedQuoteId !== "none") ? (selectedQuote?.installation || 0) : 0,
+        items: projectItems as ProjectItem[],
+        checklist: [],
+        issues: [],
+        stepsCompleted: [],
+        stepsTotal: 0,
+        activity: [{ id: `a${Date.now()}`, action: "Project created", user: "Admin", timestamp: new Date().toISOString() }],
       }
-    })
 
-    const projectPayload = {
-      code: `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
-      name: projectName || (selectedQuote?.name ? `Project: ${selectedQuote.name}` : `Project ${safeProjects.length + 1}`),
-      companyId: isPersonal ? null : selectedCompanyId || null,
-      quoteId: selectedQuoteId && selectedQuoteId !== "none" ? selectedQuoteId : null,
-      status: "draft" as const,
-      startDate: projectStartDate || today,
-      deadline: projectDeadline || today,
-      finishDate: null,
-      warrantyExpiration: null,
-      installationCost: (selectedQuoteId && selectedQuoteId !== "none") ? (selectedQuote?.installation || 0) : 0,
-      items: projectItems,
-      checklist: [],
-      issues: [],
-      stepsCompleted: [],
-      stepsTotal: 0,
-      activity: [
-        {
-          id: `a${Date.now()}`,
-          action: "Project created",
-          user: "Admin",
-          timestamp: new Date().toISOString(),
-        },
-      ],
+      const createdProject = await addProject(projectPayload)
+      toast.success(t("common.savedSuccessfully"))
+      setWizardOpen(false)
+      resetWizard()
+      router.push(`/projects/${createdProject.id}`)
+    } catch (error) {
+      console.error(error)
+      toast.error("Project could not be created")
     }
-
-    const createdProject = await addProject(projectPayload)
-
-    toast.success(t("common.savedSuccessfully"))
-    setWizardOpen(false)
-    resetWizard()
-
-    router.push(`/projects/${createdProject.id}`)
-  } catch (error) {
-    console.error(error)
-    toast.error("Project could not be created")
   }
-}
 
-  // Check if can proceed to next step
   const canProceed = () => {
     if (wizardStep === 1) return isPersonal || selectedCompanyId !== ""
-    if (wizardStep === 2) return true // Quote is optional
-    if (wizardStep === 3) return selectedProducts.length > 0
+    if (wizardStep === 2) return true
+    if (wizardStep === 3) return selectedItems.length > 0
     if (wizardStep === 4) return projectName.trim() !== "" && projectDeadline !== ""
     return false
   }
@@ -397,6 +483,21 @@ export default function ProjectsPage() {
                                 {t("common.viewDetails")}
                               </Link>
                             </DropdownMenuItem>
+                            {canEdit && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => {
+                                    setProjectToDelete({ id: project.id, name: project.name })
+                                    setDeleteDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Șterge proiect
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -591,78 +692,198 @@ export default function ProjectsPage() {
             </div>
           )}
 
-          {/* Step 3: Select Products */}
+          {/* Step 3: Select Products / Assemblies / Parts */}
           {wizardStep === 3 && (() => {
             const selectedQuote = selectedQuoteId && selectedQuoteId !== "none"
               ? safeQuotes.find((q) => q.id === selectedQuoteId)
               : null
-            // If quote selected, show only quote products; otherwise all products
-            const productsToShow = selectedQuote
+
+            const q = entitySearch.toLowerCase()
+            const productsToShow = (selectedQuote
               ? safeProducts.filter((p) => selectedQuote.items.some((item) => item.productId === p.id))
               : safeProducts
+            ).filter((p) => !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q))
+            const assembliesToShow = safeAssemblies.filter((a) => !q || a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q))
+            const partsToShow = safeParts.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.code ?? "").toLowerCase().includes(q))
+
+            const TAB_CFG = [
+              { key: "product"  as const, label: "Produse",    Icon: Package, count: selectedItems.filter((i) => i.type === "product").length },
+              { key: "assembly" as const, label: "Ansambluri", Icon: Boxes,   count: selectedItems.filter((i) => i.type === "assembly").length },
+              { key: "part"     as const, label: "Piese",      Icon: Wrench,  count: selectedItems.filter((i) => i.type === "part").length },
+            ]
+
             return (
-              <div className="space-y-4 py-4 max-h-[400px] overflow-y-auto">
-                <div className="flex items-center justify-between">
-                  <Label>{t("projects.selectProducts")}</Label>
-                  {selectedQuote && (
-                    <Badge variant="outline" className="text-xs">
-                      Din oferta: {selectedQuote.name}
-                    </Badge>
+              <div className="flex flex-col gap-0 py-2" style={{ maxHeight: 480 }}>
+
+                {/* ── Sticky segmented control ── */}
+                <div className="sticky top-0 z-10 bg-background pb-2 border-b">
+                  <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                    {TAB_CFG.map(({ key, label, Icon, count }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { setEntityTab(key); setEntitySearch("") }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors
+                          ${entityTab === key
+                            ? "bg-background shadow-sm text-foreground"
+                            : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                        {count > 0 && (
+                          <span className="ml-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 leading-none">
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <Input
+                      placeholder="Caută..."
+                      value={entitySearch}
+                      onChange={(e) => setEntitySearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* ── Entity list ── */}
+                <div className="overflow-y-auto flex-1 space-y-1.5 pt-2 pr-1" style={{ minHeight: 0 }}>
+                  {entityTab === "product" && (
+                    productsToShow.length === 0
+                      ? <p className="text-sm text-muted-foreground py-4 text-center">Niciun produs găsit.</p>
+                      : productsToShow.map((product) => {
+                          const sel = isItemSelected("product", product.id)
+                          const invQty = getInventoryQty(product.id)
+                          const quoteItem = selectedQuote?.items.find((i) => i.productId === product.id)
+                          return (
+                            <div key={product.id} className="border rounded-lg p-3 space-y-2">
+                              <div className="flex items-center gap-3">
+                                <Checkbox checked={sel} onCheckedChange={() => toggleItem("product", product.id)} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{product.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {product.code}{showPrices && ` — ${(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR`}
+                                  </p>
+                                </div>
+                                {invQty > 0 && <Badge variant="outline" className="text-xs shrink-0">{t("projects.inStock")}: {invQty}</Badge>}
+                              </div>
+                              {sel && (
+                                <div className="flex items-center gap-4 pl-7">
+                                  <div className="flex items-center gap-2">
+                                    <Label className="text-xs">{t("common.quantity")}:</Label>
+                                    <Input type="number" min={1} value={getItemQty("product", product.id)}
+                                      onChange={(e) => updateItemQty("product", product.id, parseInt(e.target.value) || 1)}
+                                      className="w-20 h-7 text-sm" />
+                                  </div>
+                                  {invQty > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Checkbox id={`inv-${product.id}`}
+                                        checked={(selectedItems.find((it) => it.type === "product" && (it as { type: "product"; productId: string; fromInventory: boolean }).productId === product.id) as { type: "product"; productId: string; fromInventory: boolean } | undefined)?.fromInventory ?? false}
+                                        onCheckedChange={(v) => updateItemFromInventory(product.id, !!v)} />
+                                      <Label htmlFor={`inv-${product.id}`} className="text-xs">{t("projects.fromInventory")}</Label>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })
+                  )}
+
+                  {entityTab === "assembly" && (
+                    assembliesToShow.length === 0
+                      ? <p className="text-sm text-muted-foreground py-4 text-center">Niciun ansamblu găsit.</p>
+                      : assembliesToShow.map((asm) => {
+                          const sel = isItemSelected("assembly", asm.id)
+                          return (
+                            <div key={asm.id} className="border rounded-lg p-3 space-y-2">
+                              <div className="flex items-center gap-3">
+                                <Checkbox checked={sel} onCheckedChange={() => toggleItem("assembly", asm.id)} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{asm.name}</p>
+                                  <p className="text-xs text-muted-foreground font-mono">{asm.code}</p>
+                                </div>
+                              </div>
+                              {sel && (
+                                <div className="flex items-center gap-2 pl-7">
+                                  <Label className="text-xs">{t("common.quantity")}:</Label>
+                                  <Input type="number" min={1} value={getItemQty("assembly", asm.id)}
+                                    onChange={(e) => updateItemQty("assembly", asm.id, parseInt(e.target.value) || 1)}
+                                    className="w-20 h-7 text-sm" />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })
+                  )}
+
+                  {entityTab === "part" && (
+                    partsToShow.length === 0
+                      ? <p className="text-sm text-muted-foreground py-4 text-center">Nicio piesă găsită.</p>
+                      : partsToShow.map((part) => {
+                          const sel = isItemSelected("part", part.id)
+                          return (
+                            <div key={part.id} className="border rounded-lg p-3 space-y-2">
+                              <div className="flex items-center gap-3">
+                                <Checkbox checked={sel} onCheckedChange={() => toggleItem("part", part.id)} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{part.name}</p>
+                                  <p className="text-xs text-muted-foreground font-mono">{part.code}</p>
+                                </div>
+                              </div>
+                              {sel && (
+                                <div className="flex items-center gap-2 pl-7">
+                                  <Label className="text-xs">{t("common.quantity")}:</Label>
+                                  <Input type="number" min={1} value={getItemQty("part", part.id)}
+                                    onChange={(e) => updateItemQty("part", part.id, parseInt(e.target.value) || 1)}
+                                    className="w-20 h-7 text-sm" />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })
                   )}
                 </div>
-                <div className="space-y-3">
-                  {productsToShow.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Niciun produs disponibil.</p>
-                  ) : productsToShow.map((product) => {
-                    const isSelected = selectedProducts.some((p) => p.productId === product.id)
-                    const selection = selectedProducts.find((p) => p.productId === product.id)
-                    const invQty = getInventoryQty(product.id)
-                    const quoteItem = selectedQuote?.items.find((item) => item.productId === product.id)
-                    return (
-                      <div key={product.id} className="border rounded-lg p-3 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleProduct(product.id)}
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {product.code}{showPrices && ` — ${(quoteItem?.unitPrice ?? product.basePrice).toLocaleString()} EUR`}
-                            </p>
-                          </div>
-                          {invQty > 0 && (
-                            <Badge variant="outline">{t("projects.inStock")}: {invQty}</Badge>
-                          )}
-                        </div>
-                        {isSelected && (
-                          <div className="flex items-center gap-4 pl-7">
-                            <div className="flex items-center gap-2">
-                              <Label className="text-sm">{t("common.quantity")}:</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={selection?.quantity || 1}
-                                onChange={(e) => updateProductSelection(product.id, "quantity", parseInt(e.target.value) || 1)}
-                                className="w-20 h-8"
-                              />
-                            </div>
-                            {invQty > 0 && (
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  id={`inv-${product.id}`}
-                                  checked={selection?.fromInventory || false}
-                                  onCheckedChange={(checked) => updateProductSelection(product.id, "fromInventory", !!checked)}
-                                />
-                                <Label htmlFor={`inv-${product.id}`} className="text-sm">{t("projects.fromInventory")}</Label>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+
+                {/* ── Selected summary ── */}
+                {selectedItems.length > 0 && (
+                  <div className="border-t pt-2 mt-2">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">
+                      Selectate ({selectedItems.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedItems.map((it, idx) => {
+                        let label = ""
+                        let badgeClass = ""
+                        let type: "product" | "assembly" | "part" = it.type
+                        let id = ""
+                        if (it.type === "product") {
+                          label = safeProducts.find((p) => p.id === it.productId)?.name ?? it.productId
+                          badgeClass = "bg-blue-100 text-blue-800 border-blue-200"
+                          id = it.productId
+                        } else if (it.type === "assembly") {
+                          label = safeAssemblies.find((a) => a.id === it.assemblyId)?.name ?? it.assemblyId
+                          badgeClass = "bg-purple-100 text-purple-800 border-purple-200"
+                          id = it.assemblyId
+                        } else {
+                          label = safeParts.find((p) => p.id === it.partId)?.name ?? it.partId
+                          badgeClass = "bg-orange-100 text-orange-800 border-orange-200"
+                          id = it.partId
+                        }
+                        return (
+                          <span key={idx} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${badgeClass}`}>
+                            {label} ×{it.quantity}
+                            <button type="button" onClick={() => removeItem(type, id)} className="ml-0.5 hover:opacity-70">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })()}
@@ -705,7 +926,7 @@ export default function ProjectsPage() {
                   {t("quotes.title")}: {selectedQuoteId && selectedQuoteId !== "none" ? safeQuotes.find((q) => q.id === selectedQuoteId)?.name : "-"}
                 </p>
                 <p className="text-sm">
-                  {t("products")}: {selectedProducts.length} {t("common.items")}
+                  Iteme: {selectedItems.length} ({selectedItems.filter((i) => i.type === "product").length} produse, {selectedItems.filter((i) => i.type === "assembly").length} ansambluri, {selectedItems.filter((i) => i.type === "part").length} piese)
                 </p>
                 {showPrices && selectedQuoteId && selectedQuoteId !== "none" && (() => {
                   const q = safeQuotes.find((q) => q.id === selectedQuoteId)
@@ -732,6 +953,26 @@ export default function ProjectsPage() {
                 {t("projects.createProject")}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Șterge proiect</DialogTitle>
+            <DialogDescription>
+              Ești sigur că vrei să ștergi proiectul{" "}
+              <strong>„{projectToDelete?.name}"</strong>? Acțiunea este ireversibilă.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Anulează
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteProject}>
+              Șterge
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

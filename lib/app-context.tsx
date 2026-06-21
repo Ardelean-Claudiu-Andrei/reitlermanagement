@@ -43,6 +43,7 @@ interface AppState {
 
   // Reload helpers
   reloadAll: () => Promise<void>
+  reloadProjects: () => Promise<void>
 
   // Company CRUD
   addCompany: (company: Company) => Promise<void>
@@ -106,6 +107,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [usersWithInfo, setUsersWithInfo] = useState<UserWithInfo[]>([])
+
+  const reloadProjects = useCallback(async () => {
+    const data = await projectsApi.list().catch(() => [])
+    setProjects(data)
+  }, [])
 
   const reloadAll = useCallback(async () => {
     setIsLoading(true)
@@ -373,6 +379,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         projects,
         usersWithInfo,
         reloadAll,
+        reloadProjects,
         addCompany,
         updateCompany,
         deleteCompany,

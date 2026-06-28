@@ -20,19 +20,39 @@ export function DxfPreview({ fileUrl }: DxfPreviewProps) {
 
     ;(async () => {
       try {
-        const { DxfViewer } = await import("dxf-viewer")
+        const [{ DxfViewer }, { Color }] = await Promise.all([
+          import("dxf-viewer"),
+          import("three"),
+        ])
 
         if (!mounted || !containerRef.current) return
 
+        // clearColor must be a THREE.Color instance — dxf-viewer calls
+        // .getHex() on it internally.  An opaque light background gives
+        // colorCorrection and blackWhiteInversion a known reference so they
+        // can remap white / near-white entities to dark ink.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         viewer = new (DxfViewer as any)(containerRef.current, {
           autoResize: true,
-          canvasAlpha: true,
-          clearAlpha: 0,
+          canvasAlpha: false,
+          clearColor: new Color(0xfafafa),
+          clearAlpha: 1,
           colorCorrection: true,
           blackWhiteInversion: true,
           antialias: true,
         })
+
+        // Pre-check: dxf-viewer's internal fetcher does not check response.ok,
+        // so a 404 gets parsed as an "Empty file" DXF — completely misleading.
+        // Validate the URL ourselves first so we can surface a real error.
+        const probe = await fetch(fileUrl, { method: "HEAD" })
+        if (!probe.ok) {
+          throw new Error(
+            probe.status === 404
+              ? "Fișierul nu a fost găsit pe server (404). Reîncărcați fișierul."
+              : `Eroare la accesarea fișierului (HTTP ${probe.status}).`
+          )
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (viewer as any).Load({ url: fileUrl, fonts: null })
@@ -60,7 +80,7 @@ export function DxfPreview({ fileUrl }: DxfPreviewProps) {
   }, [fileUrl])
 
   return (
-    <div className="relative w-full rounded border bg-neutral-50" style={{ height: "65vh" }}>
+    <div className="relative w-full rounded border" style={{ height: "65vh", background: "#fafafa" }}>
       {status === "loading" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

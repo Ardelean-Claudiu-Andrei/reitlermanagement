@@ -21,7 +21,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 export function getUploadFileUrl(url?: string | null): string {
   if (!url) return "#"
   if (url.startsWith("http://") || url.startsWith("https://")) return url
-  return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`
+  // Keep as relative path — Next.js rewrites /static/:path* → backend.
+  // This avoids cross-origin fetch issues for dxf-viewer and download links.
+  return url.startsWith("/") ? url : `/${url}`
 }
 
 export async function apiFetch(endpoint: string, options?: RequestInit) {

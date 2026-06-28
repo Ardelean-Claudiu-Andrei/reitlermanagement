@@ -227,7 +227,7 @@ function StepRow({ step, stepKey, index, completed, onToggle }: { step: Assembly
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-sm font-medium ${completed ? "line-through" : ""}`}>{step.name}</span>
-          <Badge variant="secondary" className="text-xs">{step.type}</Badge>
+          {step.type && <Badge variant="secondary" className="text-xs">{step.type}</Badge>}
         </div>
         {step.description && <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>}
       </div>

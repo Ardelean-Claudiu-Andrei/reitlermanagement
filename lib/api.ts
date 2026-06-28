@@ -14,6 +14,7 @@ import type {
   CreateProjectPayload,
   UploadedFile,
   FileCategory,
+  StepDefinition,
 } from "./types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
@@ -416,4 +417,18 @@ export const settingsApi = {
 
   deleteSignature: (): Promise<{ ok: boolean }> =>
     request('/api/settings/branding/signature', { method: 'DELETE' }),
+}
+
+export const stepDefinitionsApi = {
+  list: (): Promise<StepDefinition[]> =>
+    request('/api/step-definitions'),
+
+  create: (name: string): Promise<StepDefinition> =>
+    request('/api/step-definitions', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  update: (id: string, name: string): Promise<StepDefinition> =>
+    request(`/api/step-definitions/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+
+  delete: (id: string): Promise<void> =>
+    request(`/api/step-definitions/${id}`, { method: 'DELETE' }),
 }

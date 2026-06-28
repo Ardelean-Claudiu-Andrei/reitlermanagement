@@ -56,9 +56,18 @@ export interface MultiLangText {
 export interface AssemblyStep {
   id: string
   name: string
-  type: AssemblyStepType
+  type?: AssemblyStepType  // legacy field, no longer required — kept so old steps display correctly
   description: string
   order: number
+  definitionId?: string    // set when a predefined StepDefinition was selected; undefined = custom
+}
+
+export interface StepDefinition {
+  id: string
+  name: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UploadedFile {

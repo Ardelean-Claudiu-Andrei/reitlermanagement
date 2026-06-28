@@ -15,6 +15,7 @@ import {
   Users,
   Puzzle,
   Factory,
+  ListChecks,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -51,6 +52,7 @@ export function Sidebar() {
     pathname.startsWith("/management") ||
     pathname.startsWith("/users") ||
     pathname.startsWith("/projects") ||
+    pathname.startsWith("/production") ||
     pathname.startsWith("/quotes") ||
     pathname.startsWith("/products")
 
@@ -152,7 +154,7 @@ export function Sidebar() {
                 onClick={() => setProductionOpen(!productionOpen)}
                 className={cn(
                   "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  pathname.startsWith("/projects")
+                  pathname.startsWith("/projects") || pathname.startsWith("/production")
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
@@ -166,6 +168,7 @@ export function Sidebar() {
               {productionOpen && (
                 <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
                   {navLink("/projects", <FolderKanban className="h-4 w-4" />, t("nav.projects"))}
+                  {showMaterials && navLink("/production/step-definitions", <ListChecks className="h-4 w-4" />, "Pași producție")}
                 </div>
               )}
             </div>

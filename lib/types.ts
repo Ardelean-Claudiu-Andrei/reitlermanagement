@@ -221,12 +221,17 @@ export interface ChecklistItem {
   doneAt: string | null
 }
 
+export type ProjectItemEntityType = 'product' | 'assembly' | 'part'
+
 export interface ProjectItem {
-  productId: string
+  type?: ProjectItemEntityType   // defaults to 'product' for legacy items
+  productId?: string             // set when type === 'product' (or legacy)
+  assemblyId?: string            // set when type === 'assembly'
+  partId?: string                // set when type === 'part'
   quantity: number
   unitPrice: number
   notes: string
-  fromInventory: boolean // true if from inventory, false if needs production
+  fromInventory: boolean         // true if from inventory, false if needs production
 }
 
 export interface ActivityEntry {

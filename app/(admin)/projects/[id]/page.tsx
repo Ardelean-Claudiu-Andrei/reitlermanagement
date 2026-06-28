@@ -53,159 +53,167 @@ import {
   Wrench,
   Zap,
   FileDown,
+  ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { projectsApi, getCurrentUser } from "@/lib/api"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 
-// ─── Hierarchy types ──────────────────────────────────────────────────────────
+// ─── Production card view model ───────────────────────────────────────────────
 
-type PartNode = {
-  id: string
-  name: string
-  quantity: number
-  requiresLaserCutting: boolean
-  steps: AssemblyStep[]
-}
-
-type AssemblyNode = {
-  id: string
+type DependencyVM = {
+  type: 'assembly' | 'part'
+  entityId: string
   name: string
   code: string
   quantity: number
-  steps: AssemblyStep[]
-  parts: PartNode[]
-  childAssemblies: AssemblyNode[]
+  ownSteps: AssemblyStep[]
 }
 
-type ProductNode = {
-  productId: string
-  productName: string
-  productCode: string
+type ProductionCardVM = {
+  itemType: 'product' | 'assembly' | 'part'
+  entityId: string
+  name: string
+  code: string
   quantity: number
-  productSteps: AssemblyStep[]
-  assemblies: AssemblyNode[]
-  directParts: PartNode[]
+  ownSteps: AssemblyStep[]
+  dependencies: DependencyVM[]
 }
 
-function buildAssemblyNode(
-  asm: Assembly,
-  quantity: number,
+function buildProductionCard(
+  item: import("@/lib/types").ProjectItem,
+  safeProducts: Product[],
   safeAssemblies: Assembly[],
   safeParts: Part[],
-  depth: number = 0,
-  visited: Set<string> = new Set(),
-): AssemblyNode {
-  if (depth > 8 || visited.has(asm.id)) {
-    return { id: asm.id, name: asm.name, code: asm.code, quantity, steps: [], parts: [], childAssemblies: [] }
-  }
-  const nextVisited = new Set(visited)
-  nextVisited.add(asm.id)
+): ProductionCardVM | null {
+  const kind = (item.type ?? 'product') as 'product' | 'assembly' | 'part'
 
-  const parts: PartNode[] = (asm.parts ?? [])
-    .map((ap): PartNode | null => {
-      const part = safeParts.find((p) => p.id === ap.partId)
-      if (!part) return null
-      return {
-        id: part.id,
-        name: part.name,
-        quantity: (ap.quantity ?? 1) * quantity,
-        requiresLaserCutting: part.requiresLaserCutting,
-        steps: part.productionSteps ?? [],
-      }
-    })
-    .filter((p): p is PartNode => p !== null)
+  if (kind === 'product') {
+    const product = safeProducts.find((p) => p.id === item.productId)
+    if (!product) return null
 
-  const childAssemblies: AssemblyNode[] = (asm.childAssemblies ?? [])
-    .map((entry): AssemblyNode | null => {
-      const child = safeAssemblies.find((a) => a.id === entry.assemblyId)
-      if (!child) return null
-      return buildAssemblyNode(child, (entry.quantity ?? 1) * quantity, safeAssemblies, safeParts, depth + 1, nextVisited)
-    })
-    .filter((a): a is AssemblyNode => a !== null)
+    const ownSteps: AssemblyStep[] = product.productionSteps ?? product.assemblySteps ?? []
 
-  return {
-    id: asm.id,
-    name: asm.name,
-    code: asm.code,
-    quantity,
-    steps: asm.productionSteps ?? [],
-    parts,
-    childAssemblies,
-  }
-}
+    const asmEntries =
+      product.productAssemblies && product.productAssemblies.length > 0
+        ? product.productAssemblies
+        : (product.assemblyIds ?? []).map((id) => ({ assemblyId: id, quantity: 1 }))
 
-function buildProductHierarchy(
-  product: Product,
-  itemQuantity: number,
-  safeAssemblies: Assembly[],
-  safeParts: Part[],
-): ProductNode {
-  const productSteps: AssemblyStep[] = product.productionSteps ?? product.assemblySteps ?? []
+    const partEntries =
+      product.productParts && product.productParts.length > 0
+        ? product.productParts
+        : (product.partIds ?? []).map((id) => ({ partId: id, quantity: 1 }))
 
-  const asmEntries =
-    product.productAssemblies && product.productAssemblies.length > 0
-      ? product.productAssemblies
-      : (product.assemblyIds ?? []).map((id) => ({ assemblyId: id, quantity: 1 }))
+    const dependencies: DependencyVM[] = []
 
-  const assemblies: AssemblyNode[] = asmEntries
-    .map((entry): AssemblyNode | null => {
+    for (const entry of asmEntries) {
       const asm = safeAssemblies.find((a) => a.id === entry.assemblyId)
-      if (!asm) return null
-      return buildAssemblyNode(asm, (entry.quantity ?? 1) * itemQuantity, safeAssemblies, safeParts)
-    })
-    .filter((a): a is AssemblyNode => a !== null)
+      if (!asm) continue
+      dependencies.push({
+        type: 'assembly',
+        entityId: asm.id,
+        name: asm.name,
+        code: asm.code,
+        quantity: (entry.quantity ?? 1) * item.quantity,
+        ownSteps: asm.productionSteps ?? [],
+      })
+    }
 
-  const partEntries =
-    product.productParts && product.productParts.length > 0
-      ? product.productParts
-      : (product.partIds ?? []).map((id) => ({ partId: id, quantity: 1 }))
-
-  const directParts: PartNode[] = partEntries
-    .map((entry): PartNode | null => {
+    for (const entry of partEntries) {
       const part = safeParts.find((p) => p.id === entry.partId)
-      if (!part) return null
-      return {
-        id: part.id,
+      if (!part) continue
+      dependencies.push({
+        type: 'part',
+        entityId: part.id,
         name: part.name,
-        quantity: (entry.quantity ?? 1) * itemQuantity,
-        requiresLaserCutting: part.requiresLaserCutting,
-        steps: part.productionSteps ?? [],
-      }
-    })
-    .filter((p): p is PartNode => p !== null)
+        code: part.code ?? '',
+        quantity: (entry.quantity ?? 1) * item.quantity,
+        ownSteps: part.productionSteps ?? [],
+      })
+    }
+
+    return { itemType: 'product', entityId: product.id, name: product.name, code: product.code, quantity: item.quantity, ownSteps, dependencies }
+  }
+
+  if (kind === 'assembly') {
+    const asm = safeAssemblies.find((a) => a.id === item.assemblyId)
+    if (!asm) return null
+
+    const ownSteps: AssemblyStep[] = asm.productionSteps ?? []
+    const dependencies: DependencyVM[] = []
+
+    for (const entry of asm.childAssemblies ?? []) {
+      const child = safeAssemblies.find((a) => a.id === entry.assemblyId)
+      if (!child) continue
+      dependencies.push({
+        type: 'assembly',
+        entityId: child.id,
+        name: child.name,
+        code: child.code,
+        quantity: (entry.quantity ?? 1) * item.quantity,
+        ownSteps: child.productionSteps ?? [],
+      })
+    }
+
+    for (const entry of asm.parts ?? []) {
+      const part = safeParts.find((p) => p.id === entry.partId)
+      if (!part) continue
+      dependencies.push({
+        type: 'part',
+        entityId: part.id,
+        name: part.name,
+        code: part.code ?? '',
+        quantity: (entry.quantity ?? 1) * item.quantity,
+        ownSteps: part.productionSteps ?? [],
+      })
+    }
+
+    return { itemType: 'assembly', entityId: asm.id, name: asm.name, code: asm.code, quantity: item.quantity, ownSteps, dependencies }
+  }
+
+  // part
+  const part = safeParts.find((p) => p.id === item.partId)
+  if (!part) return null
 
   return {
-    productId: product.id,
-    productName: product.name,
-    productCode: product.code,
-    quantity: itemQuantity,
-    productSteps,
-    assemblies,
-    directParts,
+    itemType: 'part',
+    entityId: part.id,
+    name: part.name,
+    code: part.code ?? '',
+    quantity: item.quantity,
+    ownSteps: part.productionSteps ?? [],
+    dependencies: [],
   }
 }
 
-function countAssemblySteps(asmNode: AssemblyNode): number {
-  return (
-    asmNode.steps.length +
-    asmNode.parts.reduce((s, p) => s + p.steps.length, 0) +
-    asmNode.childAssemblies.reduce((s, c) => s + countAssemblySteps(c), 0)
-  )
+function ownStepKey(card: ProductionCardVM, step: AssemblyStep): string {
+  if (card.itemType === 'product') return `${card.entityId}:product:${step.id}`
+  if (card.itemType === 'assembly') return `asm:${card.entityId}:step:${step.id}`
+  return `part:${card.entityId}:step:${step.id}`
 }
 
-function countNodeSteps(node: ProductNode): number {
-  return (
-    node.productSteps.length +
-    node.assemblies.reduce((s, a) => s + countAssemblySteps(a), 0) +
-    node.directParts.reduce((s, p) => s + p.steps.length, 0)
-  )
+function depStepKey(dep: DependencyVM, step: AssemblyStep): string {
+  if (dep.type === 'assembly') return `asm:${dep.entityId}:step:${step.id}`
+  return `part:${dep.entityId}:step:${step.id}`
+}
+
+function depCompletedCount(dep: DependencyVM, stepsCompleted: Set<string>): number {
+  return dep.ownSteps.filter((s) => stepsCompleted.has(depStepKey(dep, s))).length
+}
+
+function depStatus(dep: DependencyVM, stepsCompleted: Set<string>): string {
+  const total = dep.ownSteps.length
+  if (total === 0) return 'Fără pași'
+  const done = depCompletedCount(dep, stepsCompleted)
+  if (done === 0) return 'Neînceput'
+  if (done === total) return 'Gata'
+  return `${done}/${total} pași`
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-type StepToggle = (stepId: string) => void
+type StepToggle = (stepKey: string) => void
 
 function StepRow({ step, stepKey, index, completed, onToggle }: { step: AssemblyStep; stepKey: string; index: number; completed: boolean; onToggle: StepToggle }) {
   return (
@@ -227,148 +235,138 @@ function StepRow({ step, stepKey, index, completed, onToggle }: { step: Assembly
   )
 }
 
-function AssemblyBlock({
-  asmNode,
-  productId,
-  pathKey,
+function ProductionCardComponent({
+  card,
   stepsCompleted,
   onToggle,
-  depth,
 }: {
-  asmNode: AssemblyNode
-  productId: string
-  pathKey: string
+  card: ProductionCardVM
   stepsCompleted: Set<string>
   onToggle: StepToggle
-  depth: number
 }) {
-  const hasContent =
-    asmNode.steps.length > 0 ||
-    asmNode.parts.some((p) => p.steps.length > 0) ||
-    asmNode.childAssemblies.some((c) => countAssemblySteps(c) > 0)
-  if (!hasContent) return null
+  const [expanded, setExpanded] = useState(false)
 
-  const indent = depth === 0 ? "ml-2" : "ml-4"
+  const ownDone = card.ownSteps.filter((s) => stepsCompleted.has(ownStepKey(card, s))).length
+  const ownTotal = card.ownSteps.length
 
-  return (
-    <div className={`${indent} rounded-md border my-2`}>
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-t-md border-b">
-        <Boxes className="h-3 w-3 text-muted-foreground" />
-        <span className="text-xs font-semibold">{asmNode.name}</span>
-        <span className="text-xs font-mono text-muted-foreground">{asmNode.code}</span>
-        <Badge variant="secondary" className="text-xs">× {asmNode.quantity}</Badge>
-        {depth > 0 && <Badge variant="outline" className="text-xs ml-auto">Sub-ansamblu</Badge>}
-      </div>
-      <div className="px-3">
-        {/* Assembly steps */}
-        {asmNode.steps.length > 0 && (
-          <div className="py-1">
-            {asmNode.steps.map((step, idx) => {
-              const stepKey = `${productId}:${pathKey}:${step.id}`
-              return (
-                <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
-              )
-            })}
-          </div>
-        )}
-        {/* Parts of this assembly */}
-        {asmNode.parts.filter((p) => p.steps.length > 0).map((pNode) => (
-          <div key={pNode.id} className="ml-2 rounded border my-1">
-            <div className="flex items-center gap-2 px-2 py-1 bg-muted/20 rounded-t border-b">
-              <Wrench className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs font-medium">{pNode.name}</span>
-              <Badge variant="secondary" className="text-xs">× {pNode.quantity}</Badge>
-              {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
-            </div>
-            <div className="px-2 py-1">
-              {pNode.steps.map((step, idx) => {
-                const stepKey = `${productId}:${pathKey}:part:${pNode.id}:${step.id}`
-                return (
-                  <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
-                )
-              })}
-            </div>
-          </div>
-        ))}
-        {/* Child assemblies — rendered recursively */}
-        {asmNode.childAssemblies.map((child) => (
-          <AssemblyBlock
-            key={child.id}
-            asmNode={child}
-            productId={productId}
-            pathKey={`${pathKey}:child:${child.id}`}
-            stepsCompleted={stepsCompleted}
-            onToggle={onToggle}
-            depth={depth + 1}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
+  const TypeIcon = card.itemType === 'product' ? Package : card.itemType === 'assembly' ? Boxes : Wrench
 
-function ProductStepsBlock({ node, stepsCompleted, onToggle }: { node: ProductNode; stepsCompleted: Set<string>; onToggle: StepToggle }) {
-  const hasAnySteps = countNodeSteps(node) > 0
-  if (!hasAnySteps) return null
+  const progressLabel =
+    ownTotal === 0
+      ? null
+      : ownDone === ownTotal
+      ? 'Gata'
+      : `${ownDone}/${ownTotal} pași`
 
   return (
-    <div className="rounded-lg border">
-      {/* Product header */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-t-lg border-b">
-        <Package className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-bold">{node.productName}</span>
-        <span className="text-xs font-mono text-muted-foreground">{node.productCode}</span>
-        <Badge variant="secondary" className="text-xs">× {node.quantity}</Badge>
-        <Badge variant="secondary" className="text-xs ml-auto">{countNodeSteps(node)} pași</Badge>
-      </div>
-
-      <div className="px-4 space-y-1 py-2">
-        {/* Product-level steps */}
-        {node.productSteps.length > 0 && (
-          <div className="py-1">
-            {node.productSteps.map((step, idx) => {
-              const stepKey = `${node.productId}:product:${step.id}`
-              return (
-                <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
-              )
-            })}
-          </div>
+    <div className="rounded-lg border bg-card">
+      <button
+        type="button"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors rounded-lg"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="font-semibold text-sm">{card.name}</span>
+        {card.code && <span className="text-xs font-mono text-muted-foreground">{card.code}</span>}
+        <Badge variant="secondary" className="text-xs">× {card.quantity}</Badge>
+        {progressLabel && (
+          <Badge
+            variant={ownDone === ownTotal && ownTotal > 0 ? 'default' : 'secondary'}
+            className={`text-xs ml-auto mr-2 ${ownDone === ownTotal && ownTotal > 0 ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''}`}
+          >
+            {progressLabel}
+          </Badge>
         )}
+        {!progressLabel && <span className="ml-auto mr-2" />}
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
 
-        {/* Assemblies (recursive) */}
-        {node.assemblies.map((asmNode) => (
-          <AssemblyBlock
-            key={asmNode.id}
-            asmNode={asmNode}
-            productId={node.productId}
-            pathKey={`assembly:${asmNode.id}`}
-            stepsCompleted={stepsCompleted}
-            onToggle={onToggle}
-            depth={0}
-          />
-        ))}
-
-        {/* Direct parts */}
-        {node.directParts.filter((p) => p.steps.length > 0).map((pNode) => (
-          <div key={pNode.id} className="ml-2 rounded-md border my-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded-t-md border-b">
-              <Wrench className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs font-semibold">{pNode.name}</span>
-              <Badge variant="secondary" className="text-xs">× {pNode.quantity}</Badge>
-              <Badge variant="outline" className="text-xs">Piesă directă</Badge>
-              {pNode.requiresLaserCutting && <Zap className="h-3 w-3 text-blue-500" />}
-            </div>
-            <div className="px-3 py-1">
-              {pNode.steps.map((step, idx) => {
-                const stepKey = `${node.productId}:directpart:${pNode.id}:${step.id}`
-                return (
-                  <StepRow key={stepKey} step={step} stepKey={stepKey} index={idx} completed={stepsCompleted.has(stepKey)} onToggle={onToggle} />
-                )
-              })}
-            </div>
+      {expanded && (
+        <div className="border-t px-4 py-4 space-y-5">
+          {/* Section 1: Own production steps */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Pași proprii
+            </p>
+            {ownTotal === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                Nu există pași de producție definiți pentru acest element.
+              </p>
+            ) : (
+              <div>
+                {card.ownSteps.map((step, idx) => {
+                  const key = ownStepKey(card, step)
+                  return (
+                    <StepRow
+                      key={key}
+                      step={step}
+                      stepKey={key}
+                      index={idx}
+                      completed={stepsCompleted.has(key)}
+                      onToggle={onToggle}
+                    />
+                  )
+                })}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+
+          {/* Section 2: Dependencies */}
+          {card.dependencies.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                Dependențe
+              </p>
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/30 border-b">
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Element</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Tip</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">Cant.</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {card.dependencies.map((dep) => {
+                      const status = depStatus(dep, stepsCompleted)
+                      const isReady = status === 'Gata'
+                      const isNoSteps = status === 'Fără pași'
+                      return (
+                        <tr key={dep.entityId} className="border-b last:border-0">
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              {dep.type === 'assembly'
+                                ? <Boxes className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                : <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                              <span className="font-medium">{dep.name}</span>
+                              {dep.code && <span className="font-mono text-xs text-muted-foreground">{dep.code}</span>}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className="text-xs">
+                              {dep.type === 'assembly' ? 'Ansamblu' : 'Piesă'}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-center text-muted-foreground">× {dep.quantity}</td>
+                          <td className="px-3 py-2">
+                            <Badge
+                              variant={isReady ? 'default' : 'secondary'}
+                              className={`text-xs ${isReady ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''} ${isNoSteps ? 'text-muted-foreground' : ''}`}
+                            >
+                              {status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -500,33 +498,30 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
 
-  // Build hierarchical production steps for all products in this project
-  const productNodes: ProductNode[] = project.items
-    .map((item): ProductNode | null => {
-      const product = products?.find((p) => p.id === item.productId)
-      if (!product) return null
-      return buildProductHierarchy(product, item.quantity, assemblies ?? [], parts ?? [])
-    })
-    .filter((n): n is ProductNode => n !== null)
+  // Build card view models for all project items (products, assemblies, parts)
+  const productionCards: ProductionCardVM[] = project.items
+    .map((item) => buildProductionCard(item, products ?? [], assemblies ?? [], parts ?? []))
+    .filter((c): c is ProductionCardVM => c !== null)
 
-  const totalStepCount = productNodes.reduce((s, n) => s + countNodeSteps(n), 0)
-  const completedStepCount = stepsCompleted.size
+  const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
+  const completedStepCount = productionCards.reduce(
+    (s, c) => s + c.ownSteps.filter((step) => stepsCompleted.has(ownStepKey(c, step))).length,
+    0,
+  )
   const progressPct = totalStepCount === 0 ? 0 : Math.round((completedStepCount / totalStepCount) * 100)
 
-  const toggleStep = async (stepId: string) => {
+  const toggleStep = async (stepKey: string) => {
     const next = new Set(stepsCompleted)
-    if (next.has(stepId)) next.delete(stepId)
-    else next.add(stepId)
+    if (next.has(stepKey)) next.delete(stepKey)
+    else next.add(stepKey)
     setStepsCompleted(next)
-    await updateProject({
-      ...project,
-      stepsCompleted: Array.from(next),
-      stepsTotal: totalStepCount,
-    })
+    try {
+      await projectsApi.toggleStep(project.id, stepKey, totalStepCount)
+    } catch {
+      setStepsCompleted(stepsCompleted)
+      toast.error("Eroare la salvarea progresului")
+    }
   }
-
-  const getProductName = (productId: string) =>
-    products.find((p) => p.id === productId)?.name || productId
 
   const getStatusBadge = (status: ProjectStatus) => {
     const config: Record<ProjectStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; className?: string }> = {
@@ -892,10 +887,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </TableHeader>
               <TableBody>
                 {project.items.map((item, idx) => {
-                  const prod = products?.find((p) => p.id === item.productId)
+                  const kind = item.type ?? 'product'
+                  const prod = kind === 'product' ? products?.find((p) => p.id === item.productId) : undefined
+                  const asm = kind === 'assembly' ? assemblies?.find((a) => a.id === item.assemblyId) : undefined
+                  const prt = kind === 'part' ? parts?.find((p) => p.id === item.partId) : undefined
+                  const displayName = prod?.name ?? asm?.name ?? prt?.name ?? item.productId ?? item.assemblyId ?? item.partId ?? '—'
+                  const displayCode = prod?.code ?? asm?.code ?? prt?.code
                   return (
                     <TableRow key={idx}>
-                      <TableCell className="font-medium">{prod?.name || item.productId}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {kind === 'assembly' && <Boxes className="h-3 w-3 text-muted-foreground shrink-0" />}
+                          {kind === 'part' && <Wrench className="h-3 w-3 text-muted-foreground shrink-0" />}
+                          {kind === 'product' && <Package className="h-3 w-3 text-muted-foreground shrink-0" />}
+                          <span>{displayName}</span>
+                          {displayCode && <span className="text-xs font-mono text-muted-foreground">{displayCode}</span>}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       {showPrices && <TableCell className="text-right">{item.unitPrice.toFixed(2)}</TableCell>}
                       {showPrices && <TableCell className="text-right">{(item.quantity * item.unitPrice).toFixed(2)}</TableCell>}
@@ -933,20 +941,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {totalStepCount > 0 && (
             <div className="flex items-center gap-3 pb-2 border-b">
               <Progress value={progressPct} className="flex-1 h-2" />
               <span className="text-sm font-medium shrink-0">{completedStepCount}/{totalStepCount} ({progressPct}%)</span>
             </div>
           )}
-          {totalStepCount === 0 ? (
+          {productionCards.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
-              Nu există pași de producție configurați pentru produsele din acest proiect.
+              Nu există elemente de producție configurate în acest proiect.
             </p>
           ) : (
-            productNodes.map((node) => (
-              <ProductStepsBlock key={node.productId} node={node} stepsCompleted={stepsCompleted} onToggle={toggleStep} />
+            productionCards.map((card) => (
+              <ProductionCardComponent
+                key={`${card.itemType}:${card.entityId}`}
+                card={card}
+                stepsCompleted={stepsCompleted}
+                onToggle={toggleStep}
+              />
             ))
           )}
         </CardContent>

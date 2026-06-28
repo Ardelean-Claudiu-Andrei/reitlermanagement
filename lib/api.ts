@@ -260,6 +260,11 @@ export const projectsApi = {
     request('/api/projects/from-quote', { method: 'POST', body: JSON.stringify({ quoteId, userName }) }),
   delete: (id: string): Promise<void> =>
     request(`/api/projects/${id}`, { method: 'DELETE' }),
+  toggleStep: (projectId: string, stepKey: string, stepsTotal?: number): Promise<{ stepsCompleted: string[]; stepsTotal: number }> =>
+    request(`/api/projects/${projectId}/steps/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ stepKey, stepsTotal }),
+    }),
   exportProductionStepsPdf: async (id: string): Promise<Blob> => {
     const res = await apiFetch(`/api/projects/${id}/export-production-steps`)
     if (!res.ok) {

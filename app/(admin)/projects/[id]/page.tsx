@@ -56,7 +56,7 @@ import {
   ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
-import { projectsApi, getCurrentUser } from "@/lib/api"
+import { projectsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 
@@ -87,7 +87,8 @@ function buildProductionCard(
   safeAssemblies: Assembly[],
   safeParts: Part[],
 ): ProductionCardVM | null {
-  const kind = (item.type ?? 'product') as 'product' | 'assembly' | 'part'
+  // Detect kind from type field; if absent, infer from which ID field is present
+  const kind = (item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')) as 'product' | 'assembly' | 'part'
 
   if (kind === 'product') {
     const product = safeProducts.find((p) => p.id === item.productId)
@@ -405,6 +406,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [exportingProjectLaser, setExportingProjectLaser] = useState(false)
   const [paidAmountInput, setPaidAmountInput] = useState<string>("")
   const [stepsCompleted, setStepsCompleted] = useState<Set<string>>(new Set())
+  // Direct assembly/part items fetched on-demand so production cards don't depend
+  // on the global context being pre-populated when the page first renders.
+  const [directAssemblies, setDirectAssemblies] = useState<Assembly[]>([])
+  const [directParts, setDirectParts] = useState<Part[]>([])
 
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
@@ -428,6 +433,33 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     if (project) {
       setPaidAmountInput(String(project.paidAmount ?? 0))
       setStepsCompleted(new Set(project.stepsCompleted ?? []))
+    }
+  }, [project?.id])
+
+  // Fetch assembly/part data for direct project items so production cards work
+  // even if the global context hasn't loaded yet or is missing these entities.
+  useEffect(() => {
+    if (!project) return
+    const items = project.items ?? []
+
+    const asmIds = [...new Set(
+      items
+        .filter(it => (it.type ?? (it.assemblyId ? 'assembly' : '')) === 'assembly' && it.assemblyId)
+        .map(it => it.assemblyId!)
+    )]
+    const partIds = [...new Set(
+      items
+        .filter(it => (it.type ?? (it.partId ? 'part' : '')) === 'part' && it.partId)
+        .map(it => it.partId!)
+    )]
+
+    if (asmIds.length > 0) {
+      Promise.all(asmIds.map(aid => assembliesApi.get(aid).catch(() => null)))
+        .then(results => setDirectAssemblies(results.filter(Boolean) as Assembly[]))
+    }
+    if (partIds.length > 0) {
+      Promise.all(partIds.map(pid => partsApi.get(pid).catch(() => null)))
+        .then(results => setDirectParts(results.filter(Boolean) as Part[]))
     }
   }, [project?.id])
 
@@ -498,9 +530,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
 
+  // Merge global context with directly-fetched entities so cards resolve even when
+  // context hasn't loaded yet. Directly-fetched data takes precedence on collision.
+  const mergedAssemblies: Assembly[] = [...(assemblies ?? []), ...directAssemblies.filter(a => !(assemblies ?? []).some(ca => ca.id === a.id))]
+  const mergedParts: Part[] = [...(parts ?? []), ...directParts.filter(p => !(parts ?? []).some(cp => cp.id === p.id))]
+
   // Build card view models for all project items (products, assemblies, parts)
   const productionCards: ProductionCardVM[] = project.items
-    .map((item) => buildProductionCard(item, products ?? [], assemblies ?? [], parts ?? []))
+    .map((item) => buildProductionCard(item, products ?? [], mergedAssemblies, mergedParts))
     .filter((c): c is ProductionCardVM => c !== null)
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
@@ -887,10 +924,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </TableHeader>
               <TableBody>
                 {project.items.map((item, idx) => {
-                  const kind = item.type ?? 'product'
+                  const kind = item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')
                   const prod = kind === 'product' ? products?.find((p) => p.id === item.productId) : undefined
-                  const asm = kind === 'assembly' ? assemblies?.find((a) => a.id === item.assemblyId) : undefined
-                  const prt = kind === 'part' ? parts?.find((p) => p.id === item.partId) : undefined
+                  const asm = kind === 'assembly' ? mergedAssemblies.find((a) => a.id === item.assemblyId) : undefined
+                  const prt = kind === 'part' ? mergedParts.find((p) => p.id === item.partId) : undefined
                   const displayName = prod?.name ?? asm?.name ?? prt?.name ?? item.productId ?? item.assemblyId ?? item.partId ?? '—'
                   const displayCode = prod?.code ?? asm?.code ?? prt?.code
                   return (

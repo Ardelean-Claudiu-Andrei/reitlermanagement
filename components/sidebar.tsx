@@ -77,11 +77,18 @@ export function Sidebar() {
     <aside className="flex h-full w-[220px] flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
         <Image
+          src="/branding/sms-reitler-white.png"
+          alt="SMS Reitler logo"
+          width={32}
+          height={32}
+          className="h-8 w-auto object-contain dark:hidden"
+        />
+        <Image
           src="/branding/sms-reitler.png"
           alt="SMS Reitler logo"
           width={32}
           height={32}
-          className="h-8 w-auto object-contain"
+          className="h-8 w-auto object-contain hidden dark:block"
         />
         <div>
           <p className="text-sm font-bold text-foreground leading-tight">SMS REITLER</p>

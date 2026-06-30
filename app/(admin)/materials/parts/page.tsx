@@ -529,14 +529,10 @@ export default function PartsPage() {
                   <Input value={form.unit} onChange={(e) => setField("unit", e.target.value)} placeholder="buc" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t("common.quantity")}</Label>
                   <Input type="number" min="0" value={form.quantity} onChange={(e) => setField("quantity", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cantitate necesară</Label>
-                  <Input type="number" min="1" value={form.requiredQuantity} onChange={(e) => setField("requiredQuantity", parseInt(e.target.value) || 1)} />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("parts.minimumStock")}</Label>
@@ -684,10 +680,6 @@ export default function PartsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Stoc minim</p>
                     <p className="font-mono">{viewPart.minimumStock ?? 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Cantitate necesară</p>
-                    <p className="font-mono">{viewPart.requiredQuantity ?? 1}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>

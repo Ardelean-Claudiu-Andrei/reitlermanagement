@@ -313,11 +313,16 @@ function ProductionCardComponent({
           </div>
 
           {/* Section 2: Dependencies */}
-          {card.dependencies.length > 0 && (
+          {(card.dependencies.length > 0 || card.itemType !== 'product') && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
                 Dependențe
               </p>
+              {card.dependencies.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  Nicio dependență definită pentru acest element.
+                </p>
+              ) : (
               <div className="rounded-md border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -364,6 +369,7 @@ function ProductionCardComponent({
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           )}
         </div>
@@ -455,11 +461,37 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     if (asmIds.length > 0) {
       Promise.all(asmIds.map(aid => assembliesApi.get(aid).catch(() => null)))
-        .then(results => setDirectAssemblies(results.filter(Boolean) as Assembly[]))
+        .then(async (results) => {
+          const topLevel = results.filter(Boolean) as Assembly[]
+
+          // Also fetch the child assemblies referenced by these direct items so
+          // assembly cards can show their dependencies before the global context loads.
+          const childAsmIds = [...new Set(
+            topLevel.flatMap(a => (a.childAssemblies ?? []).map(c => c.assemblyId))
+          )].filter(cid => cid && !asmIds.includes(cid))
+
+          const children = childAsmIds.length > 0
+            ? (await Promise.all(childAsmIds.map(cid => assembliesApi.get(cid).catch(() => null)))).filter(Boolean) as Assembly[]
+            : []
+
+          const allAsms = [...topLevel, ...children]
+          setDirectAssemblies(allAsms)
+
+          // Fetch the parts referenced by these assemblies for the same reason.
+          const refPartIds = [...new Set(allAsms.flatMap(a => (a.parts ?? []).map(p => p.partId)))]
+            .filter(pid => pid && !partIds.includes(pid))
+          if (refPartIds.length > 0) {
+            const refParts = (await Promise.all(refPartIds.map(pid => partsApi.get(pid).catch(() => null)))).filter(Boolean) as Part[]
+            setDirectParts(prev => [...prev, ...refParts.filter(p => !prev.some(ep => ep.id === p.id))])
+          }
+        })
     }
     if (partIds.length > 0) {
       Promise.all(partIds.map(pid => partsApi.get(pid).catch(() => null)))
-        .then(results => setDirectParts(results.filter(Boolean) as Part[]))
+        .then(results => setDirectParts(prev => {
+          const fetched = results.filter(Boolean) as Part[]
+          return [...prev.filter(p => !fetched.some(fp => fp.id === p.id)), ...fetched]
+        }))
     }
   }, [project?.id])
 

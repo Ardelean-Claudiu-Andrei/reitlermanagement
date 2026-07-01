@@ -14,6 +14,7 @@ import type {
   CreateProjectPayload,
   UploadedFile,
   FileCategory,
+  StepDefinition,
 } from "./types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
@@ -21,7 +22,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 export function getUploadFileUrl(url?: string | null): string {
   if (!url) return "#"
   if (url.startsWith("http://") || url.startsWith("https://")) return url
-  return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`
+  // Keep as relative path — Next.js rewrites /static/:path* → backend.
+  // This avoids cross-origin fetch issues for dxf-viewer and download links.
+  return url.startsWith("/") ? url : `/${url}`
 }
 
 export async function apiFetch(endpoint: string, options?: RequestInit) {
@@ -260,6 +263,11 @@ export const projectsApi = {
     request('/api/projects/from-quote', { method: 'POST', body: JSON.stringify({ quoteId, userName }) }),
   delete: (id: string): Promise<void> =>
     request(`/api/projects/${id}`, { method: 'DELETE' }),
+  toggleStep: (projectId: string, stepKey: string, stepsTotal?: number): Promise<{ stepsCompleted: string[]; stepsTotal: number }> =>
+    request(`/api/projects/${projectId}/steps/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ stepKey, stepsTotal }),
+    }),
   exportProductionStepsPdf: async (id: string): Promise<Blob> => {
     const res = await apiFetch(`/api/projects/${id}/export-production-steps`)
     if (!res.ok) {
@@ -409,4 +417,18 @@ export const settingsApi = {
 
   deleteSignature: (): Promise<{ ok: boolean }> =>
     request('/api/settings/branding/signature', { method: 'DELETE' }),
+}
+
+export const stepDefinitionsApi = {
+  list: (): Promise<StepDefinition[]> =>
+    request('/api/step-definitions'),
+
+  create: (name: string): Promise<StepDefinition> =>
+    request('/api/step-definitions', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  update: (id: string, name: string): Promise<StepDefinition> =>
+    request(`/api/step-definitions/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+
+  delete: (id: string): Promise<void> =>
+    request(`/api/step-definitions/${id}`, { method: 'DELETE' }),
 }

@@ -49,16 +49,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, X, GripVertical, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
 import type { Assembly, AssemblyPart, AssemblyChildEntry, AssemblyStep, AssemblyCompositionType } from "@/lib/types"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
-
-const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
-
-function newStepId() { return `step-${Date.now()}-${Math.random().toString(36).slice(2)}` }
+import { StepEditor } from "@/components/step-editor"
 
 export default function AssembliesPage() {
   const { assemblies, parts, addAssembly, updateAssembly, deleteAssembly } = useAppData()
@@ -231,29 +228,6 @@ export default function AssembliesPage() {
 
   function getAssemblyName(assemblyId: string) {
     return safeAssemblies.find((a) => a.id === assemblyId)?.name ?? t("common.unknown")
-  }
-
-  // ─── Production steps ─────────────────────────────────────────────────────
-
-  function addStep() {
-    const newStep: AssemblyStep = {
-      id: newStepId(),
-      name: "",
-      type: "assembly",
-      description: "",
-      order: formSteps.length + 1,
-    }
-    setFormSteps([...formSteps, newStep])
-  }
-
-  function updateStep(index: number, field: keyof AssemblyStep, value: string | number) {
-    const updated = [...formSteps]
-    updated[index] = { ...updated[index], [field]: value }
-    setFormSteps(updated)
-  }
-
-  function removeStep(index: number) {
-    setFormSteps(formSteps.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i + 1 })))
   }
 
   function getPartName(partId: string) {
@@ -694,53 +668,7 @@ export default function AssembliesPage() {
 
             {/* Production steps tab */}
             <TabsContent value="steps" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Pași de producție</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addStep}>
-                  <Plus className="mr-1 h-3 w-3" />
-                  Adaugă pas
-                </Button>
-              </div>
-              {formSteps.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Niciun pas adăugat.</p>
-              ) : (
-                <div className="space-y-3">
-                  {formSteps.map((step, idx) => (
-                    <div key={step.id} className="rounded-md border p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
-                        <div className="flex-1 space-y-1.5">
-                          <Input
-                            value={step.name}
-                            onChange={(e) => updateStep(idx, "name", e.target.value)}
-                            placeholder="Denumire pas"
-                          />
-                          <Input
-                            value={step.description}
-                            onChange={(e) => updateStep(idx, "description", e.target.value)}
-                            placeholder="Descriere (opțional)"
-                            className="text-sm"
-                          />
-                        </div>
-                        <Select value={step.type} onValueChange={(v) => updateStep(idx, "type", v)}>
-                          <SelectTrigger className="w-40 shrink-0">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STEP_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => removeStep(idx)}>
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <StepEditor steps={formSteps} onChange={setFormSteps} />
             </TabsContent>
 
             {/* Files tab */}
@@ -915,7 +843,7 @@ export default function AssembliesPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                           <span className="font-medium flex-1">{step.name}</span>
-                          <Badge variant="outline" className="text-xs">{step.type}</Badge>
+                          {step.type && <Badge variant="outline" className="text-xs">{step.type}</Badge>}
                         </div>
                         {step.description && (
                           <p className="mt-1 ml-7 text-xs text-muted-foreground">{step.description}</p>

@@ -63,11 +63,18 @@ export default function LoginPage() {
           <div className="flex justify-center">
             <div className="flex items-center gap-3">
               <Image
+                src="/branding/logo-black-text.jpg"
+                alt="SMS Reitler"
+                width={48}
+                height={48}
+                className="h-12 w-auto object-contain dark:hidden"
+              />
+              <Image
                 src="/branding/sms-reitler.png"
                 alt="SMS Reitler"
                 width={48}
                 height={48}
-                className="h-12 w-auto object-contain"
+                className="h-12 w-auto object-contain hidden dark:block"
               />
               <div>
                 <h1 className="text-xl font-bold text-foreground">SMS REITLER</h1>

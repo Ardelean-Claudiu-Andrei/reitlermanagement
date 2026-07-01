@@ -50,14 +50,24 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Puzzle, AlertTriangle, X, Zap, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  Trash2,
+  Puzzle,
+  AlertTriangle,
+  Zap,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+} from "lucide-react"
 import { toast } from "sonner"
 import type { Part, AssemblyStep } from "@/lib/types"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
-
-const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
-
-function newStepId() { return `step-${Date.now()}-${Math.random().toString(36).slice(2)}` }
+import { StepEditor } from "@/components/step-editor"
 
 const EMPTY_PART: Omit<Part, "id" | "createdAt" | "updatedAt"> = {
   code: "",
@@ -83,12 +93,29 @@ const EMPTY_PART: Omit<Part, "id" | "createdAt" | "updatedAt"> = {
   fileLocation: "",
 }
 
+type SortKey =
+  | "name-asc"
+  | "name-desc"
+  | "code-asc"
+  | "qty-asc"
+  | "qty-desc"
+  | "min-asc"
+  | "min-desc"
+
 export default function PartsPage() {
   const { parts, addPart, updatePart, deletePart } = useAppData()
   const { t } = useLocale()
+
+  // List controls
   const [search, setSearch] = useState("")
+  const [sortBy, setSortBy] = useState<SortKey>("name-asc")
+  const [lowStockOnly, setLowStockOnly] = useState(false)
+
+  // Pagination
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Dialogs
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPart, setEditingPart] = useState<Part | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -100,19 +127,38 @@ export default function PartsPage() {
   const [formSteps, setFormSteps] = useState<AssemblyStep[]>([])
 
   const safeParts = parts ?? []
-  const filteredParts = safeParts.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.code || "").toLowerCase().includes(search.toLowerCase()) ||
-      (p.category || "").toLowerCase().includes(search.toLowerCase()) ||
-      (p.location || "").toLowerCase().includes(search.toLowerCase())
-  )
+  const lowStockCount = safeParts.filter((p) => p.minimumStock > 0 && p.quantity <= p.minimumStock).length
+
+  const filteredParts = safeParts
+    .filter((p) => {
+      const q = search.toLowerCase()
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.code || "").toLowerCase().includes(q) ||
+        (p.category || "").toLowerCase().includes(q) ||
+        (p.location || "").toLowerCase().includes(q)
+      const matchesLowStock = !lowStockOnly || (p.minimumStock > 0 && p.quantity <= p.minimumStock)
+      return matchesSearch && matchesLowStock
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "name-asc":  return a.name.localeCompare(b.name)
+        case "name-desc": return b.name.localeCompare(a.name)
+        case "code-asc":  return (a.code || "").localeCompare(b.code || "")
+        case "qty-asc":   return (a.quantity ?? 0) - (b.quantity ?? 0)
+        case "qty-desc":  return (b.quantity ?? 0) - (a.quantity ?? 0)
+        case "min-asc":   return (a.minimumStock ?? 0) - (b.minimumStock ?? 0)
+        case "min-desc":  return (b.minimumStock ?? 0) - (a.minimumStock ?? 0)
+        default:          return a.name.localeCompare(b.name)
+      }
+    })
+
   const totalPages = Math.max(1, Math.ceil(filteredParts.length / pageSize))
   const safePage = Math.min(currentPage, totalPages)
   const paginated = filteredParts.slice((safePage - 1) * pageSize, safePage * pageSize)
 
-  const lowStockCount = safeParts.filter((p) => p.minimumStock > 0 && p.quantity <= p.minimumStock).length
-  const laserCount = safeParts.filter((p) => p.requiresLaserCutting).length
+  function resetPage() { setCurrentPage(1) }
 
   function setField<K extends keyof typeof EMPTY_PART>(key: K, value: (typeof EMPTY_PART)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -190,23 +236,6 @@ export default function PartsPage() {
     }
   }
 
-  // ─── Production steps ─────────────────────────────────────────────────────
-
-  function addStep() {
-    setFormSteps((prev) => [
-      ...prev,
-      { id: newStepId(), name: "", type: "assembly", description: "", order: prev.length + 1 },
-    ])
-  }
-
-  function updateStep(index: number, field: keyof AssemblyStep, value: string | number) {
-    setFormSteps((prev) => prev.map((s, i) => i === index ? { ...s, [field]: value } : s))
-  }
-
-  function removeStep(index: number) {
-    setFormSteps((prev) => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i + 1 })))
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -220,8 +249,8 @@ export default function PartsPage() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Stats — only meaningful counts */}
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">{t("parts.totalParts")}</CardTitle>
@@ -231,33 +260,21 @@ export default function PartsPage() {
             <p className="text-3xl font-bold text-foreground">{safeParts.length}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t("parts.totalQuantity")}</CardTitle>
-            <Puzzle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-foreground">
-              {safeParts.reduce((sum, p) => sum + (p.quantity || 0), 0)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
+        <Card
+          className={lowStockCount > 0 ? "cursor-pointer border-amber-300 dark:border-amber-700" : ""}
+          onClick={lowStockCount > 0 ? () => { setLowStockOnly(true); resetPage() } : undefined}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">{t("parts.lowStock")}</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className={`h-4 w-4 ${lowStockCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{lowStockCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Debitare laser</CardTitle>
-            <Zap className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{laserCount}</p>
+            <p className={`text-3xl font-bold ${lowStockCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+              {lowStockCount}
+            </p>
+            {lowStockCount > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Click pentru a filtra</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -265,22 +282,62 @@ export default function PartsPage() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <CardTitle>{t("parts.title")}</CardTitle>
               <CardDescription>{filteredParts.length} {t("common.items")}</CardDescription>
             </div>
-            <div className="relative w-64">
+          </div>
+
+          {/* Filter / Sort bar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder={t("parts.searchPlaceholder")}
+                placeholder="Caută după cod sau denumire..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => { setSearch(e.target.value); resetPage() }}
                 className="pl-9"
               />
             </div>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortKey); resetPage() }}>
+              <SelectTrigger className="w-[200px]">
+                <ArrowUpDown className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Denumire A → Z</SelectItem>
+                <SelectItem value="name-desc">Denumire Z → A</SelectItem>
+                <SelectItem value="code-asc">Cod A → Z</SelectItem>
+                <SelectItem value="qty-asc">Cantitate ↑</SelectItem>
+                <SelectItem value="qty-desc">Cantitate ↓</SelectItem>
+                <SelectItem value="min-asc">Stoc minim ↑</SelectItem>
+                <SelectItem value="min-desc">Stoc minim ↓</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Low stock toggle */}
+            <Button
+              variant={lowStockOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setLowStockOnly((v) => !v); resetPage() }}
+              className={
+                lowStockOnly
+                  ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500"
+                  : lowStockCount > 0
+                  ? "border-amber-300 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-950/30"
+                  : ""
+              }
+            >
+              <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
+              Stoc redus{lowStockCount > 0 ? ` (${lowStockCount})` : ""}
+            </Button>
           </div>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
@@ -288,9 +345,8 @@ export default function PartsPage() {
                 <TableHead>Cod</TableHead>
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.category")}</TableHead>
-                <TableHead className="text-right">{t("common.quantity")}</TableHead>
+                <TableHead className="text-right">Cantitate</TableHead>
                 <TableHead>Locație</TableHead>
-                <TableHead className="text-center">Laser</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
                 <TableHead className="w-[60px]">{t("common.actions")}</TableHead>
               </TableRow>
@@ -310,13 +366,10 @@ export default function PartsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{part.category || "—"}</TableCell>
-                    <TableCell className="text-right font-mono">{part.quantity ?? 0}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{part.physicalLocation || part.location || "—"}</TableCell>
-                    <TableCell className="text-center">
-                      {part.requiresLaserCutting && (
-                        <Zap className="h-4 w-4 text-blue-500 mx-auto" />
-                      )}
+                    <TableCell className={`text-right font-mono ${isLow ? "text-amber-700 dark:text-amber-400 font-semibold" : ""}`}>
+                      {part.quantity ?? 0}
                     </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{part.physicalLocation || part.location || "—"}</TableCell>
                     <TableCell>
                       {isLow ? (
                         <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
@@ -360,8 +413,10 @@ export default function PartsPage() {
               })}
               {filteredParts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    {t("parts.noParts")}
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    {lowStockOnly
+                      ? "Nicio piesă cu stoc redus."
+                      : t("parts.noParts")}
                   </TableCell>
                 </TableRow>
               )}
@@ -374,7 +429,7 @@ export default function PartsPage() {
                 <span>
                   {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filteredParts.length)} of {filteredParts.length}
                 </span>
-                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); resetPage() }}>
                   <SelectTrigger className="w-[80px] h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
@@ -382,6 +437,7 @@ export default function PartsPage() {
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="25">25</SelectItem>
                     <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
                 <span>per page</span>
@@ -473,14 +529,10 @@ export default function PartsPage() {
                   <Input value={form.unit} onChange={(e) => setField("unit", e.target.value)} placeholder="buc" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t("common.quantity")}</Label>
                   <Input type="number" min="0" value={form.quantity} onChange={(e) => setField("quantity", parseFloat(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cantitate necesară</Label>
-                  <Input type="number" min="1" value={form.requiredQuantity} onChange={(e) => setField("requiredQuantity", parseInt(e.target.value) || 1)} />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("parts.minimumStock")}</Label>
@@ -565,52 +617,7 @@ export default function PartsPage() {
 
             {/* Production steps tab */}
             <TabsContent value="steps" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Pași de producție</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addStep}>
-                  <Plus className="mr-1 h-3 w-3" />
-                  Adaugă pas
-                </Button>
-              </div>
-              {formSteps.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Niciun pas adăugat.</p>
-              ) : (
-                <div className="space-y-3">
-                  {formSteps.map((step, idx) => (
-                    <div key={step.id} className="rounded-md border p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
-                        <div className="flex-1 space-y-1.5">
-                          <Input
-                            value={step.name}
-                            onChange={(e) => updateStep(idx, "name", e.target.value)}
-                            placeholder="Denumire pas"
-                          />
-                          <Input
-                            value={step.description}
-                            onChange={(e) => updateStep(idx, "description", e.target.value)}
-                            placeholder="Descriere (opțional)"
-                            className="text-sm"
-                          />
-                        </div>
-                        <Select value={step.type} onValueChange={(v) => updateStep(idx, "type", v)}>
-                          <SelectTrigger className="w-40 shrink-0">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STEP_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => removeStep(idx)}>
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <StepEditor steps={formSteps} onChange={setFormSteps} />
             </TabsContent>
 
             {/* Files tab */}
@@ -671,8 +678,8 @@ export default function PartsPage() {
                     <p className="font-mono">{viewPart.quantity ?? 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Cantitate necesară</p>
-                    <p className="font-mono">{viewPart.requiredQuantity ?? 1}</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">Stoc minim</p>
+                    <p className="font-mono">{viewPart.minimumStock ?? 0}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
@@ -734,7 +741,7 @@ export default function PartsPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                           <span className="font-medium flex-1">{step.name}</span>
-                          <Badge variant="outline" className="text-xs">{step.type}</Badge>
+                          {step.type && <Badge variant="outline" className="text-xs">{step.type}</Badge>}
                         </div>
                         {step.description && (
                           <p className="mt-1 ml-7 text-xs text-muted-foreground">{step.description}</p>

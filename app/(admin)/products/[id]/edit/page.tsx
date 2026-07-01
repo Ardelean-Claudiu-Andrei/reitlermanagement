@@ -24,12 +24,7 @@ import { toast } from "sonner"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 import { productsApi } from "@/lib/api"
 import type { AssemblyStep, Product, ProductCategory, ProductAssemblyEntry, ProductPartEntry } from "@/lib/types"
-
-const STEP_TYPES = ["laser-cutting", "plasma-cutting", "cnc", "welding", "assembly"] as const
-
-function newStepId() {
-  return `step-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
+import { StepEditor } from "@/components/step-editor"
 
 const categories = [
   { value: "silo-interior", label: "Silo Interior" },
@@ -120,25 +115,6 @@ export default function EditProductPage() {
     setFormSteps(product.productionSteps ?? [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id])
-
-  // ─── Step helpers ──────────────────────────────────────────────────────────
-
-  function addStep() {
-    setFormSteps((prev) => [
-      ...prev,
-      { id: newStepId(), name: "", type: "assembly", description: "", order: prev.length + 1 },
-    ])
-  }
-
-  function updateStep(index: number, field: keyof AssemblyStep, value: string | number) {
-    setFormSteps((prev) => prev.map((s, i) => i === index ? { ...s, [field]: value } : s))
-  }
-
-  function removeStep(index: number) {
-    setFormSteps((prev) =>
-      prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, order: i + 1 }))
-    )
-  }
 
   // ─── Assembly / Part toggle ────────────────────────────────────────────────
 
@@ -605,69 +581,12 @@ export default function EditProductPage() {
         {/* ── Pași producție ───────────────────────────────────────────────── */}
         <TabsContent value="steps" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-base">Pași de producție</CardTitle>
-                <CardDescription>Operațiile de producție la nivel de produs</CardDescription>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addStep}>
-                <Plus className="mr-1 h-3 w-3" />
-                Adaugă pas
-              </Button>
+            <CardHeader>
+              <CardTitle className="text-base">Pași de producție</CardTitle>
+              <CardDescription>Operațiile de producție la nivel de produs</CardDescription>
             </CardHeader>
             <CardContent>
-              {formSteps.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-6">
-                  Niciun pas adăugat. Apasă &ldquo;Adaugă pas&rdquo; pentru a începe.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {formSteps.map((step, idx) => (
-                    <div key={step.id} className="rounded-md border p-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs text-muted-foreground font-mono w-5 shrink-0 mt-2.5">
-                          {idx + 1}.
-                        </span>
-                        <div className="flex-1 space-y-1.5">
-                          <Input
-                            value={step.name}
-                            onChange={(e) => updateStep(idx, "name", e.target.value)}
-                            placeholder="Denumire pas"
-                          />
-                          <Input
-                            value={step.description}
-                            onChange={(e) => updateStep(idx, "description", e.target.value)}
-                            placeholder="Descriere (opțional)"
-                            className="text-sm"
-                          />
-                        </div>
-                        <Select
-                          value={step.type}
-                          onValueChange={(v) => updateStep(idx, "type", v)}
-                        >
-                          <SelectTrigger className="w-36 shrink-0">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STEP_TYPES.map((type) => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={() => removeStep(idx)}
-                        >
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <StepEditor steps={formSteps} onChange={setFormSteps} />
             </CardContent>
           </Card>
         </TabsContent>

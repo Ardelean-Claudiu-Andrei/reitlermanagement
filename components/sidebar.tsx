@@ -15,6 +15,7 @@ import {
   Users,
   Puzzle,
   Factory,
+  ListChecks,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -51,6 +52,7 @@ export function Sidebar() {
     pathname.startsWith("/management") ||
     pathname.startsWith("/users") ||
     pathname.startsWith("/projects") ||
+    pathname.startsWith("/production") ||
     pathname.startsWith("/quotes") ||
     pathname.startsWith("/products")
 
@@ -75,11 +77,18 @@ export function Sidebar() {
     <aside className="flex h-full w-[220px] flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-4">
         <Image
+          src="/branding/logo-black-text.jpg"
+          alt="SMS Reitler logo"
+          width={32}
+          height={32}
+          className="h-8 w-auto object-contain dark:hidden"
+        />
+        <Image
           src="/branding/sms-reitler.png"
           alt="SMS Reitler logo"
           width={32}
           height={32}
-          className="h-8 w-auto object-contain"
+          className="h-8 w-auto object-contain hidden dark:block"
         />
         <div>
           <p className="text-sm font-bold text-foreground leading-tight">SMS REITLER</p>
@@ -152,7 +161,7 @@ export function Sidebar() {
                 onClick={() => setProductionOpen(!productionOpen)}
                 className={cn(
                   "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors",
-                  pathname.startsWith("/projects")
+                  pathname.startsWith("/projects") || pathname.startsWith("/production")
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
@@ -166,6 +175,7 @@ export function Sidebar() {
               {productionOpen && (
                 <div className="mt-1 ml-4 flex flex-col gap-0.5 border-l border-border pl-3">
                   {navLink("/projects", <FolderKanban className="h-4 w-4" />, t("nav.projects"))}
+                  {showMaterials && navLink("/production/step-definitions", <ListChecks className="h-4 w-4" />, "Pași producție")}
                 </div>
               )}
             </div>

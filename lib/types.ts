@@ -56,9 +56,18 @@ export interface MultiLangText {
 export interface AssemblyStep {
   id: string
   name: string
-  type: AssemblyStepType
+  type?: AssemblyStepType  // legacy field, no longer required — kept so old steps display correctly
   description: string
   order: number
+  definitionId?: string    // set when a predefined StepDefinition was selected; undefined = custom
+}
+
+export interface StepDefinition {
+  id: string
+  name: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UploadedFile {
@@ -221,12 +230,17 @@ export interface ChecklistItem {
   doneAt: string | null
 }
 
+export type ProjectItemEntityType = 'product' | 'assembly' | 'part'
+
 export interface ProjectItem {
-  productId: string
+  type?: ProjectItemEntityType   // defaults to 'product' for legacy items
+  productId?: string             // set when type === 'product' (or legacy)
+  assemblyId?: string            // set when type === 'assembly'
+  partId?: string                // set when type === 'part'
   quantity: number
   unitPrice: number
   notes: string
-  fromInventory: boolean // true if from inventory, false if needs production
+  fromInventory: boolean         // true if from inventory, false if needs production
 }
 
 export interface ActivityEntry {

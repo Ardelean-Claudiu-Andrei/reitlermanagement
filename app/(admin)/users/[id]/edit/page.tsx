@@ -17,6 +17,7 @@ import {
 import { ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import type { AppRole } from "@/lib/permissions"
 
 export default function UserEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -27,8 +28,8 @@ export default function UserEditPage({ params }: { params: Promise<{ id: string 
   const [name, setName] = useState(entry?.user.name ?? "")
   const [email, setEmail] = useState(entry?.user.email ?? "")
   const [status, setStatus] = useState<"active" | "inactive">(entry?.user.status ?? "active")
-  const [role, setRole] = useState<"admin" | "employee">(entry?.additionalInformation.role ?? "employee")
-  const [type, setType] = useState<"admin" | "employee">(entry?.additionalInformation.type ?? "employee")
+  const [role, setRole] = useState<AppRole>(entry?.additionalInformation.role ?? "employee")
+  const [type, setType] = useState<AppRole>(entry?.additionalInformation.type ?? "employee")
 
   if (!entry) {
     return (
@@ -102,25 +103,27 @@ export default function UserEditPage({ params }: { params: Promise<{ id: string 
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as "admin" | "employee")}>
+              <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="engineer">Engineer</SelectItem>
                   <SelectItem value="employee">Employee</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as "admin" | "employee")}>
+              <Select value={type} onValueChange={(v) => setType(v as AppRole)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">Employee</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="engineer">Engineer</SelectItem>
+                  <SelectItem value="employee">Employee</SelectItem>
                 </SelectContent>
               </Select>
             </div>

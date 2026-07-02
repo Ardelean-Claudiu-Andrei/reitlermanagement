@@ -54,13 +54,17 @@ import {
   Zap,
   FileDown,
   ChevronDown,
+  Eye,
+  Loader2,
 } from "lucide-react"
 import { toast } from "sonner"
-import { projectsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
+import { projectsApi, productsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
 import { buildProductionCards, ownStepKey, depStepKey } from "@/lib/project-production"
 import type { ProductionCardVM, DependencyVM, UsageEntry } from "@/lib/project-production"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { EntityFileUploads } from "@/components/entity-file-uploads"
 
 // ─── Production card helpers ──────────────────────────────────────────────────
 // Types and step-key helpers are imported from @/lib/project-production
@@ -106,10 +110,12 @@ function ProductionCardComponent({
   card,
   stepsCompleted,
   onToggle,
+  onViewDetails,
 }: {
   card: ProductionCardVM
   stepsCompleted: Set<string>
   onToggle: StepToggle
+  onViewDetails: (type: 'product' | 'assembly' | 'part', id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -127,26 +133,37 @@ function ProductionCardComponent({
 
   return (
     <div className="rounded-lg border bg-card">
-      <button
-        type="button"
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors rounded-lg"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="font-semibold text-sm">{card.name}</span>
-        {card.code && <span className="text-xs font-mono text-muted-foreground">{card.code}</span>}
-        <Badge variant="secondary" className="text-xs">× {card.quantity}</Badge>
-        {progressLabel && (
-          <Badge
-            variant={ownDone === ownTotal && ownTotal > 0 ? 'default' : 'secondary'}
-            className={`text-xs ml-auto mr-2 ${ownDone === ownTotal && ownTotal > 0 ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''}`}
-          >
-            {progressLabel}
-          </Badge>
-        )}
-        {!progressLabel && <span className="ml-auto mr-2" />}
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </button>
+      <div className="flex items-center">
+        <button
+          type="button"
+          className="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors rounded-l-lg min-w-0"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="font-semibold text-sm">{card.name}</span>
+          {card.code && <span className="text-xs font-mono text-muted-foreground">{card.code}</span>}
+          <Badge variant="secondary" className="text-xs">× {card.quantity}</Badge>
+          {progressLabel && (
+            <Badge
+              variant={ownDone === ownTotal && ownTotal > 0 ? 'default' : 'secondary'}
+              className={`text-xs ml-auto ${ownDone === ownTotal && ownTotal > 0 ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''}`}
+            >
+              {progressLabel}
+            </Badge>
+          )}
+          {!progressLabel && <span className="ml-auto" />}
+          <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+        <button
+          type="button"
+          className="shrink-0 px-3 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors rounded-r-lg"
+          title="Vezi detalii"
+          aria-label={`Vezi detalii ${card.name}`}
+          onClick={(e) => { e.stopPropagation(); onViewDetails(card.itemType, card.entityId) }}
+        >
+          <Eye className="h-4 w-4" />
+        </button>
+      </div>
 
       {expanded && (
         <div className="border-t px-4 py-4 space-y-5">
@@ -213,6 +230,14 @@ function ProductionCardComponent({
                                 : <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />}
                               <span className="font-medium">{dep.name}</span>
                               {dep.code && <span className="font-mono text-xs text-muted-foreground">{dep.code}</span>}
+                              <button
+                                type="button"
+                                className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                                title="Vezi detalii"
+                                onClick={(e) => { e.stopPropagation(); onViewDetails(dep.type, dep.entityId) }}
+                              >
+                                <Eye className="h-3 w-3" />
+                              </button>
                             </div>
                           </td>
                           <td className="px-3 py-2">
@@ -312,6 +337,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   // on the global context being pre-populated when the page first renders.
   const [directAssemblies, setDirectAssemblies] = useState<Assembly[]>([])
   const [directParts, setDirectParts] = useState<Part[]>([])
+
+  type ViewTarget = { type: 'product' | 'assembly' | 'part'; id: string } | null
+  const [viewTarget, setViewTarget] = useState<ViewTarget>(null)
+  const [viewLoading, setViewLoading] = useState(false)
+  const [viewedProduct, setViewedProduct] = useState<Product | null>(null)
+  const [viewedAssembly, setViewedAssembly] = useState<Assembly | null>(null)
+  const [viewedPart, setViewedPart] = useState<Part | null>(null)
 
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
@@ -540,6 +572,38 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const handleResolveIssue = (issueId: string) => {
     resolveProjectIssue(project.id, issueId)
     toast.success(t("projects.issueResolved"))
+  }
+
+  async function openEntityDetails(type: 'product' | 'assembly' | 'part', id: string) {
+    setViewTarget({ type, id })
+    setViewLoading(true)
+    setViewedProduct(null)
+    setViewedAssembly(null)
+    setViewedPart(null)
+    try {
+      if (type === 'product') {
+        const p = await productsApi.get(id)
+        setViewedProduct(p)
+      } else if (type === 'assembly') {
+        const a = await assembliesApi.get(id)
+        setViewedAssembly(a)
+      } else {
+        const p = await partsApi.get(id)
+        setViewedPart(p)
+      }
+    } catch {
+      toast.error("Nu s-au putut încărca detaliile")
+      setViewTarget(null)
+    } finally {
+      setViewLoading(false)
+    }
+  }
+
+  function closeEntityDetails() {
+    setViewTarget(null)
+    setViewedProduct(null)
+    setViewedAssembly(null)
+    setViewedPart(null)
   }
 
   async function handleExportCardsPdf() {
@@ -853,6 +917,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   {showPrices && <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>}
                   <TableHead>{t("projects.source")}</TableHead>
                   <TableHead>{t("common.notes")}</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -883,6 +948,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.notes || "-"}</TableCell>
+                      <TableCell>
+                        {(kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId) && (
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                            title="Vezi detalii"
+                            onClick={() => {
+                              const eid = kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId
+                              if (eid) openEntityDetails(kind, eid)
+                            }}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -929,6 +1009,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 card={card}
                 stepsCompleted={stepsCompleted}
                 onToggle={toggleStep}
+                onViewDetails={openEntityDetails}
               />
             ))
           )}
@@ -1090,6 +1171,427 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </Button>
             <Button onClick={handleAddIssue}>{t("projects.reportIssue")}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Entity Details Dialog */}
+      <Dialog open={viewTarget !== null} onOpenChange={(open) => !open && closeEntityDetails()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {viewLoading ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Se încarcă...</DialogTitle>
+              </DialogHeader>
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            </>
+          ) : viewTarget?.type === 'product' && viewedProduct ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  {viewedProduct.name}
+                  {viewedProduct.code && (
+                    <Badge variant="outline" className="text-xs font-mono font-normal">{viewedProduct.code}</Badge>
+                  )}
+                </DialogTitle>
+                <DialogDescription>{viewedProduct.category || "Produs"}</DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="info">
+                <TabsList className="mb-2">
+                  <TabsTrigger value="info">Informații</TabsTrigger>
+                  <TabsTrigger value="structure">
+                    Structură{((viewedProduct.productAssemblies?.length ?? viewedProduct.assemblyIds?.length ?? 0) + (viewedProduct.productParts?.length ?? viewedProduct.partIds?.length ?? 0)) > 0 && ` (${(viewedProduct.productAssemblies?.length ?? viewedProduct.assemblyIds?.length ?? 0) + (viewedProduct.productParts?.length ?? viewedProduct.partIds?.length ?? 0)})`}
+                  </TabsTrigger>
+                  <TabsTrigger value="steps">
+                    Pași{(viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length ?? 0) > 0 && ` (${viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length ?? 0})`}
+                  </TabsTrigger>
+                  <TabsTrigger value="files">Fișiere</TabsTrigger>
+                </TabsList>
+                <TabsContent value="info" className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Categorie</p>
+                      <p>{viewedProduct.category || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Preț de bază</p>
+                      <p className="font-mono">{viewedProduct.basePrice?.toFixed(2) ?? "—"} EUR</p>
+                    </div>
+                  </div>
+                  {viewedProduct.notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                      <p>{viewedProduct.notes}</p>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="structure" className="space-y-4">
+                  {(() => {
+                    const asmEntries = viewedProduct.productAssemblies?.length
+                      ? viewedProduct.productAssemblies
+                      : (viewedProduct.assemblyIds ?? []).map(aid => ({ assemblyId: aid, quantity: 1 }))
+                    const partEntries = viewedProduct.productParts?.length
+                      ? viewedProduct.productParts
+                      : (viewedProduct.partIds ?? []).map(pid => ({ partId: pid, quantity: 1 }))
+                    return (
+                      <>
+                        {asmEntries.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Ansamble</p>
+                            <div className="rounded-md border">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Ansamblu</TableHead>
+                                    <TableHead className="text-right">Cant.</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {asmEntries.map((ae, idx) => {
+                                    const asm = mergedAssemblies.find(a => a.id === ae.assemblyId)
+                                    return (
+                                      <TableRow key={idx}>
+                                        <TableCell>
+                                          <p className="font-medium">{asm?.name ?? ae.assemblyId}</p>
+                                          {asm?.code && <p className="text-xs text-muted-foreground font-mono">{asm.code}</p>}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono">{ae.quantity}</TableCell>
+                                      </TableRow>
+                                    )
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        )}
+                        {partEntries.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Piese directe</p>
+                            <div className="rounded-md border">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Piesă</TableHead>
+                                    <TableHead className="text-right">Cant.</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {partEntries.map((pe, idx) => {
+                                    const prt = mergedParts.find(p => p.id === pe.partId)
+                                    return (
+                                      <TableRow key={idx}>
+                                        <TableCell>
+                                          <p className="font-medium">{prt?.name ?? pe.partId}</p>
+                                          {prt?.code && <p className="text-xs text-muted-foreground font-mono">{prt.code}</p>}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono">{pe.quantity}</TableCell>
+                                      </TableRow>
+                                    )
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        )}
+                        {asmEntries.length === 0 && partEntries.length === 0 && (
+                          <p className="text-sm text-muted-foreground">Nicio componentă definită.</p>
+                        )}
+                      </>
+                    )
+                  })()}
+                </TabsContent>
+                <TabsContent value="steps">
+                  {!(viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length) ? (
+                    <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(viewedProduct.productionSteps ?? viewedProduct.assemblySteps ?? []).map((step, idx) => (
+                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                            <span className="font-medium flex-1">{step.name}</span>
+                            {step.type && <Badge variant="outline" className="text-xs">{step.type}</Badge>}
+                          </div>
+                          {step.description && (
+                            <p className="mt-1 ml-7 text-xs text-muted-foreground">{step.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="files">
+                  <EntityFileUploads entityType="product" entityId={viewedProduct.id} readonly />
+                </TabsContent>
+              </Tabs>
+            </>
+          ) : viewTarget?.type === 'assembly' && viewedAssembly ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  {viewedAssembly.name}
+                  <Badge variant="outline" className="text-xs font-mono font-normal">{viewedAssembly.code}</Badge>
+                </DialogTitle>
+                <DialogDescription>
+                  {viewedAssembly.compositionType === "from_parts"
+                    ? "Ansamblu din piese"
+                    : viewedAssembly.compositionType === "from_assemblies"
+                    ? "Ansamblu din sub-ansamble"
+                    : "Ansamblu independent"}
+                </DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="info">
+                <TabsList className="mb-2">
+                  <TabsTrigger value="info">Informații</TabsTrigger>
+                  <TabsTrigger value="parts">
+                    Piese{viewedAssembly.parts?.length > 0 && ` (${viewedAssembly.parts.length})`}
+                  </TabsTrigger>
+                  <TabsTrigger value="steps">
+                    Pași{viewedAssembly.productionSteps?.length > 0 && ` (${viewedAssembly.productionSteps.length})`}
+                  </TabsTrigger>
+                  <TabsTrigger value="files">Fișiere</TabsTrigger>
+                </TabsList>
+                <TabsContent value="info" className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Tip compoziție</p>
+                      <p>
+                        {viewedAssembly.compositionType === "from_parts"
+                          ? "Din piese"
+                          : viewedAssembly.compositionType === "from_assemblies"
+                          ? "Din ansamble"
+                          : "Independent"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
+                      <p>{viewedAssembly.physicalLocation || "—"}</p>
+                    </div>
+                    {viewedAssembly.weldingDrawingLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen sudură</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedAssembly.weldingDrawingLocation}</p>
+                      </div>
+                    )}
+                    {viewedAssembly.technicalDrawingLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen tehnic</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedAssembly.technicalDrawingLocation}</p>
+                      </div>
+                    )}
+                    {viewedAssembly.cadLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație CAD</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedAssembly.cadLocation}</p>
+                      </div>
+                    )}
+                  </div>
+                  {viewedAssembly.notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                      <p className="text-sm">{viewedAssembly.notes}</p>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="parts" className="space-y-4">
+                  {viewedAssembly.parts?.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nicio piesă adăugată.</p>
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Piesă</TableHead>
+                            <TableHead>Laser</TableHead>
+                            <TableHead className="text-right">Cantitate</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {viewedAssembly.parts.map((fp, idx) => {
+                            const prt = mergedParts.find(p => p.id === fp.partId)
+                            return (
+                              <TableRow key={idx}>
+                                <TableCell>
+                                  <p className="font-medium">{prt?.name ?? fp.partId}</p>
+                                  {prt?.code && <p className="text-xs text-muted-foreground font-mono">{prt.code}</p>}
+                                </TableCell>
+                                <TableCell>
+                                  {prt?.requiresLaserCutting && (
+                                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">Laser</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right font-mono">{fp.quantity}</TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  {(viewedAssembly.childAssemblies?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Sub-ansamble</p>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Ansamblu</TableHead>
+                              <TableHead>Cod</TableHead>
+                              <TableHead className="text-right">Cantitate</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {viewedAssembly.childAssemblies.map((ca, idx) => {
+                              const child = mergedAssemblies.find(a => a.id === ca.assemblyId)
+                              return (
+                                <TableRow key={idx}>
+                                  <TableCell className="font-medium">{child?.name ?? ca.assemblyId}</TableCell>
+                                  <TableCell className="font-mono text-xs text-muted-foreground">{child?.code ?? "—"}</TableCell>
+                                  <TableCell className="text-right font-mono">{ca.quantity}</TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="steps">
+                  {viewedAssembly.productionSteps?.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {viewedAssembly.productionSteps.map((step, idx) => (
+                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                            <span className="font-medium flex-1">{step.name}</span>
+                            {step.type && <Badge variant="outline" className="text-xs">{step.type}</Badge>}
+                          </div>
+                          {step.description && (
+                            <p className="mt-1 ml-7 text-xs text-muted-foreground">{step.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="files">
+                  <EntityFileUploads entityType="assembly" entityId={viewedAssembly.id} readonly />
+                </TabsContent>
+              </Tabs>
+            </>
+          ) : viewTarget?.type === 'part' && viewedPart ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 flex-wrap">
+                  {viewedPart.name}
+                  {viewedPart.code && (
+                    <Badge variant="outline" className="text-xs font-mono font-normal">{viewedPart.code}</Badge>
+                  )}
+                  {viewedPart.requiresLaserCutting && (
+                    <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200">
+                      <Zap className="mr-1 h-3 w-3" />Laser
+                    </Badge>
+                  )}
+                </DialogTitle>
+                <DialogDescription>{viewedPart.category || "Piesă"}</DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="info">
+                <TabsList className="mb-2">
+                  <TabsTrigger value="info">Informații</TabsTrigger>
+                  <TabsTrigger value="steps">
+                    Pași{viewedPart.productionSteps?.length > 0 && ` (${viewedPart.productionSteps.length})`}
+                  </TabsTrigger>
+                  <TabsTrigger value="files">Fișiere</TabsTrigger>
+                </TabsList>
+                <TabsContent value="info" className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Cantitate stoc</p>
+                      <p className="font-mono">{viewedPart.quantity ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Stoc minim</p>
+                      <p className="font-mono">{viewedPart.minimumStock ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.physicalLocation || viewedPart.location || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Locație desen</p>
+                      <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.drawingLocation || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Debitare laser</p>
+                      <p>{viewedPart.requiresLaserCutting ? "Da" : "Nu"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Categorie</p>
+                      <p>{viewedPart.category || "—"}</p>
+                    </div>
+                    {viewedPart.weldingDrawingLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen sudură</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.weldingDrawingLocation}</p>
+                      </div>
+                    )}
+                    {viewedPart.bendingDrawingLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen îndoire</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.bendingDrawingLocation}</p>
+                      </div>
+                    )}
+                    {viewedPart.cadLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație CAD</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.cadLocation}</p>
+                      </div>
+                    )}
+                    {viewedPart.technicalDrawingLocation && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen tehnic</p>
+                        <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.technicalDrawingLocation}</p>
+                      </div>
+                    )}
+                  </div>
+                  {viewedPart.notes && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                      <p>{viewedPart.notes}</p>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="steps">
+                  {!viewedPart.productionSteps?.length ? (
+                    <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {viewedPart.productionSteps.map((step, idx) => (
+                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
+                            <span className="font-medium flex-1">{step.name}</span>
+                            {step.type && <Badge variant="outline" className="text-xs">{step.type}</Badge>}
+                          </div>
+                          {step.description && (
+                            <p className="mt-1 ml-7 text-xs text-muted-foreground">{step.description}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="files">
+                  <EntityFileUploads entityType="part" entityId={viewedPart.id} readonly />
+                </TabsContent>
+              </Tabs>
+            </>
+          ) : null}
         </DialogContent>
       </Dialog>
 

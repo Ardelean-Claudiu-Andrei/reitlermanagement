@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useEffect } from "react"
+import { use, useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
@@ -57,147 +57,13 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { projectsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
+import { buildProductionCards, ownStepKey, depStepKey } from "@/lib/project-production"
+import type { ProductionCardVM, DependencyVM, UsageEntry } from "@/lib/project-production"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 
-// ─── Production card view model ───────────────────────────────────────────────
-
-type DependencyVM = {
-  type: 'assembly' | 'part'
-  entityId: string
-  name: string
-  code: string
-  quantity: number
-  ownSteps: AssemblyStep[]
-}
-
-type ProductionCardVM = {
-  itemType: 'product' | 'assembly' | 'part'
-  entityId: string
-  name: string
-  code: string
-  quantity: number
-  ownSteps: AssemblyStep[]
-  dependencies: DependencyVM[]
-}
-
-function buildProductionCard(
-  item: import("@/lib/types").ProjectItem,
-  safeProducts: Product[],
-  safeAssemblies: Assembly[],
-  safeParts: Part[],
-): ProductionCardVM | null {
-  // Detect kind from type field; if absent, infer from which ID field is present
-  const kind = (item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')) as 'product' | 'assembly' | 'part'
-
-  if (kind === 'product') {
-    const product = safeProducts.find((p) => p.id === item.productId)
-    if (!product) return null
-
-    const ownSteps: AssemblyStep[] = product.productionSteps ?? product.assemblySteps ?? []
-
-    const asmEntries =
-      product.productAssemblies && product.productAssemblies.length > 0
-        ? product.productAssemblies
-        : (product.assemblyIds ?? []).map((id) => ({ assemblyId: id, quantity: 1 }))
-
-    const partEntries =
-      product.productParts && product.productParts.length > 0
-        ? product.productParts
-        : (product.partIds ?? []).map((id) => ({ partId: id, quantity: 1 }))
-
-    const dependencies: DependencyVM[] = []
-
-    for (const entry of asmEntries) {
-      const asm = safeAssemblies.find((a) => a.id === entry.assemblyId)
-      if (!asm) continue
-      dependencies.push({
-        type: 'assembly',
-        entityId: asm.id,
-        name: asm.name,
-        code: asm.code,
-        quantity: (entry.quantity ?? 1) * item.quantity,
-        ownSteps: asm.productionSteps ?? [],
-      })
-    }
-
-    for (const entry of partEntries) {
-      const part = safeParts.find((p) => p.id === entry.partId)
-      if (!part) continue
-      dependencies.push({
-        type: 'part',
-        entityId: part.id,
-        name: part.name,
-        code: part.code ?? '',
-        quantity: (entry.quantity ?? 1) * item.quantity,
-        ownSteps: part.productionSteps ?? [],
-      })
-    }
-
-    return { itemType: 'product', entityId: product.id, name: product.name, code: product.code, quantity: item.quantity, ownSteps, dependencies }
-  }
-
-  if (kind === 'assembly') {
-    const asm = safeAssemblies.find((a) => a.id === item.assemblyId)
-    if (!asm) return null
-
-    const ownSteps: AssemblyStep[] = asm.productionSteps ?? []
-    const dependencies: DependencyVM[] = []
-
-    for (const entry of asm.childAssemblies ?? []) {
-      const child = safeAssemblies.find((a) => a.id === entry.assemblyId)
-      if (!child) continue
-      dependencies.push({
-        type: 'assembly',
-        entityId: child.id,
-        name: child.name,
-        code: child.code,
-        quantity: (entry.quantity ?? 1) * item.quantity,
-        ownSteps: child.productionSteps ?? [],
-      })
-    }
-
-    for (const entry of asm.parts ?? []) {
-      const part = safeParts.find((p) => p.id === entry.partId)
-      if (!part) continue
-      dependencies.push({
-        type: 'part',
-        entityId: part.id,
-        name: part.name,
-        code: part.code ?? '',
-        quantity: (entry.quantity ?? 1) * item.quantity,
-        ownSteps: part.productionSteps ?? [],
-      })
-    }
-
-    return { itemType: 'assembly', entityId: asm.id, name: asm.name, code: asm.code, quantity: item.quantity, ownSteps, dependencies }
-  }
-
-  // part
-  const part = safeParts.find((p) => p.id === item.partId)
-  if (!part) return null
-
-  return {
-    itemType: 'part',
-    entityId: part.id,
-    name: part.name,
-    code: part.code ?? '',
-    quantity: item.quantity,
-    ownSteps: part.productionSteps ?? [],
-    dependencies: [],
-  }
-}
-
-function ownStepKey(card: ProductionCardVM, step: AssemblyStep): string {
-  if (card.itemType === 'product') return `${card.entityId}:product:${step.id}`
-  if (card.itemType === 'assembly') return `asm:${card.entityId}:step:${step.id}`
-  return `part:${card.entityId}:step:${step.id}`
-}
-
-function depStepKey(dep: DependencyVM, step: AssemblyStep): string {
-  if (dep.type === 'assembly') return `asm:${dep.entityId}:step:${step.id}`
-  return `part:${dep.entityId}:step:${step.id}`
-}
+// ─── Production card helpers ──────────────────────────────────────────────────
+// Types and step-key helpers are imported from @/lib/project-production
 
 function depCompletedCount(dep: DependencyVM, stepsCompleted: Set<string>): number {
   return dep.ownSteps.filter((s) => stepsCompleted.has(depStepKey(dep, s))).length
@@ -370,6 +236,36 @@ function ProductionCardComponent({
                 </table>
               </div>
               )}
+            </div>
+          )}
+
+          {/* Section 3: Utilizat în (for assemblies and parts) */}
+          {card.usages.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                Utilizat în
+              </p>
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/30 border-b">
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Părinte</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">Cant.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {card.usages.map((u: UsageEntry, i: number) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="px-3 py-2">
+                          <span className="font-medium">{u.parentName}</span>
+                          {u.parentCode && <span className="ml-2 font-mono text-xs text-muted-foreground">{u.parentCode}</span>}
+                        </td>
+                        <td className="px-3 py-2 text-center text-muted-foreground">× {u.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -567,10 +463,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const mergedAssemblies: Assembly[] = [...(assemblies ?? []), ...directAssemblies.filter(a => !(assemblies ?? []).some(ca => ca.id === a.id))]
   const mergedParts: Part[] = [...(parts ?? []), ...directParts.filter(p => !(parts ?? []).some(cp => cp.id === p.id))]
 
-  // Build card view models for all project items (products, assemblies, parts)
-  const productionCards: ProductionCardVM[] = project.items
-    .map((item) => buildProductionCard(item, products ?? [], mergedAssemblies, mergedParts))
-    .filter((c): c is ProductionCardVM => c !== null)
+  // Flatten the full recursive tree into one card per unique entity
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const productionCards: ProductionCardVM[] = useMemo(
+    () => buildProductionCards(project.items, products ?? [], mergedAssemblies, mergedParts),
+    // Depend on the project id + stringified items, and the list lengths so we re-run
+    // when context finishes loading and populates the full assembly/part lists.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project.id, project.items, products, mergedAssemblies, mergedParts],
+  )
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
   const completedStepCount = productionCards.reduce(

@@ -66,6 +66,7 @@ import { toast } from "sonner"
 import { projectsApi, productsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
 import { buildProductionCards, ownStepKey, depStepKey } from "@/lib/project-production"
 import type { ProductionCardVM, DependencyVM, UsageEntry } from "@/lib/project-production"
+import { consolidateProjectItems, getProjectItemKey } from "@/lib/project-items"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -436,6 +437,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     [project?.items],
   )
 
+  // Consolidated view: identical items (same entity + price + source + notes) are merged into one row.
+  // Computed before early returns so hook call count is stable across renders.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const consolidatedProjectItems = useMemo(
+    () => consolidateProjectItems(project?.items ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project?.items],
+  )
+
   // Fetch assembly/part data for direct project items so production cards work
   // even if the global context hasn't loaded yet or is missing these entities.
   // Re-runs whenever the set of direct assembly/part IDs changes (e.g. after add/remove).
@@ -515,7 +525,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const company = project.companyId ? companies.find((c) => c.id === project.companyId) : null
   const quote = project.quoteId ? quotes.find((q) => q.id === project.quoteId) : null
-  const subtotal = project.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  const subtotal = consolidatedProjectItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
   const installationCost = project.installationCost || 0
   const computedTotal = subtotal + installationCost
   const total = project.finalPrice != null ? project.finalPrice : computedTotal
@@ -569,11 +579,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   // Flatten the full recursive tree into one card per unique entity
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const productionCards: ProductionCardVM[] = useMemo(
-    () => buildProductionCards(project.items, products ?? [], mergedAssemblies, mergedParts),
-    // Depend on the project id + stringified items, and the list lengths so we re-run
-    // when context finishes loading and populates the full assembly/part lists.
+    () => buildProductionCards(consolidatedProjectItems, products ?? [], mergedAssemblies, mergedParts),
+    // Depend on the consolidated items so production cards reflect merged quantities.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [project.id, project.items, products, mergedAssemblies, mergedParts],
+    [project.id, consolidatedProjectItems, products, mergedAssemblies, mergedParts],
   )
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
@@ -774,12 +783,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       : addItemType === 'assembly' ? mergedAssemblies.find(a => a.id === addItemEntityId)?.name
       : mergedParts.find(p => p.id === addItemEntityId)?.name
 
-    const typeLabel = addItemType === 'product' ? 'Produsul' : addItemType === 'assembly' ? 'Ansamblul' : 'Piesa'
-    const activityMsg = `${typeLabel} „${entityName ?? addItemEntityId}" a fost adăugat${addItemType === 'part' ? 'ă' : ''} în proiect.`
+    const newItemKey = getProjectItemKey(newItem)
+    const existingItem = consolidatedProjectItems.find(i => getProjectItemKey(i) === newItemKey)
+
+    let activityMsg: string
+    if (existingItem) {
+      const oldQty = existingItem.quantity
+      const nextQty = oldQty + addItemQty
+      const genLabel = addItemType === 'product' ? 'produsului' : addItemType === 'assembly' ? 'ansamblului' : 'piesei'
+      activityMsg = `Cantitatea ${genLabel} „${entityName ?? addItemEntityId}" a fost actualizată de la ${oldQty} la ${nextQty}.`
+    } else {
+      const nomLabel = addItemType === 'product' ? 'Produsul' : addItemType === 'assembly' ? 'Ansamblul' : 'Piesa'
+      activityMsg = `${nomLabel} „${entityName ?? addItemEntityId}" a fost adăugat${addItemType === 'part' ? 'ă' : ''} în proiect.`
+    }
+
+    const nextItems = consolidateProjectItems([...(project.items ?? []), newItem])
 
     setAddItemSaving(true)
     try {
-      await saveItemsUpdate([...(project.items ?? []), newItem], activityMsg)
+      await saveItemsUpdate(nextItems, activityMsg)
       toast.success("Element adăugat cu succes")
       setAddItemOpen(false)
       resetAddForm()
@@ -794,17 +816,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   async function handleRemoveItem() {
     if (!project || removeItemIdx === null) return
-    const item = project.items[removeItemIdx]
+    const item = consolidatedProjectItems[removeItemIdx]
+    if (!item) return
+
     const kind = item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')
     const entityName =
       kind === 'product' ? (products ?? []).find(p => p.id === item.productId)?.name
       : kind === 'assembly' ? mergedAssemblies.find(a => a.id === item.assemblyId)?.name
       : mergedParts.find(p => p.id === item.partId)?.name
 
+    const qty = item.quantity
     const typeLabel = kind === 'product' ? 'Produsul' : kind === 'assembly' ? 'Ansamblul' : 'Piesa'
-    const activityMsg = `${typeLabel} „${entityName ?? 'element'}" a fost eliminat${kind === 'part' ? 'ă' : ''} din proiect.`
+    const activityMsg = qty > 1
+      ? `${typeLabel} „${entityName ?? 'element'}", în cantitate de ${qty} bucăți, a fost eliminat${kind === 'part' ? 'ă' : ''} din proiect.`
+      : `${typeLabel} „${entityName ?? 'element'}" a fost eliminat${kind === 'part' ? 'ă' : ''} din proiect.`
 
-    const nextItems = project.items.filter((_, i) => i !== removeItemIdx)
+    const key = getProjectItemKey(item)
+    const nextItems = consolidateProjectItems(project.items.filter(i => getProjectItemKey(i) !== key))
 
     setRemoveSaving(true)
     try {
@@ -1129,7 +1157,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </CardHeader>
         <CardContent>
-          {project.items.length === 0 ? (
+          {consolidatedProjectItems.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">{t("projects.noProductsAdded")}</p>
           ) : (
             <Table>
@@ -1145,7 +1173,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {project.items.map((item, idx) => {
+                {consolidatedProjectItems.map((item, idx) => {
                   const kind = item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')
                   const prod = kind === 'product' ? products?.find((p) => p.id === item.productId) : undefined
                   const asm = kind === 'assembly' ? mergedAssemblies.find((a) => a.id === item.assemblyId) : undefined
@@ -1638,15 +1666,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <AlertDialogTitle>Elimină element din proiect</AlertDialogTitle>
             <AlertDialogDescription>
               {removeItemIdx !== null && (() => {
-                const item = project.items[removeItemIdx]
+                const item = consolidatedProjectItems[removeItemIdx]
+                if (!item) return null
                 const kind = item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')
                 const name =
                   kind === 'product' ? (products ?? []).find(p => p.id === item.productId)?.name
                   : kind === 'assembly' ? mergedAssemblies.find(a => a.id === item.assemblyId)?.name
                   : mergedParts.find(p => p.id === item.partId)?.name
+                const qty = item.quantity
                 return (
                   <>
-                    Ești sigur că vrei să elimini <strong>„{name ?? 'elementul'}"</strong> din proiect?
+                    {qty > 1
+                      ? <>{kind === 'product' ? 'Produsul' : kind === 'assembly' ? 'Ansamblul' : 'Piesa'} <strong>„{name ?? 'elementul'}"</strong>, în cantitate de <strong>{qty} bucăți</strong>, va fi eliminat{kind === 'part' ? 'ă' : ''} din proiect.</>
+                      : <>Ești sigur că vrei să elimini <strong>„{name ?? 'elementul'}"</strong> din proiect?</>
+                    }
                     <br /><br />
                     Elementul va fi eliminat doar din proiect. Produsul, ansamblul sau piesa nu va fi șters/ștearsă din aplicație.
                   </>

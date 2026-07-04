@@ -79,7 +79,7 @@ interface AppState {
 
   // Project CRUD
   addProject: (project: CreateProjectPayload) => Promise<Project>
-  updateProject: (project: Project) => Promise<void>
+  updateProject: (project: Project) => Promise<Project>
   deleteProject: (id: string) => Promise<void>
   updateProjectStatus: (id: string, status: ProjectStatus) => Promise<void>
   finishProject: (id: string) => Promise<void>
@@ -284,9 +284,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return created
   }, [])
 
-  const updateProject = useCallback(async (project: Project) => {
+  const updateProject = useCallback(async (project: Project): Promise<Project> => {
     const updated = await projectsApi.update(project.id, project)
     setProjects((prev) => prev.map((p) => (p.id === project.id ? updated : p)))
+    return updated
   }, [])
 
   const deleteProject = useCallback(async (id: string) => {

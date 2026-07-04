@@ -15,6 +15,7 @@ import type {
   UploadedFile,
   FileCategory,
   StepDefinition,
+  PaginatedActivityResponse,
 } from "./types"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
@@ -263,6 +264,8 @@ export const projectsApi = {
     request('/api/projects/from-quote', { method: 'POST', body: JSON.stringify({ quoteId, userName }) }),
   delete: (id: string): Promise<void> =>
     request(`/api/projects/${id}`, { method: 'DELETE' }),
+  getActivity: (projectId: string, page: number): Promise<PaginatedActivityResponse> =>
+    request(`/api/projects/${projectId}/activity?page=${page}`),
   toggleStep: (projectId: string, stepKey: string, stepsTotal?: number): Promise<{ stepsCompleted: string[]; stepsTotal: number }> =>
     request(`/api/projects/${projectId}/steps/toggle`, {
       method: 'PATCH',

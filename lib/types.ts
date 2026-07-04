@@ -250,6 +250,14 @@ export interface ActivityEntry {
   timestamp: string
 }
 
+export interface PaginatedActivityResponse {
+  items: ActivityEntry[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
 export type ProjectStatus = "draft" | "in-progress" | "in-installation" | "done" | "warranty" | "maintenance" | "cancelled"
 
 export type CreateProjectPayload = Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'activity'> & {

@@ -4,7 +4,7 @@ import { use, useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
-import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project } from "@/lib/types"
+import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project, ActivityEntry, ProjectItem } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -56,6 +56,9 @@ import {
   ChevronDown,
   Eye,
   Loader2,
+  Trash2,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react"
 import { toast } from "sonner"
 import { projectsApi, productsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
@@ -65,6 +68,25 @@ import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissio
 import type { AppRole } from "@/lib/permissions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 // ─── Production card helpers ──────────────────────────────────────────────────
 // Types and step-key helpers are imported from @/lib/project-production
@@ -345,6 +367,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [viewedAssembly, setViewedAssembly] = useState<Assembly | null>(null)
   const [viewedPart, setViewedPart] = useState<Part | null>(null)
 
+  // Add item dialog
+  const [addItemOpen, setAddItemOpen] = useState(false)
+  const [addItemType, setAddItemType] = useState<'product' | 'assembly' | 'part'>('product')
+  const [addItemEntityId, setAddItemEntityId] = useState('')
+  const [addItemQty, setAddItemQty] = useState(1)
+  const [addItemPrice, setAddItemPrice] = useState(0)
+  const [addItemFromInventory, setAddItemFromInventory] = useState(false)
+  const [addItemNotes, setAddItemNotes] = useState('')
+  const [addItemSaving, setAddItemSaving] = useState(false)
+  const [addItemComboOpen, setAddItemComboOpen] = useState(false)
+
+  // Remove item
+  const [removeItemIdx, setRemoveItemIdx] = useState<number | null>(null)
+  const [removeSaving, setRemoveSaving] = useState(false)
+
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
   const [fetchLoading, setFetchLoading] = useState(!contextProject)
@@ -370,8 +407,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [project?.id])
 
+  // Stable dependency keys — recompute when the set of direct assembly/part IDs changes.
+  const directAsmIdsKey = useMemo(
+    () => (project?.items ?? [])
+      .filter(it => (it.type ?? (it.assemblyId ? 'assembly' : '')) === 'assembly' && it.assemblyId)
+      .map(it => it.assemblyId!)
+      .sort().join(','),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project?.items],
+  )
+  const directPartIdsKey = useMemo(
+    () => (project?.items ?? [])
+      .filter(it => (it.type ?? (it.partId ? 'part' : '')) === 'part' && it.partId)
+      .map(it => it.partId!)
+      .sort().join(','),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project?.items],
+  )
+
   // Fetch assembly/part data for direct project items so production cards work
   // even if the global context hasn't loaded yet or is missing these entities.
+  // Re-runs whenever the set of direct assembly/part IDs changes (e.g. after add/remove).
   useEffect(() => {
     if (!project) return
     const items = project.items ?? []
@@ -403,7 +459,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             : []
 
           const allAsms = [...topLevel, ...children]
-          setDirectAssemblies(allAsms)
+          setDirectAssemblies(prev => {
+            const merged = [...prev.filter(a => !allAsms.some(na => na.id === a.id)), ...allAsms]
+            return merged
+          })
 
           // Fetch the parts referenced by these assemblies for the same reason.
           const refPartIds = [...new Set(allAsms.flatMap(a => (a.parts ?? []).map(p => p.partId)))]
@@ -421,7 +480,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           return [...prev.filter(p => !fetched.some(fp => fp.id === p.id)), ...fetched]
         }))
     }
-  }, [project?.id])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directAsmIdsKey, directPartIdsKey])
 
   if (!project && fetchLoading) {
     return (
@@ -604,6 +664,108 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     setViewedProduct(null)
     setViewedAssembly(null)
     setViewedPart(null)
+  }
+
+  // ─── Items: shared save helper ────────────────────────────────────────────
+
+  async function saveItemsUpdate(nextItems: ProjectItem[], activityMsg: string): Promise<void> {
+    if (!project) return
+    const currentUser = getCurrentUser()
+    const nextCards = buildProductionCards(nextItems, products ?? [], mergedAssemblies, mergedParts)
+    const nextStepsTotal = nextCards.reduce((sum, c) => sum + c.ownSteps.length, 0)
+    const validKeys = new Set(nextCards.flatMap(c => c.ownSteps.map(s => ownStepKey(c, s))))
+    const nextStepsCompleted = (project.stepsCompleted ?? []).filter(k => validKeys.has(k))
+
+    const activityEntry: ActivityEntry = {
+      id: `a${Date.now()}`,
+      action: activityMsg,
+      user: currentUser?.name ?? 'Utilizator',
+      timestamp: new Date().toISOString().split('T')[0],
+    }
+
+    const updated = await updateProject({
+      ...project,
+      items: nextItems,
+      stepsCompleted: nextStepsCompleted,
+      stepsTotal: nextStepsTotal,
+      activity: [...(project.activity ?? []), activityEntry],
+    })
+
+    if (apiProject) setApiProject(updated)
+    setStepsCompleted(new Set(nextStepsCompleted))
+  }
+
+  // ─── Add item ─────────────────────────────────────────────────────────────
+
+  function resetAddForm() {
+    setAddItemType('product')
+    setAddItemEntityId('')
+    setAddItemQty(1)
+    setAddItemPrice(0)
+    setAddItemFromInventory(false)
+    setAddItemNotes('')
+    setAddItemComboOpen(false)
+  }
+
+  async function handleAddItem() {
+    if (!project) return
+    if (!addItemEntityId) { toast.error("Selectează un element"); return }
+    if (addItemQty < 1) { toast.error("Cantitatea trebuie să fie cel puțin 1"); return }
+
+    const newItem: ProjectItem =
+      addItemType === 'product'
+        ? { type: 'product', productId: addItemEntityId, quantity: addItemQty, unitPrice: addItemPrice, notes: addItemNotes, fromInventory: addItemFromInventory }
+        : addItemType === 'assembly'
+        ? { type: 'assembly', assemblyId: addItemEntityId, quantity: addItemQty, unitPrice: addItemPrice, notes: addItemNotes, fromInventory: addItemFromInventory }
+        : { type: 'part', partId: addItemEntityId, quantity: addItemQty, unitPrice: addItemPrice, notes: addItemNotes, fromInventory: addItemFromInventory }
+
+    const entityName =
+      addItemType === 'product' ? (products ?? []).find(p => p.id === addItemEntityId)?.name
+      : addItemType === 'assembly' ? mergedAssemblies.find(a => a.id === addItemEntityId)?.name
+      : mergedParts.find(p => p.id === addItemEntityId)?.name
+
+    const typeLabel = addItemType === 'product' ? 'Produsul' : addItemType === 'assembly' ? 'Ansamblul' : 'Piesa'
+    const activityMsg = `${typeLabel} „${entityName ?? addItemEntityId}" a fost adăugat${addItemType === 'part' ? 'ă' : ''} în proiect.`
+
+    setAddItemSaving(true)
+    try {
+      await saveItemsUpdate([...(project.items ?? []), newItem], activityMsg)
+      toast.success("Element adăugat cu succes")
+      setAddItemOpen(false)
+      resetAddForm()
+    } catch {
+      toast.error("Eroare la adăugarea elementului")
+    } finally {
+      setAddItemSaving(false)
+    }
+  }
+
+  // ─── Remove item ──────────────────────────────────────────────────────────
+
+  async function handleRemoveItem() {
+    if (!project || removeItemIdx === null) return
+    const item = project.items[removeItemIdx]
+    const kind = item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')
+    const entityName =
+      kind === 'product' ? (products ?? []).find(p => p.id === item.productId)?.name
+      : kind === 'assembly' ? mergedAssemblies.find(a => a.id === item.assemblyId)?.name
+      : mergedParts.find(p => p.id === item.partId)?.name
+
+    const typeLabel = kind === 'product' ? 'Produsul' : kind === 'assembly' ? 'Ansamblul' : 'Piesa'
+    const activityMsg = `${typeLabel} „${entityName ?? 'element'}" a fost eliminat${kind === 'part' ? 'ă' : ''} din proiect.`
+
+    const nextItems = project.items.filter((_, i) => i !== removeItemIdx)
+
+    setRemoveSaving(true)
+    try {
+      await saveItemsUpdate(nextItems, activityMsg)
+      toast.success("Element eliminat din proiect")
+      setRemoveItemIdx(null)
+    } catch {
+      toast.error("Eroare la eliminarea elementului")
+    } finally {
+      setRemoveSaving(false)
+    }
   }
 
   async function handleExportCardsPdf() {
@@ -889,20 +1051,32 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </CardContent>
       </Card>
 
-      {/* Products */}
+      {/* Project Items */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>{t("products")}</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-50"
-            onClick={handleExportProjectLaserPdf}
-            disabled={exportingProjectLaser}
-          >
-            <Zap className="mr-1 h-3 w-3" />
-            {exportingProjectLaser ? "Se generează..." : "Tăiere Laser"}
-          </Button>
+          <CardTitle>Elemente proiect</CardTitle>
+          <div className="flex items-center gap-2 shrink-0">
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { resetAddForm(); setAddItemOpen(true) }}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Adaugă element
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={handleExportProjectLaserPdf}
+              disabled={exportingProjectLaser}
+            >
+              <Zap className="mr-1 h-3 w-3" />
+              {exportingProjectLaser ? "Se generează..." : "Tăiere Laser"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {project.items.length === 0 ? (
@@ -917,7 +1091,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   {showPrices && <TableHead className="text-right">{t("common.total")} (EUR)</TableHead>}
                   <TableHead>{t("projects.source")}</TableHead>
                   <TableHead>{t("common.notes")}</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="w-16" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -949,19 +1123,31 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.notes || "-"}</TableCell>
                       <TableCell>
-                        {(kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId) && (
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                            title="Vezi detalii"
-                            onClick={() => {
-                              const eid = kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId
-                              if (eid) openEntityDetails(kind, eid)
-                            }}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {(kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId) && (
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                              title="Vezi detalii"
+                              onClick={() => {
+                                const eid = kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId
+                                if (eid) openEntityDetails(kind, eid)
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {canEdit && (
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                              title="Elimină din proiect"
+                              onClick={() => setRemoveItemIdx(idx)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -1173,6 +1359,192 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Item Dialog */}
+      <Dialog open={addItemOpen} onOpenChange={(open) => { if (!open) { setAddItemOpen(false); resetAddForm() } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Adaugă element în proiect</DialogTitle>
+            <DialogDescription>Selectează tipul, entitatea și configurează cantitatea.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Entity type */}
+            <div className="space-y-2">
+              <Label>Tip element</Label>
+              <div className="flex gap-2">
+                {(['product', 'assembly', 'part'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => { setAddItemType(t); setAddItemEntityId(''); setAddItemPrice(0) }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors
+                      ${addItemType === t
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background hover:bg-muted border-border text-foreground'}`}
+                  >
+                    {t === 'product' ? <Package className="h-3.5 w-3.5" /> : t === 'assembly' ? <Boxes className="h-3.5 w-3.5" /> : <Wrench className="h-3.5 w-3.5" />}
+                    {t === 'product' ? 'Produs' : t === 'assembly' ? 'Ansamblu' : 'Piesă'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Entity picker */}
+            <div className="space-y-2">
+              <Label>
+                {addItemType === 'product' ? 'Produs' : addItemType === 'assembly' ? 'Ansamblu' : 'Piesă'} *
+              </Label>
+              <Popover open={addItemComboOpen} onOpenChange={setAddItemComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    {addItemEntityId
+                      ? (() => {
+                          const e = addItemType === 'product'
+                            ? (products ?? []).find(p => p.id === addItemEntityId)
+                            : addItemType === 'assembly'
+                            ? mergedAssemblies.find(a => a.id === addItemEntityId)
+                            : mergedParts.find(p => p.id === addItemEntityId)
+                          return e ? `${e.name}${e.code ? ` — ${e.code}` : ''}` : addItemEntityId
+                        })()
+                      : `Selectează ${addItemType === 'product' ? 'produsul' : addItemType === 'assembly' ? 'ansamblul' : 'piesa'}...`}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Caută după nume sau cod..." />
+                    <CommandList>
+                      <CommandEmpty>Niciun rezultat.</CommandEmpty>
+                      <CommandGroup>
+                        {(addItemType === 'product'
+                          ? (products ?? []).map(p => ({ id: p.id, name: p.name, code: p.code, price: p.basePrice ?? 0 }))
+                          : addItemType === 'assembly'
+                          ? mergedAssemblies.map(a => ({ id: a.id, name: a.name, code: a.code, price: 0 }))
+                          : mergedParts.map(p => ({ id: p.id, name: p.name, code: p.code, price: p.basePrice ?? 0 }))
+                        ).map(e => (
+                          <CommandItem
+                            key={e.id}
+                            value={`${e.name} ${e.code ?? ''}`}
+                            onSelect={() => {
+                              setAddItemEntityId(e.id)
+                              if (showPrices) setAddItemPrice(e.price)
+                              else setAddItemPrice(e.price)
+                              setAddItemComboOpen(false)
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${addItemEntityId === e.id ? 'opacity-100' : 'opacity-0'}`} />
+                            <span>{e.name}</span>
+                            {e.code && <span className="ml-2 text-xs text-muted-foreground font-mono">{e.code}</span>}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Quantity + price row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="add-qty">Cantitate *</Label>
+                <Input
+                  id="add-qty"
+                  type="number"
+                  min={1}
+                  value={addItemQty}
+                  onChange={e => setAddItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+              </div>
+              {showPrices && (
+                <div className="space-y-2">
+                  <Label htmlFor="add-price">Preț unitar (EUR)</Label>
+                  <Input
+                    id="add-price"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={addItemPrice}
+                    onChange={e => setAddItemPrice(parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* From inventory */}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="add-inventory"
+                checked={addItemFromInventory}
+                onCheckedChange={v => setAddItemFromInventory(!!v)}
+              />
+              <Label htmlFor="add-inventory" className="font-normal cursor-pointer">
+                {t("projects.fromInventory")}
+              </Label>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="add-notes">{t("common.notes")} (opțional)</Label>
+              <Textarea
+                id="add-notes"
+                value={addItemNotes}
+                onChange={e => setAddItemNotes(e.target.value)}
+                rows={2}
+                placeholder="Note suplimentare..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddItemOpen(false); resetAddForm() }}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleAddItem} disabled={addItemSaving}>
+              {addItemSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Adaugă
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Item AlertDialog */}
+      <AlertDialog open={removeItemIdx !== null} onOpenChange={open => { if (!open) setRemoveItemIdx(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Elimină element din proiect</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeItemIdx !== null && (() => {
+                const item = project.items[removeItemIdx]
+                const kind = item.type ?? (item.assemblyId ? 'assembly' : item.partId ? 'part' : 'product')
+                const name =
+                  kind === 'product' ? (products ?? []).find(p => p.id === item.productId)?.name
+                  : kind === 'assembly' ? mergedAssemblies.find(a => a.id === item.assemblyId)?.name
+                  : mergedParts.find(p => p.id === item.partId)?.name
+                return (
+                  <>
+                    Ești sigur că vrei să elimini <strong>„{name ?? 'elementul'}"</strong> din proiect?
+                    <br /><br />
+                    Elementul va fi eliminat doar din proiect. Produsul, ansamblul sau piesa nu va fi șters/ștearsă din aplicație.
+                  </>
+                )
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeSaving}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveItem}
+              disabled={removeSaving}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {removeSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Elimină
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Entity Details Dialog */}
       <Dialog open={viewTarget !== null} onOpenChange={(open) => !open && closeEntityDetails()}>

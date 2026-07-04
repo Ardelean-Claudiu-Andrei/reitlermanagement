@@ -1,10 +1,10 @@
 "use client"
 
-import { use, useState, useEffect, useMemo } from "react"
+import { use, useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
-import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project, ActivityEntry, ProjectItem } from "@/lib/types"
+import type { ProjectStatus, ProjectIssue, Assembly, AssemblyStep, Part, Product, Project, ActivityEntry, ProjectItem, PaginatedActivityResponse } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -54,6 +54,8 @@ import {
   Zap,
   FileDown,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   Loader2,
   Trash2,
@@ -382,6 +384,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [removeItemIdx, setRemoveItemIdx] = useState<number | null>(null)
   const [removeSaving, setRemoveSaving] = useState(false)
 
+  // Activity log (server-side paginated)
+  const [activityItems, setActivityItems] = useState<ActivityEntry[]>([])
+  const [activityPage, setActivityPage] = useState(1)
+  const [activityTotal, setActivityTotal] = useState(0)
+  const [activityTotalPages, setActivityTotalPages] = useState(1)
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityError, setActivityError] = useState<string | null>(null)
+  const activityRequestRef = useRef(0)
+
   const contextProject = projects?.find((p) => p.id === id) ?? null
   const [apiProject, setApiProject] = useState<Project | null>(null)
   const [fetchLoading, setFetchLoading] = useState(!contextProject)
@@ -599,22 +610,24 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>
   }
 
-  const handleStatusChange = (status: ProjectStatus) => {
+  const handleStatusChange = async (status: ProjectStatus) => {
     if (status === "done") {
       setFinishDialogOpen(true)
     } else {
-      updateProjectStatus(project.id, status)
+      await updateProjectStatus(project.id, status)
       toast.success(t("common.savedSuccessfully"))
+      await refreshActivityFromFirstPage()
     }
   }
 
-  const handleFinishProject = () => {
-    finishProject(project.id)
+  const handleFinishProject = async () => {
+    await finishProject(project.id)
     setFinishDialogOpen(false)
     toast.success(t("projects.projectFinished"))
+    await refreshActivityFromFirstPage()
   }
 
-  const handleAddIssue = () => {
+  const handleAddIssue = async () => {
     if (!newIssueDescription.trim()) return
     const issue: ProjectIssue = {
       id: `i${Date.now()}`,
@@ -623,15 +636,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       solvedAt: null,
       createdAt: new Date().toISOString().split("T")[0],
     }
-    addProjectIssue(project.id, issue)
+    await addProjectIssue(project.id, issue)
     setNewIssueDescription("")
     setIssueDialogOpen(false)
     toast.success(t("projects.issueReported"))
+    await refreshActivityFromFirstPage()
   }
 
-  const handleResolveIssue = (issueId: string) => {
-    resolveProjectIssue(project.id, issueId)
+  const handleResolveIssue = async (issueId: string) => {
+    await resolveProjectIssue(project.id, issueId)
     toast.success(t("projects.issueResolved"))
+    await refreshActivityFromFirstPage()
   }
 
   async function openEntityDetails(type: 'product' | 'assembly' | 'part', id: string) {
@@ -666,6 +681,40 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     setViewedPart(null)
   }
 
+  // ─── Activity log (server-side paginated) ─────────────────────────────────
+
+  const loadActivity = useCallback(async (page: number) => {
+    if (!project?.id) return
+    const requestId = ++activityRequestRef.current
+    setActivityLoading(true)
+    setActivityError(null)
+    try {
+      const result: PaginatedActivityResponse = await projectsApi.getActivity(project.id, page)
+      if (activityRequestRef.current !== requestId) return
+      setActivityItems(result.items)
+      setActivityTotal(result.total)
+      setActivityTotalPages(result.totalPages)
+      setActivityPage(result.page)
+    } catch {
+      if (activityRequestRef.current !== requestId) return
+      setActivityError("Nu s-a putut încărca activitatea.")
+    } finally {
+      if (activityRequestRef.current === requestId) setActivityLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id])
+
+  const refreshActivityFromFirstPage = useCallback(async () => {
+    setActivityPage(1)
+    await loadActivity(1)
+  }, [loadActivity])
+
+  useEffect(() => {
+    if (!project?.id) return
+    loadActivity(activityPage)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, activityPage])
+
   // ─── Items: shared save helper ────────────────────────────────────────────
 
   async function saveItemsUpdate(nextItems: ProjectItem[], activityMsg: string): Promise<void> {
@@ -680,7 +729,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       id: `a${Date.now()}`,
       action: activityMsg,
       user: currentUser?.name ?? 'Utilizator',
-      timestamp: new Date().toISOString().split('T')[0],
+      timestamp: new Date().toISOString(),
     }
 
     const updated = await updateProject({
@@ -693,6 +742,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
     if (apiProject) setApiProject(updated)
     setStepsCompleted(new Set(nextStepsCompleted))
+    await refreshActivityFromFirstPage()
   }
 
   // ─── Add item ─────────────────────────────────────────────────────────────
@@ -1232,19 +1282,91 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <CardTitle>{t("projects.activity")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {project.activity.map((entry) => (
-              <div key={entry.id} className="flex items-start gap-3 text-sm">
-                <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
-                <div>
-                  <p>{entry.action}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {entry.user} - {entry.timestamp}
-                  </p>
-                </div>
+          {activityError ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
+              <p>{activityError}</p>
+              <Button variant="outline" size="sm" onClick={() => loadActivity(activityPage)}>
+                Încearcă din nou
+              </Button>
+            </div>
+          ) : activityLoading && activityItems.length === 0 ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Se încarcă activitatea...
+            </div>
+          ) : activityItems.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6 text-sm">
+              Nu există activitate pentru acest proiect.
+            </p>
+          ) : (
+            <>
+              <div className={`space-y-3 ${activityLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+                {activityItems.map((entry) => (
+                  <div key={entry.id} className="flex items-start gap-3 text-sm">
+                    <div className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                    <div>
+                      <p>{entry.action}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {entry.user} - {entry.timestamp}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between pt-4 mt-4 border-t gap-4">
+                <p className="text-sm text-muted-foreground shrink-0">
+                  {activityTotal === 0 ? '0' : `${(activityPage - 1) * 10 + 1}–${Math.min(activityPage * 10, activityTotal)}`} din {activityTotal}
+                </p>
+                {activityTotalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={activityPage === 1 || activityLoading}
+                      onClick={() => setActivityPage(p => p - 1)}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: activityTotalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === activityTotalPages || Math.abs(p - activityPage) <= 1)
+                      .reduce<(number | '…')[]>((acc, p, i, arr) => {
+                        if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('…')
+                        acc.push(p)
+                        return acc
+                      }, [])
+                      .map((item, i) =>
+                        item === '…' ? (
+                          <span key={`ell-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                        ) : (
+                          <Button
+                            key={item}
+                            variant={activityPage === item ? 'default' : 'outline'}
+                            size="icon"
+                            className="h-8 w-8 text-sm"
+                            disabled={activityLoading}
+                            onClick={() => setActivityPage(item as number)}
+                          >
+                            {item}
+                          </Button>
+                        )
+                      )}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={activityPage === activityTotalPages || activityLoading}
+                      onClick={() => setActivityPage(p => p + 1)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

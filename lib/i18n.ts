@@ -405,6 +405,13 @@ type TranslationKeys = {
   "parts.formDesc": string
   "parts.deletePart": string
   "parts.deleteConfirm": string
+  "parts.purchase.tab": string
+  "parts.purchase.requiresPurchase": string
+  "parts.purchase.supplier": string
+  "parts.purchase.price": string
+  "parts.purchase.agentContact": string
+  "parts.purchase.details": string
+  "parts.purchase.badge": string
 
   // Missing keys used without prefix in quotes/projects/management pages
   "companyName": string
@@ -835,6 +842,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Fill in the part details",
     "parts.deletePart": "Delete Part",
     "parts.deleteConfirm": "Are you sure you want to delete this part? This action cannot be undone.",
+    "parts.purchase.tab": "Purchase",
+    "parts.purchase.requiresPurchase": "Needs to be purchased",
+    "parts.purchase.supplier": "Supplier / Where to buy",
+    "parts.purchase.price": "Purchase price / unit (EUR)",
+    "parts.purchase.agentContact": "Agent contact (optional)",
+    "parts.purchase.details": "Purchase details (optional)",
+    "parts.purchase.badge": "To Purchase",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Company Name",
@@ -1269,6 +1283,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Completati detaliile piesei",
     "parts.deletePart": "Sterge Piesa",
     "parts.deleteConfirm": "Esti sigur ca vrei sa stergi aceasta piesa? Aceasta actiune nu poate fi anulata.",
+    "parts.purchase.tab": "Achizitie",
+    "parts.purchase.requiresPurchase": "Trebuie cumparata",
+    "parts.purchase.supplier": "Furnizor / De unde cumparam",
+    "parts.purchase.price": "Pret de achizitie / unitate (EUR)",
+    "parts.purchase.agentContact": "Contact agent (optional)",
+    "parts.purchase.details": "Detalii achizitie (optional)",
+    "parts.purchase.badge": "De cumparat",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Nume Companie",
@@ -1703,6 +1724,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Toltse ki az alkatresz adatait",
     "parts.deletePart": "Alkatresz Torlese",
     "parts.deleteConfirm": "Biztosan torolni szeretned ezt az alkatreszt? Ez a muvelet nem vonhato vissza.",
+    "parts.purchase.tab": "Vasarlas",
+    "parts.purchase.requiresPurchase": "Meg kell vasarolni",
+    "parts.purchase.supplier": "Szallito / Hol vasaroljuk",
+    "parts.purchase.price": "Vetelár / egyseg (EUR)",
+    "parts.purchase.agentContact": "Ugynok kapcsolattarto (opcionalis)",
+    "parts.purchase.details": "Vasarlasi reszletek (opcionalis)",
+    "parts.purchase.badge": "Vasarlando",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Ceg Neve",
@@ -2137,6 +2165,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Teiledetails ausfullen",
     "parts.deletePart": "Teil Loschen",
     "parts.deleteConfirm": "Sind Sie sicher, dass Sie dieses Teil loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "parts.purchase.tab": "Einkauf",
+    "parts.purchase.requiresPurchase": "Muss gekauft werden",
+    "parts.purchase.supplier": "Lieferant / Wo kaufen",
+    "parts.purchase.price": "Einkaufspreis / Einheit (EUR)",
+    "parts.purchase.agentContact": "Agentenkontakt (optional)",
+    "parts.purchase.details": "Einkaufsdetails (optional)",
+    "parts.purchase.badge": "Zu kaufen",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Unternehmensname",

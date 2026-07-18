@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAppData } from "@/lib/app-context"
 import { useLocale } from "@/lib/locale-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -60,6 +60,7 @@ import {
   Puzzle,
   AlertTriangle,
   Zap,
+  ShoppingCart,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
@@ -91,6 +92,14 @@ const EMPTY_PART: Omit<Part, "id" | "createdAt" | "updatedAt"> = {
   notes: "",
   fileName: "",
   fileLocation: "",
+  requiresPurchase: false,
+  purchaseSupplier: "",
+  purchasePrice: null,
+  purchaseCurrency: "EUR",
+  purchaseVatIncluded: false,
+  purchaseVatRate: 21,
+  purchaseAgentContact: "",
+  purchaseDetails: "",
 }
 
 type SortKey =
@@ -128,6 +137,16 @@ export default function PartsPage() {
 
   const safeParts = parts ?? []
   const lowStockCount = safeParts.filter((p) => p.minimumStock > 0 && p.quantity <= p.minimumStock).length
+
+  // Auto-open view dialog when navigated to with ?view=<partId>
+  useEffect(() => {
+    if (!safeParts.length) return
+    const viewId = new URLSearchParams(window.location.search).get('view')
+    if (!viewId) return
+    const part = safeParts.find((p) => p.id === viewId)
+    if (part) setViewPart(part)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeParts])
 
   const filteredParts = safeParts
     .filter((p) => {
@@ -195,6 +214,14 @@ export default function PartsPage() {
       notes: part.notes || "",
       fileName: part.fileName || "",
       fileLocation: part.fileLocation || "",
+      requiresPurchase: part.requiresPurchase || false,
+      purchaseSupplier: part.purchaseSupplier || "",
+      purchasePrice: part.purchasePrice ?? null,
+      purchaseCurrency: part.purchaseCurrency || "EUR",
+      purchaseVatIncluded: part.purchaseVatIncluded || false,
+      purchaseVatRate: part.purchaseVatRate ?? 21,
+      purchaseAgentContact: part.purchaseAgentContact || "",
+      purchaseDetails: part.purchaseDetails || "",
     })
     setFormSteps([...(part.productionSteps || [])])
     setDialogOpen(true)
@@ -503,6 +530,7 @@ export default function PartsPage() {
             <TabsList className="mb-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="laser">Laser & Desene</TabsTrigger>
+              <TabsTrigger value="purchase">{t("parts.purchase.tab")}</TabsTrigger>
               <TabsTrigger value="steps">Pași producție</TabsTrigger>
               <TabsTrigger value="files">Fișiere</TabsTrigger>
             </TabsList>
@@ -615,6 +643,111 @@ export default function PartsPage() {
               </div>
             </TabsContent>
 
+            {/* Purchase tab */}
+            <TabsContent value="purchase" className="space-y-4">
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Checkbox
+                  id="requiresPurchase"
+                  checked={form.requiresPurchase}
+                  onCheckedChange={(checked) => setField("requiresPurchase", !!checked)}
+                />
+                <label htmlFor="requiresPurchase" className="text-sm font-medium cursor-pointer">
+                  {t("parts.purchase.requiresPurchase")}
+                </label>
+                {form.requiresPurchase && (
+                  <Badge className="ml-auto bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800">
+                    <ShoppingCart className="mr-1 h-3 w-3" />
+                    {t("parts.purchase.badge")}
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t("parts.purchase.supplier")}</Label>
+                  <Input
+                    value={form.purchaseSupplier}
+                    onChange={(e) => setField("purchaseSupplier", e.target.value)}
+                    placeholder="ex: SC Furnizor SRL"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("parts.purchase.price")}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.purchasePrice ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setField("purchasePrice", v === "" ? null : parseFloat(v) || 0)
+                      }}
+                      placeholder="ex: 12.50"
+                      className="flex-1"
+                    />
+                    <Select
+                      value={form.purchaseCurrency}
+                      onValueChange={(v) => setField("purchaseCurrency", v)}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="RON">RON</SelectItem>
+                        <SelectItem value="HUF">HUF</SelectItem>
+                        <SelectItem value="IRR">IRR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 rounded-md border p-3">
+                  <Checkbox
+                    id="purchaseVatIncluded"
+                    checked={form.purchaseVatIncluded}
+                    onCheckedChange={(checked) => setField("purchaseVatIncluded", !!checked)}
+                  />
+                  <label htmlFor="purchaseVatIncluded" className="text-sm font-medium cursor-pointer flex-1">
+                    Prețul include TVA
+                  </label>
+                  {form.purchaseVatIncluded && (
+                    <Select
+                      value={String(form.purchaseVatRate)}
+                      onValueChange={(v) => setField("purchaseVatRate", Number(v))}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5%</SelectItem>
+                        <SelectItem value="9">9%</SelectItem>
+                        <SelectItem value="11">11%</SelectItem>
+                        <SelectItem value="19">19%</SelectItem>
+                        <SelectItem value="21">21%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("parts.purchase.agentContact")}</Label>
+                  <Input
+                    value={form.purchaseAgentContact}
+                    onChange={(e) => setField("purchaseAgentContact", e.target.value)}
+                    placeholder="ex: Ion Popescu, +40 700 000 000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("parts.purchase.details")}</Label>
+                  <Textarea
+                    value={form.purchaseDetails}
+                    onChange={(e) => setField("purchaseDetails", e.target.value)}
+                    rows={3}
+                    placeholder="ex: minim 10 buc per comandă, livrare 5 zile"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
             {/* Production steps tab */}
             <TabsContent value="steps" className="space-y-4">
               <StepEditor steps={formSteps} onChange={setFormSteps} />
@@ -657,6 +790,11 @@ export default function PartsPage() {
                   <Zap className="mr-1 h-3 w-3" />Laser
                 </Badge>
               )}
+              {viewPart?.requiresPurchase && (
+                <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800">
+                  <ShoppingCart className="mr-1 h-3 w-3" />{t("parts.purchase.badge")}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>{viewPart?.category || "Piesă"}</DialogDescription>
           </DialogHeader>
@@ -664,6 +802,7 @@ export default function PartsPage() {
             <Tabs defaultValue="info">
               <TabsList className="mb-2">
                 <TabsTrigger value="info">Informații</TabsTrigger>
+                <TabsTrigger value="purchase">{t("parts.purchase.tab")}</TabsTrigger>
                 <TabsTrigger value="steps">
                   Pași {viewPart.productionSteps?.length > 0 && `(${viewPart.productionSteps.length})`}
                 </TabsTrigger>
@@ -727,6 +866,53 @@ export default function PartsPage() {
                     <p className="text-xs text-muted-foreground mb-0.5">Note</p>
                     <p>{viewPart.notes}</p>
                   </div>
+                )}
+              </TabsContent>
+
+              {/* Purchase */}
+              <TabsContent value="purchase" className="space-y-3 text-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs text-muted-foreground">{t("parts.purchase.requiresPurchase")}:</span>
+                  {viewPart.requiresPurchase ? (
+                    <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800">
+                      <ShoppingCart className="mr-1 h-3 w-3" />{t("parts.purchase.badge")}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">Nu</span>
+                  )}
+                </div>
+                {viewPart.requiresPurchase ? (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("parts.purchase.supplier")}</p>
+                      <p>{viewPart.purchaseSupplier || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("parts.purchase.price")}</p>
+                      <p className="font-mono">
+                        {viewPart.purchasePrice != null
+                          ? `${viewPart.purchasePrice.toFixed(2)} ${viewPart.purchaseCurrency || "EUR"}`
+                          : "—"}
+                        {viewPart.purchasePrice != null && (
+                          <span className="ml-2 text-xs font-sans text-muted-foreground">
+                            {viewPart.purchaseVatIncluded ? `cu TVA ${viewPart.purchaseVatRate ?? 21}%` : "fără TVA"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("parts.purchase.agentContact")}</p>
+                      <p>{viewPart.purchaseAgentContact || "—"}</p>
+                    </div>
+                    {viewPart.purchaseDetails && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">{t("parts.purchase.details")}</p>
+                        <p className="whitespace-pre-wrap">{viewPart.purchaseDetails}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Această piesă nu este marcată pentru achiziție.</p>
                 )}
               </TabsContent>
 

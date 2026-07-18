@@ -61,6 +61,9 @@ import {
   Trash2,
   ChevronsUpDown,
   Check,
+  ShoppingCart,
+  ExternalLink,
+  Download,
 } from "lucide-react"
 import { toast } from "sonner"
 import { projectsApi, productsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
@@ -384,6 +387,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   // Remove item
   const [removeItemIdx, setRemoveItemIdx] = useState<number | null>(null)
   const [removeSaving, setRemoveSaving] = useState(false)
+  const [purchaseListOpen, setPurchaseListOpen] = useState(false)
+  const [exportingPurchasePdf, setExportingPurchasePdf] = useState(false)
 
   // Activity log (server-side paginated)
   const [activityItems, setActivityItems] = useState<ActivityEntry[]>([])
@@ -583,6 +588,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     // Depend on the consolidated items so production cards reflect merged quantities.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [project.id, consolidatedProjectItems, products, mergedAssemblies, mergedParts],
+  )
+
+  const purchaseParts = useMemo(
+    () =>
+      productionCards
+        .filter((card) => card.itemType === 'part')
+        .flatMap((card) => {
+          const part = mergedParts.find((p) => p.id === card.entityId)
+          if (!part?.requiresPurchase) return []
+          return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, part }]
+        })
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [productionCards, mergedParts],
   )
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
@@ -884,6 +902,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  async function handleExportPurchasePdf() {
+    if (!project) return
+    setExportingPurchasePdf(true)
+    try {
+      const blob = await projectsApi.exportPurchaseListPdf(project.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `achizitii-${project.code}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Listă achiziții generată cu succes')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Eroare la generare PDF')
+    } finally {
+      setExportingPurchasePdf(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1154,6 +1191,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <Zap className="mr-1 h-3 w-3" />
               {exportingProjectLaser ? "Se generează..." : "Tăiere Laser"}
             </Button>
+            {purchaseParts.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-orange-300 text-orange-700 hover:bg-orange-50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                onClick={() => setPurchaseListOpen(true)}
+              >
+                <ShoppingCart className="mr-1 h-3 w-3" />
+                Achiziții ({purchaseParts.length})
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -1654,6 +1702,76 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Button onClick={handleAddItem} disabled={addItemSaving}>
               {addItemSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
               Adaugă
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purchase Parts Dialog */}
+      <Dialog open={purchaseListOpen} onOpenChange={setPurchaseListOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-orange-600" />
+              Piese de achiziționat
+            </DialogTitle>
+            <DialogDescription>
+              {purchaseParts.length === 0
+                ? 'Nicio piesă marcată pentru achiziție în acest proiect.'
+                : `${purchaseParts.length} ${purchaseParts.length === 1 ? 'piesă' : 'piese'} necesită achiziție externă.`}
+            </DialogDescription>
+          </DialogHeader>
+          {purchaseParts.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Piesă</TableHead>
+                  <TableHead className="text-right">Cant.</TableHead>
+                  <TableHead>Furnizor</TableHead>
+                  <TableHead>Preț</TableHead>
+                  <TableHead>Contact</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchaseParts.map(({ id, name, code, quantity, part }) => (
+                  <TableRow key={id}>
+                    <TableCell>
+                      <a
+                        href={`/materials/parts?view=${id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 group"
+                        title="Deschide piesa"
+                      >
+                        <span className="font-medium group-hover:underline">{name}</span>
+                        <ExternalLink className="h-3 w-3 text-blue-500 shrink-0 opacity-60 group-hover:opacity-100" />
+                      </a>
+                      {code && <div className="text-xs font-mono text-muted-foreground mt-0.5">{code}</div>}
+                    </TableCell>
+                    <TableCell className="text-right">{quantity}</TableCell>
+                    <TableCell className="text-muted-foreground">{part.purchaseSupplier || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {part.purchasePrice != null
+                        ? `${part.purchasePrice} ${part.purchaseCurrency}${part.purchaseVatIncluded ? ` cu TVA ${part.purchaseVatRate}%` : ' fără TVA'}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{part.purchaseAgentContact || '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <DialogFooter className="flex-row justify-between sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={handleExportPurchasePdf}
+              disabled={purchaseParts.length === 0 || exportingPurchasePdf}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exportingPurchasePdf ? 'Se generează...' : 'Export PDF'}
+            </Button>
+            <Button variant="outline" onClick={() => setPurchaseListOpen(false)}>
+              Închide
             </Button>
           </DialogFooter>
         </DialogContent>

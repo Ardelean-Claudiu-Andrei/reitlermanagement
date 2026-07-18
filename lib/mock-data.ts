@@ -52,6 +52,7 @@ export const parts: Part[] = [
     unit: "pcs", basePrice: 45.0, category: "Metal", minimumStock: 5, quantity: 20, location: "Shelf A1",
     requiredQuantity: 1, physicalLocation: "Shelf A1", drawingLocation: "", requiresLaserCutting: true,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-10", updatedAt: "2026-02-10",
   },
   {
@@ -61,6 +62,7 @@ export const parts: Part[] = [
     unit: "m", basePrice: 12.5, category: "Metal", minimumStock: 10, quantity: 50, location: "Shelf A2",
     requiredQuantity: 1, physicalLocation: "Shelf A2", drawingLocation: "", requiresLaserCutting: false,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-12", updatedAt: "2026-02-08",
   },
   {
@@ -70,6 +72,7 @@ export const parts: Part[] = [
     unit: "pcs", basePrice: 32.0, category: "Metal", minimumStock: 5, quantity: 15, location: "Shelf B1",
     requiredQuantity: 1, physicalLocation: "Shelf B1", drawingLocation: "", requiresLaserCutting: true,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-15", updatedAt: "2026-02-12",
   },
   {
@@ -79,6 +82,7 @@ export const parts: Part[] = [
     unit: "set", basePrice: 3.5, category: "Fasteners", minimumStock: 20, quantity: 100, location: "Bin C1",
     requiredQuantity: 1, physicalLocation: "Bin C1", drawingLocation: "", requiresLaserCutting: false,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-18", updatedAt: "2026-02-15",
   },
   {
@@ -88,6 +92,7 @@ export const parts: Part[] = [
     unit: "set", basePrice: 4.2, category: "Fasteners", minimumStock: 20, quantity: 80, location: "Bin C2",
     requiredQuantity: 1, physicalLocation: "Bin C2", drawingLocation: "", requiresLaserCutting: false,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-20", updatedAt: "2026-02-14",
   },
   {
@@ -97,6 +102,7 @@ export const parts: Part[] = [
     unit: "kg", basePrice: 8.0, category: "Consumables", minimumStock: 5, quantity: 25, location: "Shelf D1",
     requiredQuantity: 1, physicalLocation: "Shelf D1", drawingLocation: "", requiresLaserCutting: false,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-22", updatedAt: "2026-02-11",
   },
   {
@@ -106,6 +112,7 @@ export const parts: Part[] = [
     unit: "L", basePrice: 22.0, category: "Consumables", minimumStock: 3, quantity: 2, location: "Shelf D2",
     requiredQuantity: 1, physicalLocation: "Shelf D2", drawingLocation: "", requiresLaserCutting: false,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-01-25", updatedAt: "2026-02-09",
   },
   {
@@ -115,6 +122,7 @@ export const parts: Part[] = [
     unit: "pcs", basePrice: 120.0, category: "Silo", minimumStock: 2, quantity: 8, location: "Warehouse E1",
     requiredQuantity: 1, physicalLocation: "Warehouse E1", drawingLocation: "", requiresLaserCutting: true,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-02-01", updatedAt: "2026-02-16",
   },
   {
@@ -124,6 +132,7 @@ export const parts: Part[] = [
     unit: "pcs", basePrice: 85.0, category: "Silo", minimumStock: 2, quantity: 5, location: "Warehouse E2",
     requiredQuantity: 1, physicalLocation: "Warehouse E2", drawingLocation: "", requiresLaserCutting: true,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-02-05", updatedAt: "2026-02-17",
   },
   {
@@ -133,6 +142,7 @@ export const parts: Part[] = [
     unit: "pcs", basePrice: 180.0, category: "Electrical", minimumStock: 1, quantity: 3, location: "Shelf F1",
     requiredQuantity: 1, physicalLocation: "Shelf F1", drawingLocation: "", requiresLaserCutting: true,
     weldingDrawingLocation: "", bendingDrawingLocation: "", cadLocation: "", technicalDrawingLocation: "", productionSteps: [], notes: "",
+    requiresPurchase: false, purchaseSupplier: "", purchasePrice: null, purchaseCurrency: "EUR", purchaseVatIncluded: false, purchaseVatRate: 21, purchaseAgentContact: "", purchaseDetails: "",
     createdAt: "2025-02-10", updatedAt: "2026-02-18",
   },
 ]

@@ -105,6 +105,14 @@ export interface Part {
   notes: string
   fileName: string
   fileLocation: string
+  requiresPurchase: boolean
+  purchaseSupplier: string
+  purchasePrice: number | null
+  purchaseCurrency: string
+  purchaseVatIncluded: boolean
+  purchaseVatRate: number
+  purchaseAgentContact: string
+  purchaseDetails: string
   createdAt: string
   updatedAt: string
 }

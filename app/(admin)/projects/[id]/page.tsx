@@ -72,6 +72,7 @@ import type { ProductionCardVM, DependencyVM, UsageEntry } from "@/lib/project-p
 import { consolidateProjectItems, getProjectItemKey, computeProjectTotal } from "@/lib/project-items"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
+import { formatActivityTimestamp } from "@/lib/format-date"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
@@ -1443,7 +1444,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <div>
                       <p>{entry.action}</p>
                       <p className="text-xs text-muted-foreground">
-                        {entry.user} - {entry.timestamp}
+                        {entry.user} - {formatActivityTimestamp(entry.timestamp)}
                       </p>
                     </div>
                   </div>

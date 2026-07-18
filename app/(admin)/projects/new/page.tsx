@@ -117,7 +117,7 @@ export default function NewProjectPage() {
           id: `a${Date.now()}`,
           action: "Project created",
           user: "Claudiu Ardelean",
-          timestamp: new Date().toLocaleString(),
+          timestamp: new Date().toISOString(),
         },
       ],
       stepsCompleted: [],

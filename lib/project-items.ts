@@ -1,5 +1,18 @@
 import type { ProjectItem } from './types'
 
+export function computeProjectTotal(project: {
+  finalPrice?: number | null
+  items?: Array<{ unitPrice: number; quantity: number }>
+  installationCost?: number
+}): number {
+  if (project.finalPrice != null) return project.finalPrice
+  const itemsTotal = (project.items ?? []).reduce(
+    (sum, item) => sum + (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0),
+    0,
+  )
+  return itemsTotal + (Number(project.installationCost) || 0)
+}
+
 export function getProjectItemEntityId(item: ProjectItem): string | undefined {
   const type = item.type ?? 'product'
   if (type === 'assembly') return item.assemblyId

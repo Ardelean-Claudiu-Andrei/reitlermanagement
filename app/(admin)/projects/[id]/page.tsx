@@ -69,10 +69,11 @@ import { toast } from "sonner"
 import { projectsApi, productsApi, assembliesApi, partsApi, getCurrentUser } from "@/lib/api"
 import { buildProductionCards, ownStepKey, depStepKey } from "@/lib/project-production"
 import type { ProductionCardVM, DependencyVM, UsageEntry } from "@/lib/project-production"
-import { consolidateProjectItems, getProjectItemKey } from "@/lib/project-items"
+import { consolidateProjectItems, getProjectItemKey, computeProjectTotal } from "@/lib/project-items"
 import { canViewPrices, canEditProject, canResolveIssues } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 import {
   AlertDialog,
@@ -150,11 +151,15 @@ function ProductionCardComponent({
   const ownDone = card.ownSteps.filter((s) => stepsCompleted.has(ownStepKey(card, s))).length
   const ownTotal = card.ownSteps.length
 
+  const manualDoneKey = `manual:${card.itemType}:${card.entityId}`
+  const isManuallyDone = ownTotal === 0 && stepsCompleted.has(manualDoneKey)
+  const isDone = (ownTotal > 0 && ownDone === ownTotal) || isManuallyDone
+
   const TypeIcon = card.itemType === 'product' ? Package : card.itemType === 'assembly' ? Boxes : Wrench
 
   const progressLabel =
     ownTotal === 0
-      ? null
+      ? isManuallyDone ? 'Gata' : null
       : ownDone === ownTotal
       ? 'Gata'
       : `${ownDone}/${ownTotal} pași`
@@ -173,8 +178,8 @@ function ProductionCardComponent({
           <Badge variant="secondary" className="text-xs">× {card.quantity}</Badge>
           {progressLabel && (
             <Badge
-              variant={ownDone === ownTotal && ownTotal > 0 ? 'default' : 'secondary'}
-              className={`text-xs ml-auto ${ownDone === ownTotal && ownTotal > 0 ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''}`}
+              variant={isDone ? 'default' : 'secondary'}
+              className={`text-xs ml-auto ${isDone ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''}`}
             >
               {progressLabel}
             </Badge>
@@ -201,9 +206,19 @@ function ProductionCardComponent({
               Pași proprii
             </p>
             {ownTotal === 0 ? (
-              <p className="text-sm text-muted-foreground italic">
-                Nu există pași de producție definiți pentru acest element.
-              </p>
+              <div className="flex items-center gap-3 py-1">
+                <Checkbox
+                  id={manualDoneKey}
+                  checked={isManuallyDone}
+                  onCheckedChange={() => onToggle(manualDoneKey)}
+                />
+                <label
+                  htmlFor={manualDoneKey}
+                  className="text-sm cursor-pointer select-none text-muted-foreground"
+                >
+                  Marchează ca terminat
+                </label>
+              </div>
             ) : (
               <div>
                 {card.ownSteps.map((step, idx) => {
@@ -389,6 +404,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [removeSaving, setRemoveSaving] = useState(false)
   const [purchaseListOpen, setPurchaseListOpen] = useState(false)
   const [exportingPurchasePdf, setExportingPurchasePdf] = useState(false)
+  const [doneCardsOpen, setDoneCardsOpen] = useState(false)
 
   // Activity log (server-side paginated)
   const [activityItems, setActivityItems] = useState<ActivityEntry[]>([])
@@ -530,11 +546,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const company = project.companyId ? companies.find((c) => c.id === project.companyId) : null
   const quote = project.quoteId ? quotes.find((q) => q.id === project.quoteId) : null
-  const subtotal = consolidatedProjectItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-  const installationCost = project.installationCost || 0
-  const computedTotal = subtotal + installationCost
-  const total = project.finalPrice != null ? project.finalPrice : computedTotal
-  const paidAmount = project.paidAmount ?? 0
+  const installationCost = Number(project.installationCost) || 0
+  const total = computeProjectTotal({ ...project, items: consolidatedProjectItems })
+  const paidAmount = Number(project.paidAmount) || 0
   const remaining = Math.max(0, total - paidAmount)
 
   const handleSavePaidAmount = async () => {
@@ -1310,21 +1324,67 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <span className="text-sm font-medium shrink-0">{completedStepCount}/{totalStepCount} ({progressPct}%)</span>
             </div>
           )}
-          {productionCards.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              Nu există elemente de producție configurate în acest proiect.
-            </p>
-          ) : (
-            productionCards.map((card) => (
-              <ProductionCardComponent
-                key={`${card.itemType}:${card.entityId}`}
-                card={card}
-                stepsCompleted={stepsCompleted}
-                onToggle={toggleStep}
-                onViewDetails={openEntityDetails}
-              />
-            ))
-          )}
+          {(() => {
+            const isCardDone = (card: ProductionCardVM) => {
+              if (card.ownSteps.length > 0) {
+                return card.ownSteps.every((s) => stepsCompleted.has(ownStepKey(card, s)))
+              }
+              return stepsCompleted.has(`manual:${card.itemType}:${card.entityId}`)
+            }
+            const activeCards = productionCards.filter((c) => !isCardDone(c))
+            const doneCards = productionCards.filter((c) => isCardDone(c))
+
+            if (productionCards.length === 0) {
+              return (
+                <p className="text-center text-muted-foreground py-4">
+                  Nu există elemente de producție configurate în acest proiect.
+                </p>
+              )
+            }
+
+            return (
+              <>
+                {activeCards.map((card) => (
+                  <ProductionCardComponent
+                    key={`${card.itemType}:${card.entityId}`}
+                    card={card}
+                    stepsCompleted={stepsCompleted}
+                    onToggle={toggleStep}
+                    onViewDetails={openEntityDetails}
+                  />
+                ))}
+                {activeCards.length === 0 && doneCards.length > 0 && (
+                  <p className="text-center text-muted-foreground py-2 text-sm">
+                    Toate elementele sunt terminate.
+                  </p>
+                )}
+                {doneCards.length > 0 && (
+                  <Collapsible open={doneCardsOpen} onOpenChange={setDoneCardsOpen}>
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-md border border-dashed px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 transition-colors"
+                      >
+                        <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${doneCardsOpen ? 'rotate-90' : ''}`} />
+                        <span className="font-medium">Elemente terminate ({doneCards.length})</span>
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3 mt-3">
+                      {doneCards.map((card) => (
+                        <ProductionCardComponent
+                          key={`${card.itemType}:${card.entityId}`}
+                          card={card}
+                          stepsCompleted={stepsCompleted}
+                          onToggle={toggleStep}
+                          onViewDetails={openEntityDetails}
+                        />
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </>
+            )
+          })()}
         </CardContent>
       </Card>
 

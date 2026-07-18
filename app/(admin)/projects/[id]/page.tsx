@@ -103,13 +103,15 @@ function depCompletedCount(dep: DependencyVM, stepsCompleted: Set<string>): numb
   return dep.ownSteps.filter((s) => stepsCompleted.has(depStepKey(dep, s))).length
 }
 
-function depStatus(dep: DependencyVM, stepsCompleted: Set<string>): string {
+type DepStatusCode = 'no-steps' | 'not-started' | 'done' | 'partial'
+
+function getDepStatusCode(dep: DependencyVM, stepsCompleted: Set<string>): { code: DepStatusCode; done?: number; total?: number } {
   const total = dep.ownSteps.length
-  if (total === 0) return 'Fără pași'
+  if (total === 0) return { code: 'no-steps' }
   const done = depCompletedCount(dep, stepsCompleted)
-  if (done === 0) return 'Neînceput'
-  if (done === total) return 'Gata'
-  return `${done}/${total} pași`
+  if (done === 0) return { code: 'not-started' }
+  if (done === total) return { code: 'done' }
+  return { code: 'partial', done, total }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -148,6 +150,7 @@ function ProductionCardComponent({
   onViewDetails: (type: 'product' | 'assembly' | 'part', id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useLocale()
 
   const ownDone = card.ownSteps.filter((s) => stepsCompleted.has(ownStepKey(card, s))).length
   const ownTotal = card.ownSteps.length
@@ -160,10 +163,10 @@ function ProductionCardComponent({
 
   const progressLabel =
     ownTotal === 0
-      ? isManuallyDone ? 'Gata' : null
+      ? isManuallyDone ? t('projects.prod.done') : null
       : ownDone === ownTotal
-      ? 'Gata'
-      : `${ownDone}/${ownTotal} pași`
+      ? t('projects.prod.done')
+      : t('projects.prod.stepsProgress', { done: String(ownDone), total: String(ownTotal) })
 
   return (
     <div className="rounded-lg border bg-card">
@@ -191,8 +194,8 @@ function ProductionCardComponent({
         <button
           type="button"
           className="shrink-0 px-3 py-3 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors rounded-r-lg"
-          title="Vezi detalii"
-          aria-label={`Vezi detalii ${card.name}`}
+          title={t('projects.prod.viewDetails')}
+          aria-label={`${t('projects.prod.viewDetails')} ${card.name}`}
           onClick={(e) => { e.stopPropagation(); onViewDetails(card.itemType, card.entityId) }}
         >
           <Eye className="h-4 w-4" />
@@ -204,7 +207,7 @@ function ProductionCardComponent({
           {/* Section 1: Own production steps */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-              Pași proprii
+              {t('projects.prod.ownSteps')}
             </p>
             {ownTotal === 0 ? (
               <div className="flex items-center gap-3 py-1">
@@ -217,7 +220,7 @@ function ProductionCardComponent({
                   htmlFor={manualDoneKey}
                   className="text-sm cursor-pointer select-none text-muted-foreground"
                 >
-                  Marchează ca terminat
+                  {t('projects.prod.markDone')}
                 </label>
               </div>
             ) : (
@@ -243,28 +246,33 @@ function ProductionCardComponent({
           {(card.dependencies.length > 0 || card.itemType !== 'product') && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                Dependențe
+                {t('projects.prod.dependencies')}
               </p>
               {card.dependencies.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
-                  Nicio dependență definită pentru acest element.
+                  {t('projects.prod.noDependencies')}
                 </p>
               ) : (
               <div className="rounded-md border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/30 border-b">
-                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Element</th>
-                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Tip</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">Cant.</th>
-                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">{t('projects.prod.colElement')}</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">{t('common.type')}</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">{t('projects.purchase.colQty')}</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">{t('projects.prod.colStatus')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {card.dependencies.map((dep) => {
-                      const status = depStatus(dep, stepsCompleted)
-                      const isReady = status === 'Gata'
-                      const isNoSteps = status === 'Fără pași'
+                      const { code: depCode, done: depDone, total: depTotal } = getDepStatusCode(dep, stepsCompleted)
+                      const isReady = depCode === 'done'
+                      const isNoSteps = depCode === 'no-steps'
+                      const depStatusText =
+                        depCode === 'no-steps' ? t('projects.prod.noSteps')
+                        : depCode === 'not-started' ? t('projects.prod.notStarted')
+                        : depCode === 'done' ? t('projects.prod.done')
+                        : t('projects.prod.stepsProgress', { done: String(depDone), total: String(depTotal) })
                       return (
                         <tr key={dep.entityId} className="border-b last:border-0">
                           <td className="px-3 py-2">
@@ -277,7 +285,7 @@ function ProductionCardComponent({
                               <button
                                 type="button"
                                 className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
-                                title="Vezi detalii"
+                                title={t('projects.prod.viewDetails')}
                                 onClick={(e) => { e.stopPropagation(); onViewDetails(dep.type, dep.entityId) }}
                               >
                                 <Eye className="h-3 w-3" />
@@ -286,7 +294,7 @@ function ProductionCardComponent({
                           </td>
                           <td className="px-3 py-2">
                             <Badge variant="outline" className="text-xs">
-                              {dep.type === 'assembly' ? 'Ansamblu' : 'Piesă'}
+                              {dep.type === 'assembly' ? t('projects.prod.typeAssembly') : t('projects.prod.typePart')}
                             </Badge>
                           </td>
                           <td className="px-3 py-2 text-center text-muted-foreground">× {dep.quantity}</td>
@@ -295,7 +303,7 @@ function ProductionCardComponent({
                               variant={isReady ? 'default' : 'secondary'}
                               className={`text-xs ${isReady ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300' : ''} ${isNoSteps ? 'text-muted-foreground' : ''}`}
                             >
-                              {status}
+                              {depStatusText}
                             </Badge>
                           </td>
                         </tr>
@@ -312,14 +320,14 @@ function ProductionCardComponent({
           {card.usages.length > 0 && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                Utilizat în
+                {t('projects.prod.usedIn')}
               </p>
               <div className="rounded-md border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/30 border-b">
-                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Părinte</th>
-                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">Cant.</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">{t('projects.prod.colParent')}</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">{t('projects.purchase.colQty')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -529,7 +537,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   if (!project && fetchLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground">Se încarcă...</p>
+        <p className="text-muted-foreground">{t('projects.detail.loading')}</p>
       </div>
     )
   }
@@ -573,7 +581,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const handleSaveEdit = async () => {
     if (!editForm.name.trim()) {
-      toast.error("Project name is required")
+      toast.error(t('projects.detail.nameRequired'))
       return
     }
     let warrantyExpiration = project.warrantyExpiration
@@ -634,7 +642,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       await projectsApi.toggleStep(project.id, stepKey, totalStepCount)
     } catch {
       setStepsCompleted(stepsCompleted)
-      toast.error("Eroare la salvarea progresului")
+      toast.error(t('projects.detail.stepSaveError'))
     }
   }
 
@@ -709,7 +717,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         setViewedPart(p)
       }
     } catch {
-      toast.error("Nu s-au putut încărca detaliile")
+      toast.error(t('projects.detail.loadDetailsError'))
       setViewTarget(null)
     } finally {
       setViewLoading(false)
@@ -739,7 +747,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       setActivityPage(result.page)
     } catch {
       if (activityRequestRef.current !== requestId) return
-      setActivityError("Nu s-a putut încărca activitatea.")
+      setActivityError(t('projects.detail.activityLoadError'))
     } finally {
       if (activityRequestRef.current === requestId) setActivityLoading(false)
     }
@@ -801,8 +809,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   async function handleAddItem() {
     if (!project) return
-    if (!addItemEntityId) { toast.error("Selectează un element"); return }
-    if (addItemQty < 1) { toast.error("Cantitatea trebuie să fie cel puțin 1"); return }
+    if (!addItemEntityId) { toast.error(t('projects.addItem.selectRequired')); return }
+    if (addItemQty < 1) { toast.error(t('projects.addItem.qtyRequired')); return }
 
     const newItem: ProjectItem =
       addItemType === 'product'
@@ -835,11 +843,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     setAddItemSaving(true)
     try {
       await saveItemsUpdate(nextItems, activityMsg)
-      toast.success("Element adăugat cu succes")
+      toast.success(t('projects.detail.addItemSuccess'))
       setAddItemOpen(false)
       resetAddForm()
     } catch {
-      toast.error("Eroare la adăugarea elementului")
+      toast.error(t('projects.detail.addItemError'))
     } finally {
       setAddItemSaving(false)
     }
@@ -870,10 +878,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     setRemoveSaving(true)
     try {
       await saveItemsUpdate(nextItems, activityMsg)
-      toast.success("Element eliminat din proiect")
+      toast.success(t('projects.detail.removeItemSuccess'))
       setRemoveItemIdx(null)
     } catch {
-      toast.error("Eroare la eliminarea elementului")
+      toast.error(t('projects.detail.removeItemError'))
     } finally {
       setRemoveSaving(false)
     }
@@ -890,9 +898,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       a.download = `fise-productie-${project.code}.pdf`
       a.click()
       URL.revokeObjectURL(url)
-      toast.success("Fișe de producție generate cu succes")
+      toast.success(t('projects.detail.cardsPdfSuccess'))
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
+      toast.error(e instanceof Error ? e.message : t('projects.detail.pdfError'))
     } finally {
       setExportingCards(false)
     }
@@ -909,9 +917,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       a.download = `taiere-laser-${project.code}.pdf`
       a.click()
       URL.revokeObjectURL(url)
-      toast.success("Listă tăiere laser generată cu succes")
+      toast.success(t('projects.detail.laserPdfSuccess'))
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Eroare la generare PDF")
+      toast.error(e instanceof Error ? e.message : t('projects.detail.pdfError'))
     } finally {
       setExportingProjectLaser(false)
     }
@@ -928,9 +936,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       a.download = `achizitii-${project.code}.pdf`
       a.click()
       URL.revokeObjectURL(url)
-      toast.success('Listă achiziții generată cu succes')
+      toast.success(t('projects.detail.purchasePdfSuccess'))
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Eroare la generare PDF')
+      toast.error(e instanceof Error ? e.message : t('projects.detail.pdfError'))
     } finally {
       setExportingPurchasePdf(false)
     }
@@ -1041,15 +1049,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex items-center gap-3">
                 <Package className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Preț proiect (EUR)</p>
+                  <p className="text-xs text-muted-foreground">{t('projects.detail.projectPriceEur')}</p>
                   <p className="font-medium">{total.toLocaleString()} EUR</p>
                   {project.finalPrice == null && installationCost > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      incl. instalare {installationCost.toLocaleString()} EUR
+                      {t('projects.detail.inclInstallation', { cost: installationCost.toLocaleString() })}
                     </p>
                   )}
                   {project.finalPrice == null && (
-                    <p className="text-xs text-muted-foreground italic">calculat din produse</p>
+                    <p className="text-xs text-muted-foreground italic">{t('projects.detail.calculatedFromProducts')}</p>
                   )}
                 </div>
               </div>
@@ -1184,7 +1192,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       {/* Project Items */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Elemente proiect</CardTitle>
+          <CardTitle>{t('projects.detail.projectItems')}</CardTitle>
           <div className="flex items-center gap-2 shrink-0">
             {canEdit && (
               <Button
@@ -1193,7 +1201,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 onClick={() => { resetAddForm(); setAddItemOpen(true) }}
               >
                 <Plus className="mr-1 h-3 w-3" />
-                Adaugă element
+                {t('projects.detail.addItem')}
               </Button>
             )}
             <Button
@@ -1204,7 +1212,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               disabled={exportingProjectLaser}
             >
               <Zap className="mr-1 h-3 w-3" />
-              {exportingProjectLaser ? "Se generează..." : "Tăiere Laser"}
+              {exportingProjectLaser ? t('projects.detail.generating') : t('projects.detail.laserCut')}
             </Button>
             {purchaseParts.length > 0 && (
               <Button
@@ -1214,7 +1222,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 onClick={() => setPurchaseListOpen(true)}
               >
                 <ShoppingCart className="mr-1 h-3 w-3" />
-                Achiziții ({purchaseParts.length})
+                {t('projects.detail.purchases', { count: String(purchaseParts.length) })}
               </Button>
             )}
           </div>
@@ -1269,7 +1277,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                             <button
                               type="button"
                               className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                              title="Vezi detalii"
+                              title={t('projects.prod.viewDetails')}
                               onClick={() => {
                                 const eid = kind === 'product' ? item.productId : kind === 'assembly' ? item.assemblyId : item.partId
                                 if (eid) openEntityDetails(kind, eid)
@@ -1282,7 +1290,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                             <button
                               type="button"
                               className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                              title="Elimină din proiect"
+                              title={t('projects.detail.removeFromProject')}
                               onClick={() => setRemoveItemIdx(idx)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1304,7 +1312,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <CardTitle className="flex items-center gap-2">
             <Boxes className="h-5 w-5" />
-            Pași de producție{totalStepCount > 0 && ` (${totalStepCount})`}
+            {t('projects.detail.productionSteps')}{totalStepCount > 0 && ` (${totalStepCount})`}
           </CardTitle>
           <div className="flex gap-2 shrink-0">
             <Button
@@ -1314,7 +1322,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               disabled={exportingCards}
             >
               <FileDown className="mr-1 h-3 w-3" />
-              {exportingCards ? "Se generează..." : "Fișe de producție"}
+              {exportingCards ? t('projects.detail.generating') : t('projects.detail.exportCards')}
             </Button>
           </div>
         </CardHeader>
@@ -1338,7 +1346,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             if (productionCards.length === 0) {
               return (
                 <p className="text-center text-muted-foreground py-4">
-                  Nu există elemente de producție configurate în acest proiect.
+                  {t('projects.detail.noProdItems')}
                 </p>
               )
             }
@@ -1356,7 +1364,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 ))}
                 {activeCards.length === 0 && doneCards.length > 0 && (
                   <p className="text-center text-muted-foreground py-2 text-sm">
-                    Toate elementele sunt terminate.
+                    {t('projects.detail.allDone')}
                   </p>
                 )}
                 {doneCards.length > 0 && (
@@ -1367,7 +1375,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         className="flex w-full items-center gap-2 rounded-md border border-dashed px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 transition-colors"
                       >
                         <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${doneCardsOpen ? 'rotate-90' : ''}`} />
-                        <span className="font-medium">Elemente terminate ({doneCards.length})</span>
+                        <span className="font-medium">{t('projects.detail.doneItems', { count: String(doneCards.length) })}</span>
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-3 mt-3">
@@ -1423,17 +1431,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
               <p>{activityError}</p>
               <Button variant="outline" size="sm" onClick={() => loadActivity(activityPage)}>
-                Încearcă din nou
+                {t('projects.detail.retryActivity')}
               </Button>
             </div>
           ) : activityLoading && activityItems.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Se încarcă activitatea...
+              {t('projects.detail.loadingActivity')}
             </div>
           ) : activityItems.length === 0 ? (
             <p className="text-center text-muted-foreground py-6 text-sm">
-              Nu există activitate pentru acest proiect.
+              {t('projects.detail.noActivity')}
             </p>
           ) : (
             <>
@@ -1454,7 +1462,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               {/* Pagination */}
               <div className="flex items-center justify-between pt-4 mt-4 border-t gap-4">
                 <p className="text-sm text-muted-foreground shrink-0">
-                  {activityTotal === 0 ? '0' : `${(activityPage - 1) * 10 + 1}–${Math.min(activityPage * 10, activityTotal)}`} din {activityTotal}
+                  {activityTotal === 0 ? '0' : `${(activityPage - 1) * 10 + 1}–${Math.min(activityPage * 10, activityTotal)}`} {t('projects.detail.paginationOf')} {activityTotal}
                 </p>
                 {activityTotalPages > 1 && (
                   <div className="flex items-center gap-1">
@@ -1512,7 +1520,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("common.edit")}: {project.name}</DialogTitle>
-            <DialogDescription>Actualizează detaliile proiectului</DialogDescription>
+            <DialogDescription>{t('projects.detail.editDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -1561,7 +1569,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-finish">Data Finalizare</Label>
+              <Label htmlFor="edit-finish">{t('projects.detail.finishDateLabel')}</Label>
               <Input
                 id="edit-finish"
                 type="date"
@@ -1571,17 +1579,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
             {showPrices && (
               <div className="space-y-2">
-                <Label htmlFor="edit-final-price">Preț proiect (EUR)</Label>
+                <Label htmlFor="edit-final-price">{t('projects.detail.projectPriceEur')}</Label>
                 <Input
                   id="edit-final-price"
                   type="number"
                   min={0}
                   step={0.01}
-                  placeholder="Introduceți prețul proiectului"
+                  placeholder={t('projects.detail.projectPricePlaceholder')}
                   value={editForm.finalPrice}
                   onChange={(e) => setEditForm({ ...editForm, finalPrice: e.target.value })}
                 />
-                <p className="text-xs text-muted-foreground">Lăsați gol pentru a calcula automat din produse.</p>
+                <p className="text-xs text-muted-foreground">{t('projects.detail.projectPriceHint')}</p>
               </div>
             )}
           </div>
@@ -1623,27 +1631,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       <Dialog open={addItemOpen} onOpenChange={(open) => { if (!open) { setAddItemOpen(false); resetAddForm() } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Adaugă element în proiect</DialogTitle>
-            <DialogDescription>Selectează tipul, entitatea și configurează cantitatea.</DialogDescription>
+            <DialogTitle>{t('projects.addItem.title')}</DialogTitle>
+            <DialogDescription>{t('projects.addItem.desc')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             {/* Entity type */}
             <div className="space-y-2">
-              <Label>Tip element</Label>
+              <Label>{t('projects.addItem.itemType')}</Label>
               <div className="flex gap-2">
-                {(['product', 'assembly', 'part'] as const).map(t => (
+                {(['product', 'assembly', 'part'] as const).map(itemKind => (
                   <button
-                    key={t}
+                    key={itemKind}
                     type="button"
-                    onClick={() => { setAddItemType(t); setAddItemEntityId(''); setAddItemPrice(0) }}
+                    onClick={() => { setAddItemType(itemKind); setAddItemEntityId(''); setAddItemPrice(0) }}
                     className={`flex-1 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors
-                      ${addItemType === t
+                      ${addItemType === itemKind
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background hover:bg-muted border-border text-foreground'}`}
                   >
-                    {t === 'product' ? <Package className="h-3.5 w-3.5" /> : t === 'assembly' ? <Boxes className="h-3.5 w-3.5" /> : <Wrench className="h-3.5 w-3.5" />}
-                    {t === 'product' ? 'Produs' : t === 'assembly' ? 'Ansamblu' : 'Piesă'}
+                    {itemKind === 'product' ? <Package className="h-3.5 w-3.5" /> : itemKind === 'assembly' ? <Boxes className="h-3.5 w-3.5" /> : <Wrench className="h-3.5 w-3.5" />}
+                    {itemKind === 'product' ? t('projects.addItem.typeProduct') : itemKind === 'assembly' ? t('projects.addItem.typeAssembly') : t('projects.addItem.typePart')}
                   </button>
                 ))}
               </div>
@@ -1652,7 +1660,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             {/* Entity picker */}
             <div className="space-y-2">
               <Label>
-                {addItemType === 'product' ? 'Produs' : addItemType === 'assembly' ? 'Ansamblu' : 'Piesă'} *
+                {addItemType === 'product' ? t('projects.addItem.typeProduct') : addItemType === 'assembly' ? t('projects.addItem.typeAssembly') : t('projects.addItem.typePart')} *
               </Label>
               <Popover open={addItemComboOpen} onOpenChange={setAddItemComboOpen}>
                 <PopoverTrigger asChild>
@@ -1666,15 +1674,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                             : mergedParts.find(p => p.id === addItemEntityId)
                           return e ? `${e.name}${e.code ? ` — ${e.code}` : ''}` : addItemEntityId
                         })()
-                      : `Selectează ${addItemType === 'product' ? 'produsul' : addItemType === 'assembly' ? 'ansamblul' : 'piesa'}...`}
+                      : addItemType === 'product' ? t('projects.addItem.selectProduct') : addItemType === 'assembly' ? t('projects.addItem.selectAssembly') : t('projects.addItem.selectPart')}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Caută după nume sau cod..." />
+                    <CommandInput placeholder={t('projects.addItem.searchPlaceholder')} />
                     <CommandList>
-                      <CommandEmpty>Niciun rezultat.</CommandEmpty>
+                      <CommandEmpty>{t('projects.addItem.noResults')}</CommandEmpty>
                       <CommandGroup>
                         {(addItemType === 'product'
                           ? (products ?? []).map(p => ({ id: p.id, name: p.name, code: p.code, price: p.basePrice ?? 0 }))
@@ -1707,7 +1715,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             {/* Quantity + price row */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="add-qty">Cantitate *</Label>
+                <Label htmlFor="add-qty">{t('projects.addItem.qty')}</Label>
                 <Input
                   id="add-qty"
                   type="number"
@@ -1718,7 +1726,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </div>
               {showPrices && (
                 <div className="space-y-2">
-                  <Label htmlFor="add-price">Preț unitar (EUR)</Label>
+                  <Label htmlFor="add-price">{t('projects.addItem.unitPrice')}</Label>
                   <Input
                     id="add-price"
                     type="number"
@@ -1745,13 +1753,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="add-notes">{t("common.notes")} (opțional)</Label>
+              <Label htmlFor="add-notes">{t("common.notes")} ({t("common.optional")})</Label>
               <Textarea
                 id="add-notes"
                 value={addItemNotes}
                 onChange={e => setAddItemNotes(e.target.value)}
                 rows={2}
-                placeholder="Note suplimentare..."
+                placeholder={t('projects.addItem.notesPlaceholder')}
               />
             </div>
           </div>
@@ -1762,7 +1770,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </Button>
             <Button onClick={handleAddItem} disabled={addItemSaving}>
               {addItemSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              Adaugă
+              {t('projects.addItem.add')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1770,27 +1778,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Purchase Parts Dialog */}
       <Dialog open={purchaseListOpen} onOpenChange={setPurchaseListOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-orange-600" />
-              Piese de achiziționat
+              {t('projects.purchase.title')}
             </DialogTitle>
             <DialogDescription>
               {purchaseParts.length === 0
-                ? 'Nicio piesă marcată pentru achiziție în acest proiect.'
-                : `${purchaseParts.length} ${purchaseParts.length === 1 ? 'piesă' : 'piese'} necesită achiziție externă.`}
+                ? t('projects.purchase.descNone')
+                : t('projects.purchase.desc', { count: String(purchaseParts.length) })}
             </DialogDescription>
           </DialogHeader>
           {purchaseParts.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Piesă</TableHead>
-                  <TableHead className="text-right">Cant.</TableHead>
-                  <TableHead>Furnizor</TableHead>
-                  <TableHead>Preț</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead>{t('projects.purchase.colPart')}</TableHead>
+                  <TableHead className="text-right">{t('projects.purchase.colQty')}</TableHead>
+                  <TableHead>{t('projects.purchase.colSupplier')}</TableHead>
+                  <TableHead>{t('projects.purchase.colPrice')}</TableHead>
+                  <TableHead>{t('projects.purchase.colContact')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1802,7 +1810,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 group"
-                        title="Deschide piesa"
+                        title={t('projects.purchase.openPart')}
                       >
                         <span className="font-medium group-hover:underline">{name}</span>
                         <ExternalLink className="h-3 w-3 text-blue-500 shrink-0 opacity-60 group-hover:opacity-100" />
@@ -1829,10 +1837,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               disabled={purchaseParts.length === 0 || exportingPurchasePdf}
             >
               <Download className="mr-2 h-4 w-4" />
-              {exportingPurchasePdf ? 'Se generează...' : 'Export PDF'}
+              {exportingPurchasePdf ? t('projects.purchase.exporting') : t('projects.purchase.exportPdf')}
             </Button>
             <Button variant="outline" onClick={() => setPurchaseListOpen(false)}>
-              Închide
+              {t('projects.purchase.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1842,7 +1850,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       <AlertDialog open={removeItemIdx !== null} onOpenChange={open => { if (!open) setRemoveItemIdx(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Elimină element din proiect</AlertDialogTitle>
+            <AlertDialogTitle>{t('projects.removeItem.title')}</AlertDialogTitle>
             <AlertDialogDescription>
               {removeItemIdx !== null && (() => {
                 const item = consolidatedProjectItems[removeItemIdx]
@@ -1852,15 +1860,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   kind === 'product' ? (products ?? []).find(p => p.id === item.productId)?.name
                   : kind === 'assembly' ? mergedAssemblies.find(a => a.id === item.assemblyId)?.name
                   : mergedParts.find(p => p.id === item.partId)?.name
-                const qty = item.quantity
                 return (
                   <>
-                    {qty > 1
-                      ? <>{kind === 'product' ? 'Produsul' : kind === 'assembly' ? 'Ansamblul' : 'Piesa'} <strong>„{name ?? 'elementul'}"</strong>, în cantitate de <strong>{qty} bucăți</strong>, va fi eliminat{kind === 'part' ? 'ă' : ''} din proiect.</>
-                      : <>Ești sigur că vrei să elimini <strong>„{name ?? 'elementul'}"</strong> din proiect?</>
-                    }
+                    {t('projects.removeItem.confirmSingular', { name: name ?? 'elementul' })}
                     <br /><br />
-                    Elementul va fi eliminat doar din proiect. Produsul, ansamblul sau piesa nu va fi șters/ștearsă din aplicație.
+                    {t('projects.removeItem.note')}
                   </>
                 )
               })()}
@@ -1874,7 +1878,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               className="bg-destructive text-white hover:bg-destructive/90"
             >
               {removeSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Elimină
+              {t('projects.removeItem.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1886,7 +1890,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           {viewLoading ? (
             <>
               <DialogHeader>
-                <DialogTitle>Se încarcă...</DialogTitle>
+                <DialogTitle>{t('projects.detail.loading')}</DialogTitle>
               </DialogHeader>
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1902,33 +1906,33 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <Badge variant="outline" className="text-xs font-mono font-normal">{viewedProduct.code}</Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription>{viewedProduct.category || "Produs"}</DialogDescription>
+                <DialogDescription>{viewedProduct.category || t('projects.entity.productFallback')}</DialogDescription>
               </DialogHeader>
               <Tabs defaultValue="info">
                 <TabsList className="mb-2">
-                  <TabsTrigger value="info">Informații</TabsTrigger>
+                  <TabsTrigger value="info">{t('projects.entity.infoTab')}</TabsTrigger>
                   <TabsTrigger value="structure">
-                    Structură{((viewedProduct.productAssemblies?.length ?? viewedProduct.assemblyIds?.length ?? 0) + (viewedProduct.productParts?.length ?? viewedProduct.partIds?.length ?? 0)) > 0 && ` (${(viewedProduct.productAssemblies?.length ?? viewedProduct.assemblyIds?.length ?? 0) + (viewedProduct.productParts?.length ?? viewedProduct.partIds?.length ?? 0)})`}
+                    {t('projects.entity.structureTab')}{((viewedProduct.productAssemblies?.length ?? viewedProduct.assemblyIds?.length ?? 0) + (viewedProduct.productParts?.length ?? viewedProduct.partIds?.length ?? 0)) > 0 && ` (${(viewedProduct.productAssemblies?.length ?? viewedProduct.assemblyIds?.length ?? 0) + (viewedProduct.productParts?.length ?? viewedProduct.partIds?.length ?? 0)})`}
                   </TabsTrigger>
                   <TabsTrigger value="steps">
-                    Pași{(viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length ?? 0) > 0 && ` (${viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length ?? 0})`}
+                    {t('projects.entity.stepsTab')}{(viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length ?? 0) > 0 && ` (${viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length ?? 0})`}
                   </TabsTrigger>
-                  <TabsTrigger value="files">Fișiere</TabsTrigger>
+                  <TabsTrigger value="files">{t('projects.entity.filesTab')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="info" className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Categorie</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.category')}</p>
                       <p>{viewedProduct.category || "—"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Preț de bază</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.basePrice')}</p>
                       <p className="font-mono">{viewedProduct.basePrice?.toFixed(2) ?? "—"} EUR</p>
                     </div>
                   </div>
                   {viewedProduct.notes && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('common.notes')}</p>
                       <p>{viewedProduct.notes}</p>
                     </div>
                   )}
@@ -1945,13 +1949,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       <>
                         {asmEntries.length > 0 && (
                           <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-2">Ansamble</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">{t('projects.entity.assemblies')}</p>
                             <div className="rounded-md border">
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>Ansamblu</TableHead>
-                                    <TableHead className="text-right">Cant.</TableHead>
+                                    <TableHead>{t('projects.entity.colAssembly')}</TableHead>
+                                    <TableHead className="text-right">{t('projects.entity.colQty')}</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1974,13 +1978,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         )}
                         {partEntries.length > 0 && (
                           <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-2">Piese directe</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">{t('projects.entity.directParts')}</p>
                             <div className="rounded-md border">
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>Piesă</TableHead>
-                                    <TableHead className="text-right">Cant.</TableHead>
+                                    <TableHead>{t('projects.entity.colPart')}</TableHead>
+                                    <TableHead className="text-right">{t('projects.entity.colQty')}</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -2002,7 +2006,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           </div>
                         )}
                         {asmEntries.length === 0 && partEntries.length === 0 && (
-                          <p className="text-sm text-muted-foreground">Nicio componentă definită.</p>
+                          <p className="text-sm text-muted-foreground">{t('projects.entity.noComponents')}</p>
                         )}
                       </>
                     )
@@ -2010,7 +2014,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </TabsContent>
                 <TabsContent value="steps">
                   {!(viewedProduct.productionSteps?.length ?? viewedProduct.assemblySteps?.length) ? (
-                    <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                    <p className="text-sm text-muted-foreground">{t('projects.entity.noProductionSteps')}</p>
                   ) : (
                     <div className="space-y-2">
                       {(viewedProduct.productionSteps ?? viewedProduct.assemblySteps ?? []).map((step, idx) => (
@@ -2042,76 +2046,76 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </DialogTitle>
                 <DialogDescription>
                   {viewedAssembly.compositionType === "from_parts"
-                    ? "Ansamblu din piese"
+                    ? t('projects.entity.asmFromParts')
                     : viewedAssembly.compositionType === "from_assemblies"
-                    ? "Ansamblu din sub-ansamble"
-                    : "Ansamblu independent"}
+                    ? t('projects.entity.asmFromSubasms')
+                    : t('projects.entity.asmIndependent')}
                 </DialogDescription>
               </DialogHeader>
               <Tabs defaultValue="info">
                 <TabsList className="mb-2">
-                  <TabsTrigger value="info">Informații</TabsTrigger>
+                  <TabsTrigger value="info">{t('projects.entity.infoTab')}</TabsTrigger>
                   <TabsTrigger value="parts">
-                    Piese{viewedAssembly.parts?.length > 0 && ` (${viewedAssembly.parts.length})`}
+                    {t('projects.entity.colPart')}{viewedAssembly.parts?.length > 0 && ` (${viewedAssembly.parts.length})`}
                   </TabsTrigger>
                   <TabsTrigger value="steps">
-                    Pași{viewedAssembly.productionSteps?.length > 0 && ` (${viewedAssembly.productionSteps.length})`}
+                    {t('projects.entity.stepsTab')}{viewedAssembly.productionSteps?.length > 0 && ` (${viewedAssembly.productionSteps.length})`}
                   </TabsTrigger>
-                  <TabsTrigger value="files">Fișiere</TabsTrigger>
+                  <TabsTrigger value="files">{t('projects.entity.filesTab')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="info" className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Tip compoziție</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.compositionType')}</p>
                       <p>
                         {viewedAssembly.compositionType === "from_parts"
-                          ? "Din piese"
+                          ? t('projects.entity.compoFromParts')
                           : viewedAssembly.compositionType === "from_assemblies"
-                          ? "Din ansamble"
-                          : "Independent"}
+                          ? t('projects.entity.compoFromAssemblies')
+                          : t('projects.entity.compoIndependent')}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.physicalLocation')}</p>
                       <p>{viewedAssembly.physicalLocation || "—"}</p>
                     </div>
                     {viewedAssembly.weldingDrawingLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen sudură</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.weldingDrawing')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedAssembly.weldingDrawingLocation}</p>
                       </div>
                     )}
                     {viewedAssembly.technicalDrawingLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen tehnic</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.technicalDrawing')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedAssembly.technicalDrawingLocation}</p>
                       </div>
                     )}
                     {viewedAssembly.cadLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație CAD</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.cadLocation')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedAssembly.cadLocation}</p>
                       </div>
                     )}
                   </div>
                   {viewedAssembly.notes && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('common.notes')}</p>
                       <p className="text-sm">{viewedAssembly.notes}</p>
                     </div>
                   )}
                 </TabsContent>
                 <TabsContent value="parts" className="space-y-4">
                   {viewedAssembly.parts?.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nicio piesă adăugată.</p>
+                    <p className="text-sm text-muted-foreground">{t('projects.entity.noParts')}</p>
                   ) : (
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Piesă</TableHead>
-                            <TableHead>Laser</TableHead>
-                            <TableHead className="text-right">Cantitate</TableHead>
+                            <TableHead>{t('projects.entity.colPart')}</TableHead>
+                            <TableHead>{t('projects.entity.colLaser')}</TableHead>
+                            <TableHead className="text-right">{t('projects.entity.colQty')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -2138,14 +2142,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   )}
                   {(viewedAssembly.childAssemblies?.length ?? 0) > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">Sub-ansamble</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{t('projects.entity.subAssemblies')}</p>
                       <div className="rounded-md border">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Ansamblu</TableHead>
-                              <TableHead>Cod</TableHead>
-                              <TableHead className="text-right">Cantitate</TableHead>
+                              <TableHead>{t('projects.entity.colAssembly')}</TableHead>
+                              <TableHead>{t('common.code')}</TableHead>
+                              <TableHead className="text-right">{t('projects.entity.colQty')}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2167,7 +2171,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </TabsContent>
                 <TabsContent value="steps">
                   {viewedAssembly.productionSteps?.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                    <p className="text-sm text-muted-foreground">{t('projects.entity.noProductionSteps')}</p>
                   ) : (
                     <div className="space-y-2">
                       {viewedAssembly.productionSteps.map((step, idx) => (
@@ -2204,77 +2208,77 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     </Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription>{viewedPart.category || "Piesă"}</DialogDescription>
+                <DialogDescription>{viewedPart.category || t('projects.entity.partFallback')}</DialogDescription>
               </DialogHeader>
               <Tabs defaultValue="info">
                 <TabsList className="mb-2">
-                  <TabsTrigger value="info">Informații</TabsTrigger>
+                  <TabsTrigger value="info">{t('projects.entity.infoTab')}</TabsTrigger>
                   <TabsTrigger value="steps">
-                    Pași{viewedPart.productionSteps?.length > 0 && ` (${viewedPart.productionSteps.length})`}
+                    {t('projects.entity.stepsTab')}{viewedPart.productionSteps?.length > 0 && ` (${viewedPart.productionSteps.length})`}
                   </TabsTrigger>
-                  <TabsTrigger value="files">Fișiere</TabsTrigger>
+                  <TabsTrigger value="files">{t('projects.entity.filesTab')}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="info" className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Cantitate stoc</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.stockQty')}</p>
                       <p className="font-mono">{viewedPart.quantity ?? 0}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Stoc minim</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.minStock')}</p>
                       <p className="font-mono">{viewedPart.minimumStock ?? 0}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Locație fizică</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.physicalLocation')}</p>
                       <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.physicalLocation || viewedPart.location || "—"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Locație desen</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.drawingLocation')}</p>
                       <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.drawingLocation || "—"}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Debitare laser</p>
-                      <p>{viewedPart.requiresLaserCutting ? "Da" : "Nu"}</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.laserCut')}</p>
+                      <p>{viewedPart.requiresLaserCutting ? t('projects.entity.yes') : t('projects.entity.no')}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Categorie</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.category')}</p>
                       <p>{viewedPart.category || "—"}</p>
                     </div>
                     {viewedPart.weldingDrawingLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen sudură</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.weldingDrawing')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.weldingDrawingLocation}</p>
                       </div>
                     )}
                     {viewedPart.bendingDrawingLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen îndoire</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.bendingDrawing')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.bendingDrawingLocation}</p>
                       </div>
                     )}
                     {viewedPart.cadLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație CAD</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.cadLocation')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.cadLocation}</p>
                       </div>
                     )}
                     {viewedPart.technicalDrawingLocation && (
                       <div className="col-span-2">
-                        <p className="text-xs text-muted-foreground mb-0.5">Locație desen tehnic</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">{t('projects.entity.technicalDrawing')}</p>
                         <p style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewedPart.technicalDrawingLocation}</p>
                       </div>
                     )}
                   </div>
                   {viewedPart.notes && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Note</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t('common.notes')}</p>
                       <p>{viewedPart.notes}</p>
                     </div>
                   )}
                 </TabsContent>
                 <TabsContent value="steps">
                   {!viewedPart.productionSteps?.length ? (
-                    <p className="text-sm text-muted-foreground">Niciun pas de producție.</p>
+                    <p className="text-sm text-muted-foreground">{t('projects.entity.noProductionSteps')}</p>
                   ) : (
                     <div className="space-y-2">
                       {viewedPart.productionSteps.map((step, idx) => (

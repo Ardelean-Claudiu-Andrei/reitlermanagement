@@ -613,18 +613,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     [project.id, consolidatedProjectItems, products, mergedAssemblies, mergedParts],
   )
 
-  const purchaseParts = useMemo(
-    () =>
-      productionCards
-        .filter((card) => card.itemType === 'part')
-        .flatMap((card) => {
-          const part = mergedParts.find((p) => p.id === card.entityId)
-          if (!part?.requiresPurchase) return []
-          return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, part }]
-        })
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [productionCards, mergedParts],
-  )
+  const purchaseItems = useMemo(() => {
+    const partItems = productionCards
+      .filter((card) => card.itemType === 'part')
+      .flatMap((card) => {
+        const part = mergedParts.find((p) => p.id === card.entityId)
+        if (!part?.requiresPurchase) return []
+        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'part' as const, entity: part }]
+      })
+    const assemblyItems = productionCards
+      .filter((card) => card.itemType === 'assembly')
+      .flatMap((card) => {
+        const asm = mergedAssemblies.find((a) => a.id === card.entityId)
+        if (!asm?.requiresPurchase) return []
+        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'assembly' as const, entity: asm }]
+      })
+    return [...partItems, ...assemblyItems].sort((a, b) => a.name.localeCompare(b.name))
+  }, [productionCards, mergedParts, mergedAssemblies])
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
   const completedStepCount = productionCards.reduce(
@@ -1214,7 +1219,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <Zap className="mr-1 h-3 w-3" />
               {exportingProjectLaser ? t('projects.detail.generating') : t('projects.detail.laserCut')}
             </Button>
-            {purchaseParts.length > 0 && (
+            {purchaseItems.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1222,7 +1227,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 onClick={() => setPurchaseListOpen(true)}
               >
                 <ShoppingCart className="mr-1 h-3 w-3" />
-                {t('projects.detail.purchases', { count: String(purchaseParts.length) })}
+                {t('projects.detail.purchases', { count: String(purchaseItems.length) })}
               </Button>
             )}
           </div>
@@ -1785,12 +1790,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               {t('projects.purchase.title')}
             </DialogTitle>
             <DialogDescription>
-              {purchaseParts.length === 0
+              {purchaseItems.length === 0
                 ? t('projects.purchase.descNone')
-                : t('projects.purchase.desc', { count: String(purchaseParts.length) })}
+                : t('projects.purchase.desc', { count: String(purchaseItems.length) })}
             </DialogDescription>
           </DialogHeader>
-          {purchaseParts.length > 0 && (
+          {purchaseItems.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1802,11 +1807,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {purchaseParts.map(({ id, name, code, quantity, part }) => (
-                  <TableRow key={id}>
+                {purchaseItems.map(({ id, name, code, quantity, entityType, entity }) => (
+                  <TableRow key={`${entityType}-${id}`}>
                     <TableCell>
                       <a
-                        href={`/materials/parts?view=${id}`}
+                        href={entityType === 'assembly' ? `/materials/assemblies?view=${id}` : `/materials/parts?view=${id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 group"
@@ -1815,16 +1820,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         <span className="font-medium group-hover:underline">{name}</span>
                         <ExternalLink className="h-3 w-3 text-blue-500 shrink-0 opacity-60 group-hover:opacity-100" />
                       </a>
-                      {code && <div className="text-xs font-mono text-muted-foreground mt-0.5">{code}</div>}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {code && <span className="text-xs font-mono text-muted-foreground">{code}</span>}
+                        {entityType === 'assembly' && (
+                          <Badge variant="outline" className="text-xs py-0 px-1 h-4">Ansamblu</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">{quantity}</TableCell>
-                    <TableCell className="text-muted-foreground">{part.purchaseSupplier || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{entity.purchaseSupplier || '—'}</TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {part.purchasePrice != null
-                        ? `${part.purchasePrice} ${part.purchaseCurrency}${part.purchaseVatIncluded ? ` cu TVA ${part.purchaseVatRate}%` : ' fără TVA'}`
+                      {entity.purchasePrice != null
+                        ? `${entity.purchasePrice} ${entity.purchaseCurrency}${entity.purchaseVatIncluded ? ` cu TVA ${entity.purchaseVatRate}%` : ' fără TVA'}`
                         : '—'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{part.purchaseAgentContact || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{entity.purchaseAgentContact || '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1834,7 +1844,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Button
               variant="outline"
               onClick={handleExportPurchasePdf}
-              disabled={purchaseParts.length === 0 || exportingPurchasePdf}
+              disabled={purchaseItems.length === 0 || exportingPurchasePdf}
             >
               <Download className="mr-2 h-4 w-4" />
               {exportingPurchasePdf ? t('projects.purchase.exporting') : t('projects.purchase.exportPdf')}

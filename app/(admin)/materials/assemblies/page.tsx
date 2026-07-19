@@ -49,10 +49,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, ChevronsUpDown, Check, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Boxes, Copy, ChevronsUpDown, Check, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { toast } from "sonner"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { Assembly, AssemblyPart, AssemblyChildEntry, AssemblyStep, AssemblyCompositionType } from "@/lib/types"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 import { StepEditor } from "@/components/step-editor"
@@ -80,6 +81,14 @@ export default function AssembliesPage() {
   const [formTechnicalDrawingLocation, setFormTechnicalDrawingLocation] = useState("")
   const [formCadLocation, setFormCadLocation] = useState("")
   const [formSteps, setFormSteps] = useState<AssemblyStep[]>([])
+  const [formRequiresPurchase, setFormRequiresPurchase] = useState(false)
+  const [formPurchaseSupplier, setFormPurchaseSupplier] = useState("")
+  const [formPurchasePrice, setFormPurchasePrice] = useState<number | null>(null)
+  const [formPurchaseCurrency, setFormPurchaseCurrency] = useState("EUR")
+  const [formPurchaseVatIncluded, setFormPurchaseVatIncluded] = useState(false)
+  const [formPurchaseVatRate, setFormPurchaseVatRate] = useState(21)
+  const [formPurchaseAgentContact, setFormPurchaseAgentContact] = useState("")
+  const [formPurchaseDetails, setFormPurchaseDetails] = useState("")
 
   const safeAssemblies = assemblies ?? []
   const safeParts = parts ?? []
@@ -107,6 +116,14 @@ export default function AssembliesPage() {
     setFormTechnicalDrawingLocation("")
     setFormCadLocation("")
     setFormSteps([])
+    setFormRequiresPurchase(false)
+    setFormPurchaseSupplier("")
+    setFormPurchasePrice(null)
+    setFormPurchaseCurrency("EUR")
+    setFormPurchaseVatIncluded(false)
+    setFormPurchaseVatRate(21)
+    setFormPurchaseAgentContact("")
+    setFormPurchaseDetails("")
     setDialogOpen(true)
   }
 
@@ -123,6 +140,14 @@ export default function AssembliesPage() {
     setFormTechnicalDrawingLocation(assembly.technicalDrawingLocation || "")
     setFormCadLocation(assembly.cadLocation || "")
     setFormSteps([...(assembly.productionSteps || [])])
+    setFormRequiresPurchase(assembly.requiresPurchase ?? false)
+    setFormPurchaseSupplier(assembly.purchaseSupplier ?? "")
+    setFormPurchasePrice(assembly.purchasePrice ?? null)
+    setFormPurchaseCurrency(assembly.purchaseCurrency || "EUR")
+    setFormPurchaseVatIncluded(assembly.purchaseVatIncluded ?? false)
+    setFormPurchaseVatRate(assembly.purchaseVatRate ?? 21)
+    setFormPurchaseAgentContact(assembly.purchaseAgentContact ?? "")
+    setFormPurchaseDetails(assembly.purchaseDetails ?? "")
     setDialogOpen(true)
   }
 
@@ -146,6 +171,14 @@ export default function AssembliesPage() {
         cadLocation: formCadLocation,
         productionSteps: formSteps,
         notes: formNotes,
+        requiresPurchase: formRequiresPurchase,
+        purchaseSupplier: formPurchaseSupplier,
+        purchasePrice: formPurchasePrice,
+        purchaseCurrency: formPurchaseCurrency,
+        purchaseVatIncluded: formPurchaseVatIncluded,
+        purchaseVatRate: formPurchaseVatRate,
+        purchaseAgentContact: formPurchaseAgentContact,
+        purchaseDetails: formPurchaseDetails,
       }
       if (editingAssembly) {
         await updateAssembly({ ...editingAssembly, ...payload })
@@ -439,6 +472,7 @@ export default function AssembliesPage() {
               <TabsTrigger value="drawings">Desene</TabsTrigger>
               <TabsTrigger value="parts">Piese</TabsTrigger>
               <TabsTrigger value="steps">Pași producție</TabsTrigger>
+              <TabsTrigger value="purchase">{t("assemblies.purchase.tab")}</TabsTrigger>
               <TabsTrigger value="files">Fișiere</TabsTrigger>
             </TabsList>
 
@@ -671,6 +705,108 @@ export default function AssembliesPage() {
               <StepEditor steps={formSteps} onChange={setFormSteps} />
             </TabsContent>
 
+            {/* Purchase tab */}
+            <TabsContent value="purchase" className="space-y-4">
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Checkbox
+                  id="asm-requires-purchase"
+                  checked={formRequiresPurchase}
+                  onCheckedChange={(v) => setFormRequiresPurchase(!!v)}
+                />
+                <label htmlFor="asm-requires-purchase" className="text-sm font-medium cursor-pointer">
+                  {t("assemblies.purchase.requiresPurchase")}
+                </label>
+                {formRequiresPurchase && (
+                  <Badge className="ml-auto bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800">
+                    <ShoppingCart className="mr-1 h-3 w-3" />
+                    {t("assemblies.purchase.badge")}
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t("assemblies.purchase.supplier")}</Label>
+                  <Input
+                    value={formPurchaseSupplier}
+                    onChange={(e) => setFormPurchaseSupplier(e.target.value)}
+                    placeholder="ex: SC Furnizor SRL"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("assemblies.purchase.price")}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formPurchasePrice ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setFormPurchasePrice(v === "" ? null : parseFloat(v) || 0)
+                      }}
+                      placeholder="ex: 12.50"
+                      className="flex-1"
+                    />
+                    <Select value={formPurchaseCurrency} onValueChange={setFormPurchaseCurrency}>
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="RON">RON</SelectItem>
+                        <SelectItem value="HUF">HUF</SelectItem>
+                        <SelectItem value="IRR">IRR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 rounded-md border p-3">
+                  <Checkbox
+                    id="asm-purchase-vat"
+                    checked={formPurchaseVatIncluded}
+                    onCheckedChange={(v) => setFormPurchaseVatIncluded(!!v)}
+                  />
+                  <label htmlFor="asm-purchase-vat" className="text-sm font-medium cursor-pointer flex-1">
+                    Prețul include TVA
+                  </label>
+                  {formPurchaseVatIncluded && (
+                    <Select
+                      value={String(formPurchaseVatRate)}
+                      onValueChange={(v) => setFormPurchaseVatRate(Number(v))}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5%</SelectItem>
+                        <SelectItem value="9">9%</SelectItem>
+                        <SelectItem value="11">11%</SelectItem>
+                        <SelectItem value="19">19%</SelectItem>
+                        <SelectItem value="21">21%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("assemblies.purchase.agentContact")}</Label>
+                  <Input
+                    value={formPurchaseAgentContact}
+                    onChange={(e) => setFormPurchaseAgentContact(e.target.value)}
+                    placeholder="ex: Ion Popescu, +40 700 000 000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("assemblies.purchase.details")}</Label>
+                  <Textarea
+                    value={formPurchaseDetails}
+                    onChange={(e) => setFormPurchaseDetails(e.target.value)}
+                    rows={3}
+                    placeholder="ex: minim 10 buc per comandă, livrare 5 zile"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
             {/* Files tab */}
             <TabsContent value="files" className="space-y-4">
               <p className="text-sm text-muted-foreground">Fișiere atașate ansamblului (DXF, PDF, imagini)</p>
@@ -697,9 +833,15 @@ export default function AssembliesPage() {
       <Dialog open={!!viewAssembly} onOpenChange={() => setViewAssembly(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               {viewAssembly?.name}
               <Badge variant="outline" className="text-xs font-mono font-normal">{viewAssembly?.code}</Badge>
+              {viewAssembly?.requiresPurchase && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <ShoppingCart className="h-3 w-3" />
+                  {t("assemblies.purchase.badge")}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
               {viewAssembly?.compositionType === "from_parts"
@@ -719,6 +861,9 @@ export default function AssembliesPage() {
                 <TabsTrigger value="steps">
                   Pași {viewAssembly.productionSteps?.length > 0 && `(${viewAssembly.productionSteps.length})`}
                 </TabsTrigger>
+                {viewAssembly.requiresPurchase && (
+                  <TabsTrigger value="purchase">{t("assemblies.purchase.tab")}</TabsTrigger>
+                )}
                 <TabsTrigger value="files">Fișiere</TabsTrigger>
               </TabsList>
 
@@ -853,6 +998,47 @@ export default function AssembliesPage() {
                   </div>
                 )}
               </TabsContent>
+
+              {/* Purchase */}
+              {viewAssembly.requiresPurchase && (
+                <TabsContent value="purchase" className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground">{t("assemblies.purchase.requiresPurchase")}:</span>
+                    <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800">
+                      <ShoppingCart className="mr-1 h-3 w-3" />{t("assemblies.purchase.badge")}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("assemblies.purchase.supplier")}</p>
+                      <p>{viewAssembly.purchaseSupplier || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("assemblies.purchase.price")}</p>
+                      <p className="font-mono">
+                        {viewAssembly.purchasePrice != null
+                          ? `${viewAssembly.purchasePrice.toFixed(2)} ${viewAssembly.purchaseCurrency || "EUR"}`
+                          : "—"}
+                        {viewAssembly.purchasePrice != null && (
+                          <span className="ml-2 text-xs font-sans text-muted-foreground">
+                            {viewAssembly.purchaseVatIncluded ? `cu TVA ${viewAssembly.purchaseVatRate ?? 21}%` : "fără TVA"}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">{t("assemblies.purchase.agentContact")}</p>
+                      <p>{viewAssembly.purchaseAgentContact || "—"}</p>
+                    </div>
+                    {viewAssembly.purchaseDetails && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground mb-0.5">{t("assemblies.purchase.details")}</p>
+                        <p className="whitespace-pre-wrap">{viewAssembly.purchaseDetails}</p>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
 
               {/* Files */}
               <TabsContent value="files">

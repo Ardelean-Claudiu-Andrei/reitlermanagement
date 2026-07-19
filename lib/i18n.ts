@@ -413,6 +413,14 @@ type TranslationKeys = {
   "parts.purchase.details": string
   "parts.purchase.badge": string
 
+  "assemblies.purchase.tab": string
+  "assemblies.purchase.requiresPurchase": string
+  "assemblies.purchase.supplier": string
+  "assemblies.purchase.price": string
+  "assemblies.purchase.agentContact": string
+  "assemblies.purchase.details": string
+  "assemblies.purchase.badge": string
+
   // Purchase list dialog (project detail)
   "projects.purchase.title": string
   "projects.purchase.descNone": string
@@ -980,6 +988,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.purchase.agentContact": "Agent contact (optional)",
     "parts.purchase.details": "Purchase details (optional)",
     "parts.purchase.badge": "To Purchase",
+    "assemblies.purchase.tab": "Purchase",
+    "assemblies.purchase.requiresPurchase": "Needs to be purchased",
+    "assemblies.purchase.supplier": "Supplier / Where to buy",
+    "assemblies.purchase.price": "Purchase price / unit (EUR)",
+    "assemblies.purchase.agentContact": "Agent contact (optional)",
+    "assemblies.purchase.details": "Purchase details (optional)",
+    "assemblies.purchase.badge": "To Purchase",
 
     "projects.purchase.title": "Parts to Purchase",
     "projects.purchase.descNone": "No parts marked for external purchase in this project.",
@@ -1546,6 +1561,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.purchase.agentContact": "Contact agent (optional)",
     "parts.purchase.details": "Detalii achizitie (optional)",
     "parts.purchase.badge": "De cumparat",
+    "assemblies.purchase.tab": "Achizitie",
+    "assemblies.purchase.requiresPurchase": "Trebuie cumparat",
+    "assemblies.purchase.supplier": "Furnizor / De unde cumparam",
+    "assemblies.purchase.price": "Pret de achizitie / unitate (EUR)",
+    "assemblies.purchase.agentContact": "Contact agent (optional)",
+    "assemblies.purchase.details": "Detalii achizitie (optional)",
+    "assemblies.purchase.badge": "De cumparat",
 
     "projects.purchase.title": "Piese de achiziționat",
     "projects.purchase.descNone": "Nicio piesă marcată pentru achiziție externă în acest proiect.",
@@ -2112,6 +2134,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.purchase.agentContact": "Ugynok kapcsolattarto (opcionalis)",
     "parts.purchase.details": "Vasarlasi reszletek (opcionalis)",
     "parts.purchase.badge": "Vasarlando",
+    "assemblies.purchase.tab": "Vasarlas",
+    "assemblies.purchase.requiresPurchase": "Meg kell vasarolni",
+    "assemblies.purchase.supplier": "Szallito / Hol vasaroljuk",
+    "assemblies.purchase.price": "Vetelár / egyseg (EUR)",
+    "assemblies.purchase.agentContact": "Ugynok kapcsolattarto (opcionalis)",
+    "assemblies.purchase.details": "Vasarlasi reszletek (opcionalis)",
+    "assemblies.purchase.badge": "Vasarlando",
 
     "projects.purchase.title": "Vasarlandó Alkatreszek",
     "projects.purchase.descNone": "Ebben a projektben nincs kulso vasarlasra jelolt alkatresz.",
@@ -2678,6 +2707,13 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.purchase.agentContact": "Agentenkontakt (optional)",
     "parts.purchase.details": "Einkaufsdetails (optional)",
     "parts.purchase.badge": "Zu kaufen",
+    "assemblies.purchase.tab": "Einkauf",
+    "assemblies.purchase.requiresPurchase": "Muss gekauft werden",
+    "assemblies.purchase.supplier": "Lieferant / Wo kaufen",
+    "assemblies.purchase.price": "Einkaufspreis / Einheit (EUR)",
+    "assemblies.purchase.agentContact": "Agentenkontakt (optional)",
+    "assemblies.purchase.details": "Einkaufsdetails (optional)",
+    "assemblies.purchase.badge": "Zu kaufen",
 
     "projects.purchase.title": "Zu kaufende Teile",
     "projects.purchase.descNone": "Keine Teile fur externen Einkauf in diesem Projekt markiert.",

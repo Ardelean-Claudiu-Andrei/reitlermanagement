@@ -405,6 +405,160 @@ type TranslationKeys = {
   "parts.formDesc": string
   "parts.deletePart": string
   "parts.deleteConfirm": string
+  "parts.purchase.tab": string
+  "parts.purchase.requiresPurchase": string
+  "parts.purchase.supplier": string
+  "parts.purchase.price": string
+  "parts.purchase.agentContact": string
+  "parts.purchase.details": string
+  "parts.purchase.badge": string
+
+  "assemblies.purchase.tab": string
+  "assemblies.purchase.requiresPurchase": string
+  "assemblies.purchase.supplier": string
+  "assemblies.purchase.price": string
+  "assemblies.purchase.agentContact": string
+  "assemblies.purchase.details": string
+  "assemblies.purchase.badge": string
+
+  "products.purchase.tab": string
+  "products.purchase.requiresPurchase": string
+  "products.purchase.supplier": string
+  "products.purchase.price": string
+  "products.purchase.agentContact": string
+  "products.purchase.details": string
+  "products.purchase.badge": string
+
+  // Purchase list dialog (project detail)
+  "projects.purchase.title": string
+  "projects.purchase.descNone": string
+  "projects.purchase.desc": string
+  "projects.purchase.colPart": string
+  "projects.purchase.colQty": string
+  "projects.purchase.colSupplier": string
+  "projects.purchase.colPrice": string
+  "projects.purchase.colContact": string
+  "projects.purchase.exportPdf": string
+  "projects.purchase.exporting": string
+  "projects.purchase.close": string
+  "projects.purchase.openPart": string
+
+  // Production card sub-component
+  "projects.prod.noSteps": string
+  "projects.prod.notStarted": string
+  "projects.prod.done": string
+  "projects.prod.stepsProgress": string
+  "projects.prod.ownSteps": string
+  "projects.prod.markDone": string
+  "projects.prod.dependencies": string
+  "projects.prod.noDependencies": string
+  "projects.prod.colElement": string
+  "projects.prod.colStatus": string
+  "projects.prod.usedIn": string
+  "projects.prod.colParent": string
+  "projects.prod.viewDetails": string
+  "projects.prod.typeAssembly": string
+  "projects.prod.typePart": string
+
+  // Project detail page
+  "projects.detail.loading": string
+  "projects.detail.generating": string
+  "projects.detail.projectPriceEur": string
+  "projects.detail.inclInstallation": string
+  "projects.detail.calculatedFromProducts": string
+  "projects.detail.projectItems": string
+  "projects.detail.addItem": string
+  "projects.detail.laserCut": string
+  "projects.detail.purchases": string
+  "projects.detail.productionSteps": string
+  "projects.detail.exportCards": string
+  "projects.detail.noProdItems": string
+  "projects.detail.allDone": string
+  "projects.detail.doneItems": string
+  "projects.detail.retryActivity": string
+  "projects.detail.loadingActivity": string
+  "projects.detail.noActivity": string
+  "projects.detail.paginationOf": string
+  "projects.detail.editDesc": string
+  "projects.detail.finishDateLabel": string
+  "projects.detail.projectPricePlaceholder": string
+  "projects.detail.projectPriceHint": string
+  "projects.detail.nameRequired": string
+  "projects.detail.cardsPdfSuccess": string
+  "projects.detail.laserPdfSuccess": string
+  "projects.detail.purchasePdfSuccess": string
+  "projects.detail.pdfError": string
+  "projects.detail.stepSaveError": string
+  "projects.detail.loadDetailsError": string
+  "projects.detail.addItemSuccess": string
+  "projects.detail.addItemError": string
+  "projects.detail.removeItemSuccess": string
+  "projects.detail.removeItemError": string
+  "projects.detail.removeFromProject": string
+  "projects.detail.activityLoadError": string
+
+  // Add item dialog
+  "projects.addItem.title": string
+  "projects.addItem.desc": string
+  "projects.addItem.itemType": string
+  "projects.addItem.typeProduct": string
+  "projects.addItem.typeAssembly": string
+  "projects.addItem.typePart": string
+  "projects.addItem.selectProduct": string
+  "projects.addItem.selectAssembly": string
+  "projects.addItem.selectPart": string
+  "projects.addItem.searchPlaceholder": string
+  "projects.addItem.noResults": string
+  "projects.addItem.qty": string
+  "projects.addItem.unitPrice": string
+  "projects.addItem.notesPlaceholder": string
+  "projects.addItem.add": string
+  "projects.addItem.selectRequired": string
+  "projects.addItem.qtyRequired": string
+
+  // Remove item dialog
+  "projects.removeItem.title": string
+  "projects.removeItem.remove": string
+  "projects.removeItem.note": string
+  "projects.removeItem.confirmSingular": string
+
+  // Entity view dialog
+  "projects.entity.infoTab": string
+  "projects.entity.structureTab": string
+  "projects.entity.stepsTab": string
+  "projects.entity.filesTab": string
+  "projects.entity.category": string
+  "projects.entity.basePrice": string
+  "projects.entity.assemblies": string
+  "projects.entity.directParts": string
+  "projects.entity.noComponents": string
+  "projects.entity.noProductionSteps": string
+  "projects.entity.compositionType": string
+  "projects.entity.physicalLocation": string
+  "projects.entity.weldingDrawing": string
+  "projects.entity.technicalDrawing": string
+  "projects.entity.cadLocation": string
+  "projects.entity.compoFromParts": string
+  "projects.entity.compoFromAssemblies": string
+  "projects.entity.compoIndependent": string
+  "projects.entity.asmFromParts": string
+  "projects.entity.asmFromSubasms": string
+  "projects.entity.asmIndependent": string
+  "projects.entity.noParts": string
+  "projects.entity.subAssemblies": string
+  "projects.entity.colAssembly": string
+  "projects.entity.colPart": string
+  "projects.entity.colLaser": string
+  "projects.entity.colQty": string
+  "projects.entity.stockQty": string
+  "projects.entity.minStock": string
+  "projects.entity.drawingLocation": string
+  "projects.entity.laserCut": string
+  "projects.entity.bendingDrawing": string
+  "projects.entity.yes": string
+  "projects.entity.no": string
+  "projects.entity.productFallback": string
+  "projects.entity.partFallback": string
 
   // Missing keys used without prefix in quotes/projects/management pages
   "companyName": string
@@ -835,6 +989,152 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Fill in the part details",
     "parts.deletePart": "Delete Part",
     "parts.deleteConfirm": "Are you sure you want to delete this part? This action cannot be undone.",
+    "parts.purchase.tab": "Purchase",
+    "parts.purchase.requiresPurchase": "Needs to be purchased",
+    "parts.purchase.supplier": "Supplier / Where to buy",
+    "parts.purchase.price": "Purchase price / unit (EUR)",
+    "parts.purchase.agentContact": "Agent contact (optional)",
+    "parts.purchase.details": "Purchase details (optional)",
+    "parts.purchase.badge": "To Purchase",
+    "assemblies.purchase.tab": "Purchase",
+    "assemblies.purchase.requiresPurchase": "Needs to be purchased",
+    "assemblies.purchase.supplier": "Supplier / Where to buy",
+    "assemblies.purchase.price": "Purchase price / unit (EUR)",
+    "assemblies.purchase.agentContact": "Agent contact (optional)",
+    "assemblies.purchase.details": "Purchase details (optional)",
+    "assemblies.purchase.badge": "To Purchase",
+    "products.purchase.tab": "Purchase",
+    "products.purchase.requiresPurchase": "Needs to be purchased",
+    "products.purchase.supplier": "Supplier / Where to buy",
+    "products.purchase.price": "Purchase price / unit (EUR)",
+    "products.purchase.agentContact": "Agent contact (optional)",
+    "products.purchase.details": "Purchase details (optional)",
+    "products.purchase.badge": "To Purchase",
+
+    "projects.purchase.title": "Parts to Purchase",
+    "projects.purchase.descNone": "No parts marked for external purchase in this project.",
+    "projects.purchase.desc": "{count} part(s) require external purchase.",
+    "projects.purchase.colPart": "Part",
+    "projects.purchase.colQty": "Qty.",
+    "projects.purchase.colSupplier": "Supplier",
+    "projects.purchase.colPrice": "Price",
+    "projects.purchase.colContact": "Contact",
+    "projects.purchase.exportPdf": "Export PDF",
+    "projects.purchase.exporting": "Generating...",
+    "projects.purchase.close": "Close",
+    "projects.purchase.openPart": "Open part",
+
+    "projects.prod.noSteps": "No steps",
+    "projects.prod.notStarted": "Not started",
+    "projects.prod.done": "Done",
+    "projects.prod.stepsProgress": "{done}/{total} steps",
+    "projects.prod.ownSteps": "Own steps",
+    "projects.prod.markDone": "Mark as done",
+    "projects.prod.dependencies": "Dependencies",
+    "projects.prod.noDependencies": "No dependencies defined for this item.",
+    "projects.prod.colElement": "Element",
+    "projects.prod.colStatus": "Status",
+    "projects.prod.usedIn": "Used in",
+    "projects.prod.colParent": "Parent",
+    "projects.prod.viewDetails": "View details",
+    "projects.prod.typeAssembly": "Assembly",
+    "projects.prod.typePart": "Part",
+
+    "projects.detail.loading": "Loading...",
+    "projects.detail.generating": "Generating...",
+    "projects.detail.projectPriceEur": "Project price (EUR)",
+    "projects.detail.inclInstallation": "incl. installation {cost} EUR",
+    "projects.detail.calculatedFromProducts": "calculated from products",
+    "projects.detail.projectItems": "Project items",
+    "projects.detail.addItem": "Add item",
+    "projects.detail.laserCut": "Laser Cut",
+    "projects.detail.purchases": "Purchases ({count})",
+    "projects.detail.productionSteps": "Production steps",
+    "projects.detail.exportCards": "Production cards",
+    "projects.detail.noProdItems": "No production items configured in this project.",
+    "projects.detail.allDone": "All items are done.",
+    "projects.detail.doneItems": "Done items ({count})",
+    "projects.detail.retryActivity": "Try again",
+    "projects.detail.loadingActivity": "Loading activity...",
+    "projects.detail.noActivity": "No activity for this project.",
+    "projects.detail.paginationOf": "of",
+    "projects.detail.editDesc": "Update project details",
+    "projects.detail.finishDateLabel": "Finish Date",
+    "projects.detail.projectPricePlaceholder": "Enter project price",
+    "projects.detail.projectPriceHint": "Leave empty to calculate automatically from products.",
+    "projects.detail.nameRequired": "Project name is required",
+    "projects.detail.cardsPdfSuccess": "Production cards generated successfully",
+    "projects.detail.laserPdfSuccess": "Laser cutting list generated successfully",
+    "projects.detail.purchasePdfSuccess": "Purchase list generated successfully",
+    "projects.detail.pdfError": "PDF generation error",
+    "projects.detail.stepSaveError": "Error saving progress",
+    "projects.detail.loadDetailsError": "Could not load details",
+    "projects.detail.addItemSuccess": "Item added successfully",
+    "projects.detail.addItemError": "Error adding item",
+    "projects.detail.removeItemSuccess": "Item removed from project",
+    "projects.detail.removeItemError": "Error removing item",
+    "projects.detail.removeFromProject": "Remove from project",
+    "projects.detail.activityLoadError": "Could not load activity.",
+
+    "projects.addItem.title": "Add item to project",
+    "projects.addItem.desc": "Select type, entity and configure quantity.",
+    "projects.addItem.itemType": "Item type",
+    "projects.addItem.typeProduct": "Product",
+    "projects.addItem.typeAssembly": "Assembly",
+    "projects.addItem.typePart": "Part",
+    "projects.addItem.selectProduct": "Select product...",
+    "projects.addItem.selectAssembly": "Select assembly...",
+    "projects.addItem.selectPart": "Select part...",
+    "projects.addItem.searchPlaceholder": "Search by name or code...",
+    "projects.addItem.noResults": "No results.",
+    "projects.addItem.qty": "Quantity *",
+    "projects.addItem.unitPrice": "Unit price (EUR)",
+    "projects.addItem.notesPlaceholder": "Additional notes...",
+    "projects.addItem.add": "Add",
+    "projects.addItem.selectRequired": "Select an item",
+    "projects.addItem.qtyRequired": "Quantity must be at least 1",
+
+    "projects.removeItem.title": "Remove item from project",
+    "projects.removeItem.remove": "Remove",
+    "projects.removeItem.note": "The item will only be removed from the project. The product, assembly or part will not be deleted from the application.",
+    "projects.removeItem.confirmSingular": "Are you sure you want to remove \"{name}\" from the project?",
+
+    "projects.entity.infoTab": "Info",
+    "projects.entity.structureTab": "Structure",
+    "projects.entity.stepsTab": "Steps",
+    "projects.entity.filesTab": "Files",
+    "projects.entity.category": "Category",
+    "projects.entity.basePrice": "Base price",
+    "projects.entity.assemblies": "Assemblies",
+    "projects.entity.directParts": "Direct parts",
+    "projects.entity.noComponents": "No components defined.",
+    "projects.entity.noProductionSteps": "No production steps.",
+    "projects.entity.compositionType": "Composition type",
+    "projects.entity.physicalLocation": "Physical location",
+    "projects.entity.weldingDrawing": "Welding drawing location",
+    "projects.entity.technicalDrawing": "Technical drawing location",
+    "projects.entity.cadLocation": "CAD location",
+    "projects.entity.compoFromParts": "From parts",
+    "projects.entity.compoFromAssemblies": "From assemblies",
+    "projects.entity.compoIndependent": "Independent",
+    "projects.entity.asmFromParts": "Assembly from parts",
+    "projects.entity.asmFromSubasms": "Assembly from sub-assemblies",
+    "projects.entity.asmIndependent": "Independent assembly",
+    "projects.entity.noParts": "No parts added.",
+    "projects.entity.subAssemblies": "Sub-assemblies",
+    "projects.entity.colAssembly": "Assembly",
+    "projects.entity.colPart": "Part",
+    "projects.entity.colLaser": "Laser",
+    "projects.entity.colQty": "Quantity",
+    "projects.entity.stockQty": "Stock quantity",
+    "projects.entity.minStock": "Minimum stock",
+    "projects.entity.drawingLocation": "Drawing location",
+    "projects.entity.laserCut": "Laser cutting",
+    "projects.entity.bendingDrawing": "Bending drawing location",
+    "projects.entity.yes": "Yes",
+    "projects.entity.no": "No",
+    "projects.entity.productFallback": "Product",
+    "projects.entity.partFallback": "Part",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Company Name",
@@ -1269,6 +1569,152 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Completati detaliile piesei",
     "parts.deletePart": "Sterge Piesa",
     "parts.deleteConfirm": "Esti sigur ca vrei sa stergi aceasta piesa? Aceasta actiune nu poate fi anulata.",
+    "parts.purchase.tab": "Achizitie",
+    "parts.purchase.requiresPurchase": "Trebuie cumparata",
+    "parts.purchase.supplier": "Furnizor / De unde cumparam",
+    "parts.purchase.price": "Pret de achizitie / unitate (EUR)",
+    "parts.purchase.agentContact": "Contact agent (optional)",
+    "parts.purchase.details": "Detalii achizitie (optional)",
+    "parts.purchase.badge": "De cumparat",
+    "assemblies.purchase.tab": "Achizitie",
+    "assemblies.purchase.requiresPurchase": "Trebuie cumparat",
+    "assemblies.purchase.supplier": "Furnizor / De unde cumparam",
+    "assemblies.purchase.price": "Pret de achizitie / unitate (EUR)",
+    "assemblies.purchase.agentContact": "Contact agent (optional)",
+    "assemblies.purchase.details": "Detalii achizitie (optional)",
+    "assemblies.purchase.badge": "De cumparat",
+    "products.purchase.tab": "Achizitie",
+    "products.purchase.requiresPurchase": "Trebuie cumparat",
+    "products.purchase.supplier": "Furnizor / De unde cumparam",
+    "products.purchase.price": "Pret de achizitie / unitate (EUR)",
+    "products.purchase.agentContact": "Contact agent (optional)",
+    "products.purchase.details": "Detalii achizitie (optional)",
+    "products.purchase.badge": "De cumparat",
+
+    "projects.purchase.title": "Piese de achiziționat",
+    "projects.purchase.descNone": "Nicio piesă marcată pentru achiziție externă în acest proiect.",
+    "projects.purchase.desc": "{count} piese necesită achiziție externă.",
+    "projects.purchase.colPart": "Piesă",
+    "projects.purchase.colQty": "Cant.",
+    "projects.purchase.colSupplier": "Furnizor",
+    "projects.purchase.colPrice": "Preț",
+    "projects.purchase.colContact": "Contact",
+    "projects.purchase.exportPdf": "Export PDF",
+    "projects.purchase.exporting": "Se generează...",
+    "projects.purchase.close": "Închide",
+    "projects.purchase.openPart": "Deschide piesa",
+
+    "projects.prod.noSteps": "Fără pași",
+    "projects.prod.notStarted": "Neînceput",
+    "projects.prod.done": "Gata",
+    "projects.prod.stepsProgress": "{done}/{total} pași",
+    "projects.prod.ownSteps": "Pași proprii",
+    "projects.prod.markDone": "Marchează ca terminat",
+    "projects.prod.dependencies": "Dependențe",
+    "projects.prod.noDependencies": "Nicio dependență definită pentru acest element.",
+    "projects.prod.colElement": "Element",
+    "projects.prod.colStatus": "Status",
+    "projects.prod.usedIn": "Utilizat în",
+    "projects.prod.colParent": "Părinte",
+    "projects.prod.viewDetails": "Vezi detalii",
+    "projects.prod.typeAssembly": "Ansamblu",
+    "projects.prod.typePart": "Piesă",
+
+    "projects.detail.loading": "Se încarcă...",
+    "projects.detail.generating": "Se generează...",
+    "projects.detail.projectPriceEur": "Preț proiect (EUR)",
+    "projects.detail.inclInstallation": "incl. instalare {cost} EUR",
+    "projects.detail.calculatedFromProducts": "calculat din produse",
+    "projects.detail.projectItems": "Elemente proiect",
+    "projects.detail.addItem": "Adaugă element",
+    "projects.detail.laserCut": "Tăiere Laser",
+    "projects.detail.purchases": "Achiziții ({count})",
+    "projects.detail.productionSteps": "Pași de producție",
+    "projects.detail.exportCards": "Fișe de producție",
+    "projects.detail.noProdItems": "Nu există elemente de producție configurate în acest proiect.",
+    "projects.detail.allDone": "Toate elementele sunt terminate.",
+    "projects.detail.doneItems": "Elemente terminate ({count})",
+    "projects.detail.retryActivity": "Încearcă din nou",
+    "projects.detail.loadingActivity": "Se încarcă activitatea...",
+    "projects.detail.noActivity": "Nu există activitate pentru acest proiect.",
+    "projects.detail.paginationOf": "din",
+    "projects.detail.editDesc": "Actualizează detaliile proiectului",
+    "projects.detail.finishDateLabel": "Data Finalizare",
+    "projects.detail.projectPricePlaceholder": "Introduceți prețul proiectului",
+    "projects.detail.projectPriceHint": "Lăsați gol pentru a calcula automat din produse.",
+    "projects.detail.nameRequired": "Numele proiectului este obligatoriu",
+    "projects.detail.cardsPdfSuccess": "Fișe de producție generate cu succes",
+    "projects.detail.laserPdfSuccess": "Listă tăiere laser generată cu succes",
+    "projects.detail.purchasePdfSuccess": "Listă achiziții generată cu succes",
+    "projects.detail.pdfError": "Eroare la generare PDF",
+    "projects.detail.stepSaveError": "Eroare la salvarea progresului",
+    "projects.detail.loadDetailsError": "Nu s-au putut încărca detaliile",
+    "projects.detail.addItemSuccess": "Element adăugat cu succes",
+    "projects.detail.addItemError": "Eroare la adăugarea elementului",
+    "projects.detail.removeItemSuccess": "Element eliminat din proiect",
+    "projects.detail.removeItemError": "Eroare la eliminarea elementului",
+    "projects.detail.removeFromProject": "Elimină din proiect",
+    "projects.detail.activityLoadError": "Nu s-a putut încărca activitatea.",
+
+    "projects.addItem.title": "Adaugă element în proiect",
+    "projects.addItem.desc": "Selectează tipul, entitatea și configurează cantitatea.",
+    "projects.addItem.itemType": "Tip element",
+    "projects.addItem.typeProduct": "Produs",
+    "projects.addItem.typeAssembly": "Ansamblu",
+    "projects.addItem.typePart": "Piesă",
+    "projects.addItem.selectProduct": "Selectează produsul...",
+    "projects.addItem.selectAssembly": "Selectează ansamblul...",
+    "projects.addItem.selectPart": "Selectează piesa...",
+    "projects.addItem.searchPlaceholder": "Caută după nume sau cod...",
+    "projects.addItem.noResults": "Niciun rezultat.",
+    "projects.addItem.qty": "Cantitate *",
+    "projects.addItem.unitPrice": "Preț unitar (EUR)",
+    "projects.addItem.notesPlaceholder": "Note suplimentare...",
+    "projects.addItem.add": "Adaugă",
+    "projects.addItem.selectRequired": "Selectează un element",
+    "projects.addItem.qtyRequired": "Cantitatea trebuie să fie cel puțin 1",
+
+    "projects.removeItem.title": "Elimină element din proiect",
+    "projects.removeItem.remove": "Elimină",
+    "projects.removeItem.note": "Elementul va fi eliminat doar din proiect. Produsul, ansamblul sau piesa nu va fi șters/ștearsă din aplicație.",
+    "projects.removeItem.confirmSingular": "Ești sigur că vrei să elimini \"{name}\" din proiect?",
+
+    "projects.entity.infoTab": "Informații",
+    "projects.entity.structureTab": "Structură",
+    "projects.entity.stepsTab": "Pași",
+    "projects.entity.filesTab": "Fișiere",
+    "projects.entity.category": "Categorie",
+    "projects.entity.basePrice": "Preț de bază",
+    "projects.entity.assemblies": "Ansamble",
+    "projects.entity.directParts": "Piese directe",
+    "projects.entity.noComponents": "Nicio componentă definită.",
+    "projects.entity.noProductionSteps": "Niciun pas de producție.",
+    "projects.entity.compositionType": "Tip compoziție",
+    "projects.entity.physicalLocation": "Locație fizică",
+    "projects.entity.weldingDrawing": "Locație desen sudură",
+    "projects.entity.technicalDrawing": "Locație desen tehnic",
+    "projects.entity.cadLocation": "Locație CAD",
+    "projects.entity.compoFromParts": "Din piese",
+    "projects.entity.compoFromAssemblies": "Din ansamble",
+    "projects.entity.compoIndependent": "Independent",
+    "projects.entity.asmFromParts": "Ansamblu din piese",
+    "projects.entity.asmFromSubasms": "Ansamblu din sub-ansamble",
+    "projects.entity.asmIndependent": "Ansamblu independent",
+    "projects.entity.noParts": "Nicio piesă adăugată.",
+    "projects.entity.subAssemblies": "Sub-ansamble",
+    "projects.entity.colAssembly": "Ansamblu",
+    "projects.entity.colPart": "Piesă",
+    "projects.entity.colLaser": "Laser",
+    "projects.entity.colQty": "Cantitate",
+    "projects.entity.stockQty": "Cantitate stoc",
+    "projects.entity.minStock": "Stoc minim",
+    "projects.entity.drawingLocation": "Locație desen",
+    "projects.entity.laserCut": "Debitare laser",
+    "projects.entity.bendingDrawing": "Locație desen îndoire",
+    "projects.entity.yes": "Da",
+    "projects.entity.no": "Nu",
+    "projects.entity.productFallback": "Produs",
+    "projects.entity.partFallback": "Piesă",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Nume Companie",
@@ -1703,6 +2149,152 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Toltse ki az alkatresz adatait",
     "parts.deletePart": "Alkatresz Torlese",
     "parts.deleteConfirm": "Biztosan torolni szeretned ezt az alkatreszt? Ez a muvelet nem vonhato vissza.",
+    "parts.purchase.tab": "Vasarlas",
+    "parts.purchase.requiresPurchase": "Meg kell vasarolni",
+    "parts.purchase.supplier": "Szallito / Hol vasaroljuk",
+    "parts.purchase.price": "Vetelár / egyseg (EUR)",
+    "parts.purchase.agentContact": "Ugynok kapcsolattarto (opcionalis)",
+    "parts.purchase.details": "Vasarlasi reszletek (opcionalis)",
+    "parts.purchase.badge": "Vasarlando",
+    "assemblies.purchase.tab": "Vasarlas",
+    "assemblies.purchase.requiresPurchase": "Meg kell vasarolni",
+    "assemblies.purchase.supplier": "Szallito / Hol vasaroljuk",
+    "assemblies.purchase.price": "Vetelár / egyseg (EUR)",
+    "assemblies.purchase.agentContact": "Ugynok kapcsolattarto (opcionalis)",
+    "assemblies.purchase.details": "Vasarlasi reszletek (opcionalis)",
+    "assemblies.purchase.badge": "Vasarlando",
+    "products.purchase.tab": "Vasarlas",
+    "products.purchase.requiresPurchase": "Meg kell vasarolni",
+    "products.purchase.supplier": "Szallito / Hol vasaroljuk",
+    "products.purchase.price": "Vetelár / egyseg (EUR)",
+    "products.purchase.agentContact": "Ugynok kapcsolattarto (opcionalis)",
+    "products.purchase.details": "Vasarlasi reszletek (opcionalis)",
+    "products.purchase.badge": "Vasarlando",
+
+    "projects.purchase.title": "Vasarlandó Alkatreszek",
+    "projects.purchase.descNone": "Ebben a projektben nincs kulso vasarlasra jelolt alkatresz.",
+    "projects.purchase.desc": "{count} alkatresz kulso vasarlast igenyel.",
+    "projects.purchase.colPart": "Alkatresz",
+    "projects.purchase.colQty": "Menny.",
+    "projects.purchase.colSupplier": "Szallito",
+    "projects.purchase.colPrice": "Ar",
+    "projects.purchase.colContact": "Kapcsolat",
+    "projects.purchase.exportPdf": "PDF Export",
+    "projects.purchase.exporting": "Generalas...",
+    "projects.purchase.close": "Bezaras",
+    "projects.purchase.openPart": "Alkatresz megnyitasa",
+
+    "projects.prod.noSteps": "Nincsenek lepesek",
+    "projects.prod.notStarted": "Nem kezdodott el",
+    "projects.prod.done": "Kesz",
+    "projects.prod.stepsProgress": "{done}/{total} lepes",
+    "projects.prod.ownSteps": "Sajat lepesek",
+    "projects.prod.markDone": "Kesz jeloles",
+    "projects.prod.dependencies": "Fuggosegek",
+    "projects.prod.noDependencies": "Nincsenek fuggosegek ehhez az elemhez.",
+    "projects.prod.colElement": "Elem",
+    "projects.prod.colStatus": "Allapot",
+    "projects.prod.usedIn": "Felhasznalva",
+    "projects.prod.colParent": "Szulo",
+    "projects.prod.viewDetails": "Reszletek",
+    "projects.prod.typeAssembly": "Szerelveny",
+    "projects.prod.typePart": "Alkatresz",
+
+    "projects.detail.loading": "Betoltes...",
+    "projects.detail.generating": "Generalas...",
+    "projects.detail.projectPriceEur": "Projekt ar (EUR)",
+    "projects.detail.inclInstallation": "beleertve telepites {cost} EUR",
+    "projects.detail.calculatedFromProducts": "termekekbol szamolva",
+    "projects.detail.projectItems": "Projekt elemek",
+    "projects.detail.addItem": "Elem hozzaadasa",
+    "projects.detail.laserCut": "Lezervagás",
+    "projects.detail.purchases": "Vasarlasok ({count})",
+    "projects.detail.productionSteps": "Gyartasi lepesek",
+    "projects.detail.exportCards": "Gyartasi kartyak",
+    "projects.detail.noProdItems": "Nincsenek gyartasi elemek konfiguralva ebben a projektben.",
+    "projects.detail.allDone": "Minden elem kesz.",
+    "projects.detail.doneItems": "Kesz elemek ({count})",
+    "projects.detail.retryActivity": "Ujra probalkozas",
+    "projects.detail.loadingActivity": "Tevekenyseg betoltese...",
+    "projects.detail.noActivity": "Nincs tevekenyseg ehhez a projekthez.",
+    "projects.detail.paginationOf": "osszes:",
+    "projects.detail.editDesc": "Projekt adatok frissitese",
+    "projects.detail.finishDateLabel": "Befejezes Datuma",
+    "projects.detail.projectPricePlaceholder": "Adja meg a projekt arat",
+    "projects.detail.projectPriceHint": "Hagyja uresen a termekekbol valo automatikus szamitashoz.",
+    "projects.detail.nameRequired": "A projekt neve kotelozo",
+    "projects.detail.cardsPdfSuccess": "Gyartasi kartyak sikeresen generalva",
+    "projects.detail.laserPdfSuccess": "Lezervagasi lista sikeresen generalva",
+    "projects.detail.purchasePdfSuccess": "Vasarlasi lista sikeresen generalva",
+    "projects.detail.pdfError": "PDF generalasi hiba",
+    "projects.detail.stepSaveError": "Hiba a haladas mentese soran",
+    "projects.detail.loadDetailsError": "Nem sikerult betolteni a reszleteket",
+    "projects.detail.addItemSuccess": "Elem sikeresen hozzaadva",
+    "projects.detail.addItemError": "Hiba az elem hozzaadasanal",
+    "projects.detail.removeItemSuccess": "Elem eltavolitva a projektbol",
+    "projects.detail.removeItemError": "Hiba az elem eltavolitasanal",
+    "projects.detail.removeFromProject": "Eltavolitas a projektbol",
+    "projects.detail.activityLoadError": "Nem sikerult betolteni a tevekenységet.",
+
+    "projects.addItem.title": "Elem hozzaadasa a projekthez",
+    "projects.addItem.desc": "Valasszon tipust, entitast es konfiguraljon mennyiseget.",
+    "projects.addItem.itemType": "Elem tipusa",
+    "projects.addItem.typeProduct": "Termek",
+    "projects.addItem.typeAssembly": "Szerelveny",
+    "projects.addItem.typePart": "Alkatresz",
+    "projects.addItem.selectProduct": "Termek kivalasztasa...",
+    "projects.addItem.selectAssembly": "Szerelveny kivalasztasa...",
+    "projects.addItem.selectPart": "Alkatresz kivalasztasa...",
+    "projects.addItem.searchPlaceholder": "Kereses nev vagy kod alapjan...",
+    "projects.addItem.noResults": "Nincs eredmeny.",
+    "projects.addItem.qty": "Mennyiseg *",
+    "projects.addItem.unitPrice": "Egysegar (EUR)",
+    "projects.addItem.notesPlaceholder": "Tovabbi megjegyzesek...",
+    "projects.addItem.add": "Hozzaadas",
+    "projects.addItem.selectRequired": "Valasszon egy elemet",
+    "projects.addItem.qtyRequired": "A mennyisegnek legalabb 1-nek kell lennie",
+
+    "projects.removeItem.title": "Elem eltavolitasa a projektbol",
+    "projects.removeItem.remove": "Eltavolitas",
+    "projects.removeItem.note": "Az elem csak a projektbol kerul eltavolitasra. A termek, szerelveny vagy alkatresz nem torlodik az alkalmazasbol.",
+    "projects.removeItem.confirmSingular": "Biztosan el szeretne tavolitani a(z) \"{name}\" elemet a projektbol?",
+
+    "projects.entity.infoTab": "Info",
+    "projects.entity.structureTab": "Szerkezet",
+    "projects.entity.stepsTab": "Lepesek",
+    "projects.entity.filesTab": "Fajlok",
+    "projects.entity.category": "Kategoria",
+    "projects.entity.basePrice": "Alapar",
+    "projects.entity.assemblies": "Szerelvenyek",
+    "projects.entity.directParts": "Kozvetlen alkatreszek",
+    "projects.entity.noComponents": "Nincsenek komponensek megadva.",
+    "projects.entity.noProductionSteps": "Nincsenek gyartasi lepesek.",
+    "projects.entity.compositionType": "Osszeteteli tipus",
+    "projects.entity.physicalLocation": "Fizikai helyszin",
+    "projects.entity.weldingDrawing": "Hegeszetesi rajz helye",
+    "projects.entity.technicalDrawing": "Muszaki rajz helye",
+    "projects.entity.cadLocation": "CAD helye",
+    "projects.entity.compoFromParts": "Alkatreszekbol",
+    "projects.entity.compoFromAssemblies": "Szerelvenyekbol",
+    "projects.entity.compoIndependent": "Fuggetlen",
+    "projects.entity.asmFromParts": "Alkatreszekbol allo szerelveny",
+    "projects.entity.asmFromSubasms": "Reszszerelvenyekbol allo szerelveny",
+    "projects.entity.asmIndependent": "Fuggetlen szerelveny",
+    "projects.entity.noParts": "Nincsenek alkatreszek hozzaadva.",
+    "projects.entity.subAssemblies": "Reszszerelvenyek",
+    "projects.entity.colAssembly": "Szerelveny",
+    "projects.entity.colPart": "Alkatresz",
+    "projects.entity.colLaser": "Lezer",
+    "projects.entity.colQty": "Mennyiseg",
+    "projects.entity.stockQty": "Keszletmennyiseg",
+    "projects.entity.minStock": "Minimalis keszlet",
+    "projects.entity.drawingLocation": "Rajz helye",
+    "projects.entity.laserCut": "Lezervagás",
+    "projects.entity.bendingDrawing": "Hajlitasi rajz helye",
+    "projects.entity.yes": "Igen",
+    "projects.entity.no": "Nem",
+    "projects.entity.productFallback": "Termek",
+    "projects.entity.partFallback": "Alkatresz",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Ceg Neve",
@@ -2137,6 +2729,152 @@ const translations: Record<Locale | "de", TranslationKeys> = {
     "parts.formDesc": "Teiledetails ausfullen",
     "parts.deletePart": "Teil Loschen",
     "parts.deleteConfirm": "Sind Sie sicher, dass Sie dieses Teil loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "parts.purchase.tab": "Einkauf",
+    "parts.purchase.requiresPurchase": "Muss gekauft werden",
+    "parts.purchase.supplier": "Lieferant / Wo kaufen",
+    "parts.purchase.price": "Einkaufspreis / Einheit (EUR)",
+    "parts.purchase.agentContact": "Agentenkontakt (optional)",
+    "parts.purchase.details": "Einkaufsdetails (optional)",
+    "parts.purchase.badge": "Zu kaufen",
+    "assemblies.purchase.tab": "Einkauf",
+    "assemblies.purchase.requiresPurchase": "Muss gekauft werden",
+    "assemblies.purchase.supplier": "Lieferant / Wo kaufen",
+    "assemblies.purchase.price": "Einkaufspreis / Einheit (EUR)",
+    "assemblies.purchase.agentContact": "Agentenkontakt (optional)",
+    "assemblies.purchase.details": "Einkaufsdetails (optional)",
+    "assemblies.purchase.badge": "Zu kaufen",
+    "products.purchase.tab": "Einkauf",
+    "products.purchase.requiresPurchase": "Muss gekauft werden",
+    "products.purchase.supplier": "Lieferant / Wo kaufen",
+    "products.purchase.price": "Einkaufspreis / Einheit (EUR)",
+    "products.purchase.agentContact": "Agentenkontakt (optional)",
+    "products.purchase.details": "Einkaufsdetails (optional)",
+    "products.purchase.badge": "Zu kaufen",
+
+    "projects.purchase.title": "Zu kaufende Teile",
+    "projects.purchase.descNone": "Keine Teile fur externen Einkauf in diesem Projekt markiert.",
+    "projects.purchase.desc": "{count} Teil(e) benotigen externen Einkauf.",
+    "projects.purchase.colPart": "Teil",
+    "projects.purchase.colQty": "Menge",
+    "projects.purchase.colSupplier": "Lieferant",
+    "projects.purchase.colPrice": "Preis",
+    "projects.purchase.colContact": "Kontakt",
+    "projects.purchase.exportPdf": "PDF Exportieren",
+    "projects.purchase.exporting": "Wird generiert...",
+    "projects.purchase.close": "Schliessen",
+    "projects.purchase.openPart": "Teil offnen",
+
+    "projects.prod.noSteps": "Keine Schritte",
+    "projects.prod.notStarted": "Nicht begonnen",
+    "projects.prod.done": "Fertig",
+    "projects.prod.stepsProgress": "{done}/{total} Schritte",
+    "projects.prod.ownSteps": "Eigene Schritte",
+    "projects.prod.markDone": "Als erledigt markieren",
+    "projects.prod.dependencies": "Abhangigkeiten",
+    "projects.prod.noDependencies": "Keine Abhangigkeiten fur dieses Element definiert.",
+    "projects.prod.colElement": "Element",
+    "projects.prod.colStatus": "Status",
+    "projects.prod.usedIn": "Verwendet in",
+    "projects.prod.colParent": "Ubergeordnet",
+    "projects.prod.viewDetails": "Details",
+    "projects.prod.typeAssembly": "Baugruppe",
+    "projects.prod.typePart": "Teil",
+
+    "projects.detail.loading": "Wird geladen...",
+    "projects.detail.generating": "Wird generiert...",
+    "projects.detail.projectPriceEur": "Projektpreis (EUR)",
+    "projects.detail.inclInstallation": "inkl. Installation {cost} EUR",
+    "projects.detail.calculatedFromProducts": "aus Produkten berechnet",
+    "projects.detail.projectItems": "Projektelemente",
+    "projects.detail.addItem": "Element hinzufugen",
+    "projects.detail.laserCut": "Laserschnitt",
+    "projects.detail.purchases": "Einkaufe ({count})",
+    "projects.detail.productionSteps": "Produktionsschritte",
+    "projects.detail.exportCards": "Produktionskarten",
+    "projects.detail.noProdItems": "Keine Produktionselemente in diesem Projekt konfiguriert.",
+    "projects.detail.allDone": "Alle Elemente sind fertig.",
+    "projects.detail.doneItems": "Erledigte Elemente ({count})",
+    "projects.detail.retryActivity": "Erneut versuchen",
+    "projects.detail.loadingActivity": "Aktivitat wird geladen...",
+    "projects.detail.noActivity": "Keine Aktivitat fur dieses Projekt.",
+    "projects.detail.paginationOf": "von",
+    "projects.detail.editDesc": "Projektdetails aktualisieren",
+    "projects.detail.finishDateLabel": "Fertigstellungsdatum",
+    "projects.detail.projectPricePlaceholder": "Projektpreis eingeben",
+    "projects.detail.projectPriceHint": "Leer lassen fur automatische Berechnung aus Produkten.",
+    "projects.detail.nameRequired": "Projektname ist erforderlich",
+    "projects.detail.cardsPdfSuccess": "Produktionskarten erfolgreich generiert",
+    "projects.detail.laserPdfSuccess": "Laserschnittliste erfolgreich generiert",
+    "projects.detail.purchasePdfSuccess": "Einkaufsliste erfolgreich generiert",
+    "projects.detail.pdfError": "PDF-Generierungsfehler",
+    "projects.detail.stepSaveError": "Fehler beim Speichern des Fortschritts",
+    "projects.detail.loadDetailsError": "Details konnten nicht geladen werden",
+    "projects.detail.addItemSuccess": "Element erfolgreich hinzugefugt",
+    "projects.detail.addItemError": "Fehler beim Hinzufugen des Elements",
+    "projects.detail.removeItemSuccess": "Element aus Projekt entfernt",
+    "projects.detail.removeItemError": "Fehler beim Entfernen des Elements",
+    "projects.detail.removeFromProject": "Aus Projekt entfernen",
+    "projects.detail.activityLoadError": "Aktivitat konnte nicht geladen werden.",
+
+    "projects.addItem.title": "Element zum Projekt hinzufugen",
+    "projects.addItem.desc": "Typ, Entitat auswahlen und Menge konfigurieren.",
+    "projects.addItem.itemType": "Elementtyp",
+    "projects.addItem.typeProduct": "Produkt",
+    "projects.addItem.typeAssembly": "Baugruppe",
+    "projects.addItem.typePart": "Teil",
+    "projects.addItem.selectProduct": "Produkt wahlen...",
+    "projects.addItem.selectAssembly": "Baugruppe wahlen...",
+    "projects.addItem.selectPart": "Teil wahlen...",
+    "projects.addItem.searchPlaceholder": "Nach Name oder Code suchen...",
+    "projects.addItem.noResults": "Keine Ergebnisse.",
+    "projects.addItem.qty": "Menge *",
+    "projects.addItem.unitPrice": "Stuckpreis (EUR)",
+    "projects.addItem.notesPlaceholder": "Weitere Notizen...",
+    "projects.addItem.add": "Hinzufugen",
+    "projects.addItem.selectRequired": "Element auswahlen",
+    "projects.addItem.qtyRequired": "Menge muss mindestens 1 betragen",
+
+    "projects.removeItem.title": "Element aus Projekt entfernen",
+    "projects.removeItem.remove": "Entfernen",
+    "projects.removeItem.note": "Das Element wird nur aus dem Projekt entfernt. Das Produkt, die Baugruppe oder das Teil wird nicht aus der Anwendung geloscht.",
+    "projects.removeItem.confirmSingular": "Sind Sie sicher, dass Sie \"{name}\" aus dem Projekt entfernen mochten?",
+
+    "projects.entity.infoTab": "Info",
+    "projects.entity.structureTab": "Struktur",
+    "projects.entity.stepsTab": "Schritte",
+    "projects.entity.filesTab": "Dateien",
+    "projects.entity.category": "Kategorie",
+    "projects.entity.basePrice": "Grundpreis",
+    "projects.entity.assemblies": "Baugruppen",
+    "projects.entity.directParts": "Direkte Teile",
+    "projects.entity.noComponents": "Keine Komponenten definiert.",
+    "projects.entity.noProductionSteps": "Keine Produktionsschritte.",
+    "projects.entity.compositionType": "Zusammensetzungstyp",
+    "projects.entity.physicalLocation": "Physischer Standort",
+    "projects.entity.weldingDrawing": "Schweisszeichnung Standort",
+    "projects.entity.technicalDrawing": "Technische Zeichnung Standort",
+    "projects.entity.cadLocation": "CAD-Standort",
+    "projects.entity.compoFromParts": "Aus Teilen",
+    "projects.entity.compoFromAssemblies": "Aus Baugruppen",
+    "projects.entity.compoIndependent": "Unabhangig",
+    "projects.entity.asmFromParts": "Baugruppe aus Teilen",
+    "projects.entity.asmFromSubasms": "Baugruppe aus Unterbaugruppen",
+    "projects.entity.asmIndependent": "Unabhangige Baugruppe",
+    "projects.entity.noParts": "Keine Teile hinzugefugt.",
+    "projects.entity.subAssemblies": "Unterbaugruppen",
+    "projects.entity.colAssembly": "Baugruppe",
+    "projects.entity.colPart": "Teil",
+    "projects.entity.colLaser": "Laser",
+    "projects.entity.colQty": "Menge",
+    "projects.entity.stockQty": "Lagerbestand",
+    "projects.entity.minStock": "Mindestbestand",
+    "projects.entity.drawingLocation": "Zeichnungsstandort",
+    "projects.entity.laserCut": "Laserschnitt",
+    "projects.entity.bendingDrawing": "Biegezeichnung Standort",
+    "projects.entity.yes": "Ja",
+    "projects.entity.no": "Nein",
+    "projects.entity.productFallback": "Produkt",
+    "projects.entity.partFallback": "Teil",
 
     // Unprefixed keys used in quotes/projects/management pages
     "companyName": "Unternehmensname",

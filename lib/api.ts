@@ -295,6 +295,15 @@ export const projectsApi = {
     }
     return res.blob()
   },
+  exportPurchaseListPdf: async (id: string, purchased: string[] = []): Promise<Blob> => {
+    const qs = purchased.length ? `?purchased=${encodeURIComponent(purchased.join(','))}` : ''
+    const res = await apiFetch(`/api/projects/${id}/export-purchase-list${qs}`)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || 'PDF generation failed')
+    }
+    return res.blob()
+  },
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────

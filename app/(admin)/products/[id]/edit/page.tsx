@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Save, Plus, X, Search } from "lucide-react"
+import { ArrowLeft, Save, Plus, X, Search, ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
 import { EntityFileUploads } from "@/components/entity-file-uploads"
 import { productsApi } from "@/lib/api"
@@ -96,6 +96,15 @@ export default function EditProductPage() {
     product?.productionSteps ?? []
   )
 
+  const [formRequiresPurchase, setFormRequiresPurchase] = useState(() => product?.requiresPurchase ?? false)
+  const [formPurchaseSupplier, setFormPurchaseSupplier] = useState(() => product?.purchaseSupplier ?? "")
+  const [formPurchasePrice, setFormPurchasePrice] = useState<number | null>(() => product?.purchasePrice ?? null)
+  const [formPurchaseCurrency, setFormPurchaseCurrency] = useState(() => product?.purchaseCurrency ?? "EUR")
+  const [formPurchaseVatIncluded, setFormPurchaseVatIncluded] = useState(() => product?.purchaseVatIncluded ?? false)
+  const [formPurchaseVatRate, setFormPurchaseVatRate] = useState(() => product?.purchaseVatRate ?? 21)
+  const [formPurchaseAgentContact, setFormPurchaseAgentContact] = useState(() => product?.purchaseAgentContact ?? "")
+  const [formPurchaseDetails, setFormPurchaseDetails] = useState(() => product?.purchaseDetails ?? "")
+
   // Re-sync when product first becomes available (async context or API fetch)
   useEffect(() => {
     if (!product) return
@@ -113,6 +122,14 @@ export default function EditProductPage() {
       productParts: product.productParts ?? (product.partIds ?? []).map(id => ({ partId: id, quantity: 1 })),
     })
     setFormSteps(product.productionSteps ?? [])
+    setFormRequiresPurchase(product.requiresPurchase ?? false)
+    setFormPurchaseSupplier(product.purchaseSupplier ?? "")
+    setFormPurchasePrice(product.purchasePrice ?? null)
+    setFormPurchaseCurrency(product.purchaseCurrency ?? "EUR")
+    setFormPurchaseVatIncluded(product.purchaseVatIncluded ?? false)
+    setFormPurchaseVatRate(product.purchaseVatRate ?? 21)
+    setFormPurchaseAgentContact(product.purchaseAgentContact ?? "")
+    setFormPurchaseDetails(product.purchaseDetails ?? "")
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id])
 
@@ -224,6 +241,14 @@ export default function EditProductPage() {
       assemblyIds: formData.productAssemblies.map((a) => a.assemblyId),
       partIds: formData.productParts.map((p) => p.partId),
       productionSteps: formSteps,
+      requiresPurchase: formRequiresPurchase,
+      purchaseSupplier: formPurchaseSupplier,
+      purchasePrice: formPurchasePrice,
+      purchaseCurrency: formPurchaseCurrency,
+      purchaseVatIncluded: formPurchaseVatIncluded,
+      purchaseVatRate: formPurchaseVatRate,
+      purchaseAgentContact: formPurchaseAgentContact,
+      purchaseDetails: formPurchaseDetails,
     }
 
     setSaving(true)
@@ -273,6 +298,9 @@ export default function EditProductPage() {
           </TabsTrigger>
           <TabsTrigger value="steps">
             Pași producție{formSteps.length > 0 ? ` (${formSteps.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="purchase" className={formRequiresPurchase ? "text-orange-600" : ""}>
+            {t("products.purchase.tab")}
           </TabsTrigger>
           <TabsTrigger value="files">Fișiere</TabsTrigger>
         </TabsList>
@@ -587,6 +615,109 @@ export default function EditProductPage() {
             </CardHeader>
             <CardContent>
               <StepEditor steps={formSteps} onChange={setFormSteps} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Achiziție ───────────────────────────────────────────────────── */}
+        <TabsContent value="purchase" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("products.purchase.tab")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md border p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-2 flex-1">
+                    <Checkbox
+                      id="requiresPurchaseEdit"
+                      checked={formRequiresPurchase}
+                      onCheckedChange={(v) => setFormRequiresPurchase(!!v)}
+                    />
+                    <Label htmlFor="requiresPurchaseEdit" className="cursor-pointer font-medium">
+                      {t("products.purchase.requiresPurchase")}
+                    </Label>
+                  </div>
+                  {formRequiresPurchase && (
+                    <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+                      {t("products.purchase.badge")}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {formRequiresPurchase && (
+                <>
+                  <div className="space-y-2">
+                    <Label>{t("products.purchase.supplier")}</Label>
+                    <Input
+                      placeholder="Furnizor SRL..."
+                      value={formPurchaseSupplier}
+                      onChange={(e) => setFormPurchaseSupplier(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("products.purchase.price")}</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={formPurchasePrice ?? ""}
+                        onChange={(e) => setFormPurchasePrice(e.target.value === "" ? null : parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Monedă</Label>
+                      <Select value={formPurchaseCurrency} onValueChange={setFormPurchaseCurrency}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="RON">RON</SelectItem>
+                          <SelectItem value="HUF">HUF</SelectItem>
+                          <SelectItem value="IRR">IRR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="vatIncludedEdit"
+                      checked={formPurchaseVatIncluded}
+                      onCheckedChange={(v) => setFormPurchaseVatIncluded(!!v)}
+                    />
+                    <Label htmlFor="vatIncludedEdit" className="cursor-pointer">Preț cu TVA inclus</Label>
+                    {formPurchaseVatIncluded && (
+                      <Select value={String(formPurchaseVatRate)} onValueChange={(v) => setFormPurchaseVatRate(Number(v))}>
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {[5, 9, 11, 19, 21].map((r) => (
+                            <SelectItem key={r} value={String(r)}>{r}%</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("products.purchase.agentContact")}</Label>
+                    <Input
+                      placeholder="Nume agent, telefon..."
+                      value={formPurchaseAgentContact}
+                      onChange={(e) => setFormPurchaseAgentContact(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("products.purchase.details")}</Label>
+                    <Textarea
+                      placeholder="Detalii livrare, termene, condiții..."
+                      value={formPurchaseDetails}
+                      onChange={(e) => setFormPurchaseDetails(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

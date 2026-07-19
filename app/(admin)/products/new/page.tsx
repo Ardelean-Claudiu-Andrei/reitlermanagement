@@ -16,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save, Info } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Save, Info, ShoppingCart } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 
 const categories = [
@@ -48,6 +50,15 @@ export default function NewProductPage() {
     notes: "",
   })
 
+  const [formRequiresPurchase, setFormRequiresPurchase] = useState(false)
+  const [formPurchaseSupplier, setFormPurchaseSupplier] = useState("")
+  const [formPurchasePrice, setFormPurchasePrice] = useState<number | null>(null)
+  const [formPurchaseCurrency, setFormPurchaseCurrency] = useState("EUR")
+  const [formPurchaseVatIncluded, setFormPurchaseVatIncluded] = useState(false)
+  const [formPurchaseVatRate, setFormPurchaseVatRate] = useState(21)
+  const [formPurchaseAgentContact, setFormPurchaseAgentContact] = useState("")
+  const [formPurchaseDetails, setFormPurchaseDetails] = useState("")
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -75,6 +86,14 @@ export default function NewProductPage() {
         assemblySteps: [],
         productionSteps: [],
         unit: "buc",
+        requiresPurchase: formRequiresPurchase,
+        purchaseSupplier: formPurchaseSupplier,
+        purchasePrice: formPurchasePrice,
+        purchaseCurrency: formPurchaseCurrency,
+        purchaseVatIncluded: formPurchaseVatIncluded,
+        purchaseVatRate: formPurchaseVatRate,
+        purchaseAgentContact: formPurchaseAgentContact,
+        purchaseDetails: formPurchaseDetails,
       } as unknown as import("@/lib/types").Product)
       toast.success(t("common.savedSuccessfully"))
       router.push(`/products/${created.id}/edit`)
@@ -223,6 +242,107 @@ export default function NewProductPage() {
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
               />
+            </CardContent>
+          </Card>
+
+          {/* Achiziție */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("products.purchase.tab")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md border p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-2 flex-1">
+                    <Checkbox
+                      id="requiresPurchase"
+                      checked={formRequiresPurchase}
+                      onCheckedChange={(v) => setFormRequiresPurchase(!!v)}
+                    />
+                    <Label htmlFor="requiresPurchase" className="cursor-pointer font-medium">
+                      {t("products.purchase.requiresPurchase")}
+                    </Label>
+                  </div>
+                  {formRequiresPurchase && (
+                    <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+                      {t("products.purchase.badge")}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {formRequiresPurchase && (
+                <>
+                  <div className="space-y-2">
+                    <Label>{t("products.purchase.supplier")}</Label>
+                    <Input
+                      placeholder="Furnizor SRL..."
+                      value={formPurchaseSupplier}
+                      onChange={(e) => setFormPurchaseSupplier(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("products.purchase.price")}</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={formPurchasePrice ?? ""}
+                        onChange={(e) => setFormPurchasePrice(e.target.value === "" ? null : parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Monedă</Label>
+                      <Select value={formPurchaseCurrency} onValueChange={setFormPurchaseCurrency}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="RON">RON</SelectItem>
+                          <SelectItem value="HUF">HUF</SelectItem>
+                          <SelectItem value="IRR">IRR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="vatIncluded"
+                      checked={formPurchaseVatIncluded}
+                      onCheckedChange={(v) => setFormPurchaseVatIncluded(!!v)}
+                    />
+                    <Label htmlFor="vatIncluded" className="cursor-pointer">Preț cu TVA inclus</Label>
+                    {formPurchaseVatIncluded && (
+                      <Select value={String(formPurchaseVatRate)} onValueChange={(v) => setFormPurchaseVatRate(Number(v))}>
+                        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {[5, 9, 11, 19, 21].map((r) => (
+                            <SelectItem key={r} value={String(r)}>{r}%</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("products.purchase.agentContact")}</Label>
+                    <Input
+                      placeholder="Nume agent, telefon..."
+                      value={formPurchaseAgentContact}
+                      onChange={(e) => setFormPurchaseAgentContact(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("products.purchase.details")}</Label>
+                    <Textarea
+                      placeholder="Detalii livrare, termene, condiții..."
+                      value={formPurchaseDetails}
+                      onChange={(e) => setFormPurchaseDetails(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

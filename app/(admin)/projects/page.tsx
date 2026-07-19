@@ -51,6 +51,7 @@ import { toast } from "sonner"
 import { getCurrentUser } from "@/lib/api"
 import { canViewPrices, canEditProject } from "@/lib/permissions"
 import type { AppRole } from "@/lib/permissions"
+import { computeProjectTotal } from "@/lib/project-items"
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -102,6 +103,7 @@ export default function ProjectsPage() {
   const [projectName, setProjectName] = useState("")
   const [projectStartDate, setProjectStartDate] = useState(new Date().toISOString().split("T")[0])
   const [projectDeadline, setProjectDeadline] = useState("")
+  const [projectFinalPrice, setProjectFinalPrice] = useState("")
   const [companyComboOpen, setCompanyComboOpen] = useState(false)
   const [quoteComboOpen, setQuoteComboOpen] = useState(false)
 
@@ -164,10 +166,7 @@ export default function ProjectsPage() {
     return project.issues.filter((i) => !i.solved).length
   }
 
-  const getTotal = (project: typeof safeProjects[0]) => {
-    const itemsTotal = (project.items || []).reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-    return itemsTotal + (project.installationCost || 0)
-  }
+  const getTotal = (project: typeof safeProjects[0]) => computeProjectTotal(project)
 
   // Get available quotes for wizard (filter by selected company or all for personal)
   const availableQuotes = isPersonal
@@ -270,6 +269,7 @@ export default function ProjectsPage() {
     setProjectName("")
     setProjectStartDate(new Date().toISOString().split("T")[0])
     setProjectDeadline("")
+    setProjectFinalPrice("")
     setCompanyComboOpen(false)
     setQuoteComboOpen(false)
   }
@@ -315,6 +315,9 @@ export default function ProjectsPage() {
         }
       })
 
+      const parsedFinalPrice = projectFinalPrice !== "" ? parseFloat(projectFinalPrice) : null
+      const finalPrice = parsedFinalPrice != null && !isNaN(parsedFinalPrice) ? parsedFinalPrice : null
+
       const projectPayload = {
         code: `PRJ-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
         name: projectName || (selectedQuote?.name ? `Project: ${selectedQuote.name}` : `Project ${safeProjects.length + 1}`),
@@ -326,6 +329,8 @@ export default function ProjectsPage() {
         finishDate: null,
         warrantyExpiration: null,
         installationCost: (selectedQuoteId && selectedQuoteId !== "none") ? (selectedQuote?.installation || 0) : 0,
+        finalPrice,
+        paidAmount: 0,
         items: projectItems as ProjectItem[],
         checklist: [],
         issues: [],
@@ -916,6 +921,17 @@ export default function ProjectsPage() {
                     onChange={(e) => setProjectDeadline(e.target.value)}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Preț proiect (EUR) <span className="text-muted-foreground font-normal text-xs">— opțional</span></Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="ex. 12500.00"
+                  value={projectFinalPrice}
+                  onChange={(e) => setProjectFinalPrice(e.target.value)}
+                />
               </div>
               <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
                 <p className="font-medium">{t("projects.summary")}</p>

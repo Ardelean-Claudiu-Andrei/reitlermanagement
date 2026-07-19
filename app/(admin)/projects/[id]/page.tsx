@@ -628,8 +628,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         if (!asm?.requiresPurchase) return []
         return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'assembly' as const, entity: asm }]
       })
-    return [...partItems, ...assemblyItems].sort((a, b) => a.name.localeCompare(b.name))
-  }, [productionCards, mergedParts, mergedAssemblies])
+    const productItems = productionCards
+      .filter((card) => card.itemType === 'product')
+      .flatMap((card) => {
+        const prod = (products ?? []).find((p) => p.id === card.entityId)
+        if (!prod?.requiresPurchase) return []
+        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'product' as const, entity: prod }]
+      })
+    return [...partItems, ...assemblyItems, ...productItems].sort((a, b) => a.name.localeCompare(b.name))
+  }, [productionCards, mergedParts, mergedAssemblies, products])
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
   const completedStepCount = productionCards.reduce(
@@ -1811,7 +1818,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <TableRow key={`${entityType}-${id}`}>
                     <TableCell>
                       <a
-                        href={entityType === 'assembly' ? `/materials/assemblies?view=${id}` : `/materials/parts?view=${id}`}
+                        href={entityType === 'product' ? `/products/${id}` : entityType === 'assembly' ? `/materials/assemblies?view=${id}` : `/materials/parts?view=${id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 group"
@@ -1824,6 +1831,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         {code && <span className="text-xs font-mono text-muted-foreground">{code}</span>}
                         {entityType === 'assembly' && (
                           <Badge variant="outline" className="text-xs py-0 px-1 h-4">Ansamblu</Badge>
+                        )}
+                        {entityType === 'product' && (
+                          <Badge variant="outline" className="text-xs py-0 px-1 h-4">Produs</Badge>
                         )}
                       </div>
                     </TableCell>

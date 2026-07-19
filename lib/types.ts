@@ -179,6 +179,14 @@ export interface Product {
   productionSteps: AssemblyStep[] // forward-compat alias
   notes: string
   hasLaserCutting?: boolean       // populated by GET /{id} endpoint
+  requiresPurchase: boolean
+  purchaseSupplier: string
+  purchasePrice: number | null
+  purchaseCurrency: string
+  purchaseVatIncluded: boolean
+  purchaseVatRate: number
+  purchaseAgentContact: string
+  purchaseDetails: string
   createdAt: string
   updatedAt: string
 }

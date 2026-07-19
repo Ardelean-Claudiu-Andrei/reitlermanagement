@@ -21,7 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { ArrowLeft, Pencil, ChevronDown, Boxes, Wrench, Package, Zap, FileDown } from "lucide-react"
+import { ArrowLeft, Pencil, ChevronDown, Boxes, Wrench, Package, Zap, FileDown, ShoppingCart } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import type { Assembly, AssemblyStep, Part, Product } from "@/lib/types"
@@ -270,13 +270,19 @@ export default function ProductDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-2xl font-semibold text-foreground">{product.name}</h2>
               <Badge variant="outline">{categoryLabels[product.category] || product.category}</Badge>
               {hasLaserCutting && (
                 <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                   <Zap className="mr-1 h-3 w-3" />
                   Laser
+                </Badge>
+              )}
+              {product.requiresPurchase && (
+                <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+                  <ShoppingCart className="mr-1 h-3 w-3" />
+                  {t("products.purchase.badge")}
                 </Badge>
               )}
             </div>
@@ -367,6 +373,12 @@ export default function ProductDetailPage() {
             <Boxes className="h-4 w-4" />
             Pași producție ({totalSteps})
           </TabsTrigger>
+          {product.requiresPurchase && (
+            <TabsTrigger value="purchase" className="gap-1 text-orange-600">
+              <ShoppingCart className="h-4 w-4" />
+              {t("products.purchase.tab")}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="files" className="gap-1">
             Fișiere
           </TabsTrigger>
@@ -584,6 +596,42 @@ export default function ProductDetailPage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Purchase */}
+        <TabsContent value="purchase" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-orange-500" />
+                {t("products.purchase.tab")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">{t("products.purchase.supplier")}</p>
+                  <p className="font-medium">{product.purchaseSupplier || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">{t("products.purchase.price")}</p>
+                  <p className="font-medium">
+                    {product.purchasePrice != null
+                      ? `${product.purchasePrice} ${product.purchaseCurrency || "EUR"}${product.purchaseVatIncluded ? ` (TVA ${product.purchaseVatRate}%)` : " (fără TVA)"}`
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">{t("products.purchase.agentContact")}</p>
+                  <p className="font-medium">{product.purchaseAgentContact || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">{t("products.purchase.details")}</p>
+                  <p className="font-medium">{product.purchaseDetails || "—"}</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

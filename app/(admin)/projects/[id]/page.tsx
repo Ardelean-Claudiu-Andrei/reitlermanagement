@@ -413,6 +413,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [removeSaving, setRemoveSaving] = useState(false)
   const [purchaseListOpen, setPurchaseListOpen] = useState(false)
   const [exportingPurchasePdf, setExportingPurchasePdf] = useState(false)
+  const [purchasedSet, setPurchasedSet] = useState<Set<string>>(new Set())
   const [doneCardsOpen, setDoneCardsOpen] = useState(false)
 
   // Activity log (server-side paginated)
@@ -941,7 +942,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     if (!project) return
     setExportingPurchasePdf(true)
     try {
-      const blob = await projectsApi.exportPurchaseListPdf(project.id)
+      const blob = await projectsApi.exportPurchaseListPdf(project.id, Array.from(purchasedSet))
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -1806,6 +1807,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>{t('projects.purchase.colPart')}</TableHead>
                   <TableHead className="text-right">{t('projects.purchase.colQty')}</TableHead>
                   <TableHead>{t('projects.purchase.colSupplier')}</TableHead>
@@ -1814,8 +1816,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {purchaseItems.map(({ id, name, code, quantity, entityType, entity }) => (
-                  <TableRow key={`${entityType}-${id}`}>
+                {purchaseItems.map(({ id, name, code, quantity, entityType, entity }) => {
+                  const key = `${entityType}:${id}`
+                  const isPurchased = purchasedSet.has(key)
+                  const togglePurchased = () => setPurchasedSet(prev => {
+                    const next = new Set(prev)
+                    if (next.has(key)) next.delete(key)
+                    else next.add(key)
+                    return next
+                  })
+                  return (
+                  <TableRow key={key} className={isPurchased ? "opacity-50" : ""}>
+                    <TableCell>
+                      <Checkbox checked={isPurchased} onCheckedChange={togglePurchased} />
+                    </TableCell>
                     <TableCell>
                       <a
                         href={entityType === 'product' ? `/products/${id}` : entityType === 'assembly' ? `/materials/assemblies?view=${id}` : `/materials/parts?view=${id}`}
@@ -1824,7 +1838,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         className="flex items-center gap-1.5 group"
                         title={t('projects.purchase.openPart')}
                       >
-                        <span className="font-medium group-hover:underline">{name}</span>
+                        <span className={`font-medium group-hover:underline${isPurchased ? " line-through" : ""}`}>{name}</span>
                         <ExternalLink className="h-3 w-3 text-blue-500 shrink-0 opacity-60 group-hover:opacity-100" />
                       </a>
                       <div className="flex items-center gap-1.5 mt-0.5">
@@ -1846,7 +1860,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     </TableCell>
                     <TableCell className="text-muted-foreground">{entity.purchaseAgentContact || '—'}</TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           )}

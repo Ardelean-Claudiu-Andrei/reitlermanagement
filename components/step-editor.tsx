@@ -108,7 +108,7 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
             const dv = dropdownValue(step)
             const isCustom = dv === "__custom__"
             return (
-              <div key={step.id} className="rounded-md border p-3 space-y-2">
+              <div key={step.id} className="rounded-md border p-3 space-y-2 shadow-sm">
                 <div className="flex items-start gap-2">
                   <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 mt-2.5" />
                   <span className="text-xs text-muted-foreground w-5 shrink-0 mt-2.5">{idx + 1}.</span>

@@ -707,7 +707,7 @@ export default function AssembliesPage() {
 
             {/* Purchase tab */}
             <TabsContent value="purchase" className="space-y-4">
-              <div className="flex items-center gap-3 rounded-md border p-3">
+              <div className="flex items-center gap-3 rounded-md border p-3 shadow-sm">
                 <Checkbox
                   id="asm-requires-purchase"
                   checked={formRequiresPurchase}
@@ -760,7 +760,7 @@ export default function AssembliesPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 rounded-md border p-3">
+                <div className="flex items-center gap-4 rounded-md border p-3 shadow-sm">
                   <Checkbox
                     id="asm-purchase-vat"
                     checked={formPurchaseVatIncluded}
@@ -916,7 +916,7 @@ export default function AssembliesPage() {
                 {viewAssembly.parts?.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nicio piesă adăugată.</p>
                 ) : (
-                  <div className="rounded-md border">
+                  <div className="rounded-md border shadow-sm">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -950,7 +950,7 @@ export default function AssembliesPage() {
                 {(viewAssembly.childAssemblies?.length ?? 0) > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2">Sub-ansamble</p>
-                    <div className="rounded-md border">
+                    <div className="rounded-md border shadow-sm">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -984,7 +984,7 @@ export default function AssembliesPage() {
                 ) : (
                   <div className="space-y-2">
                     {viewAssembly.productionSteps.map((step, idx) => (
-                      <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                      <div key={step.id} className="rounded-md border px-3 py-2 text-sm shadow-sm">
                         <div className="flex items-center gap-2">
                           <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                           <span className="font-medium flex-1">{step.name}</span>

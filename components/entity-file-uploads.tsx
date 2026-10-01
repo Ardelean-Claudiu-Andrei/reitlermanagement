@@ -142,7 +142,7 @@ export function EntityFileUploads({
           {generalFiles.length === 0 ? (
             <p className="text-xs text-muted-foreground">Niciun fișier.</p>
           ) : (
-            <div className="divide-y rounded-md border">
+            <div className="divide-y rounded-md border shadow-sm">
               {generalFiles.map((f) => (
                 <div key={f.id} className="flex items-center justify-between px-3 py-2 text-sm">
                   <div className="flex items-center gap-2 min-w-0">
@@ -264,7 +264,7 @@ function DrawingSection({
       {files.length === 0 ? (
         <p className="text-xs text-muted-foreground">Niciun fișier.</p>
       ) : (
-        <div className="divide-y rounded-md border">
+        <div className="divide-y rounded-md border shadow-sm">
           {files.map((f) => (
             <div key={f.id} className="flex items-center justify-between px-3 py-2 text-sm">
               <span className="truncate">{f.originalFilename}</span>
@@ -313,7 +313,7 @@ export function ReadonlyFileList({ files }: { files: UploadedFile[] }) {
 
   return (
     <>
-      <div className="divide-y rounded-md border">
+      <div className="divide-y rounded-md border shadow-sm">
         {files.map((f) => {
           const url = getUploadFileUrl(f.url)
           return (

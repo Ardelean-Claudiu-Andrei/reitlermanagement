@@ -444,7 +444,7 @@ export default function EditProductPage() {
                   {formData.productAssemblies.map((entry) => {
                     const asm = safeAssemblies.find((a) => a.id === entry.assemblyId)
                     return asm ? (
-                      <div key={entry.assemblyId} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
+                      <div key={entry.assemblyId} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 shadow-sm">
                         <span className="flex-1 font-medium text-sm">{asm.name}
                           <span className="ml-2 text-xs text-muted-foreground font-mono">{asm.code}</span>
                         </span>
@@ -491,7 +491,7 @@ export default function EditProductPage() {
                     return (
                       <div
                         key={assembly.id}
-                        className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
+                        className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30 shadow-sm"
                         onClick={() => toggleAssembly(assembly.id)}
                       >
                         <Checkbox
@@ -533,7 +533,7 @@ export default function EditProductPage() {
                   {formData.productParts.map((entry) => {
                     const part = safeParts.find((p) => p.id === entry.partId)
                     return part ? (
-                      <div key={entry.partId} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
+                      <div key={entry.partId} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 shadow-sm">
                         <span className="flex-1 font-medium text-sm">{part.name}
                           {part.code && <span className="ml-2 text-xs text-muted-foreground font-mono">{part.code}</span>}
                         </span>
@@ -580,7 +580,7 @@ export default function EditProductPage() {
                     return (
                       <div
                         key={part.id}
-                        className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30"
+                        className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-muted/30 shadow-sm"
                         onClick={() => togglePart(part.id)}
                       >
                         <Checkbox
@@ -626,7 +626,7 @@ export default function EditProductPage() {
               <CardTitle className="text-base">{t("products.purchase.tab")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-md border p-4 space-y-3">
+              <div className="rounded-md border p-4 space-y-3 shadow-sm">
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                   <div className="flex items-center gap-2 flex-1">

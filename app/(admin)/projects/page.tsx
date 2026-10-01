@@ -592,7 +592,7 @@ export default function ProjectsPage() {
           {/* Step 1: Select Company or Personal */}
           {wizardStep === 1 && (
             <div className="space-y-4 py-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center justify-between p-4 border rounded-lg shadow-sm">
                 <div>
                   <Label className="text-base">{t("projects.personalProject")}</Label>
                   <p className="text-sm text-muted-foreground">{t("projects.personalProjectDesc")}</p>
@@ -763,7 +763,7 @@ export default function ProjectsPage() {
                           const invQty = getInventoryQty(product.id)
                           const quoteItem = selectedQuote?.items.find((i) => i.productId === product.id)
                           return (
-                            <div key={product.id} className="border rounded-lg p-3 space-y-2">
+                            <div key={product.id} className="border rounded-lg p-3 space-y-2 shadow-sm">
                               <div className="flex items-center gap-3">
                                 <Checkbox checked={sel} onCheckedChange={() => toggleItem("product", product.id)} />
                                 <div className="flex-1 min-w-0">
@@ -803,7 +803,7 @@ export default function ProjectsPage() {
                       : assembliesToShow.map((asm) => {
                           const sel = isItemSelected("assembly", asm.id)
                           return (
-                            <div key={asm.id} className="border rounded-lg p-3 space-y-2">
+                            <div key={asm.id} className="border rounded-lg p-3 space-y-2 shadow-sm">
                               <div className="flex items-center gap-3">
                                 <Checkbox checked={sel} onCheckedChange={() => toggleItem("assembly", asm.id)} />
                                 <div className="flex-1 min-w-0">
@@ -830,7 +830,7 @@ export default function ProjectsPage() {
                       : partsToShow.map((part) => {
                           const sel = isItemSelected("part", part.id)
                           return (
-                            <div key={part.id} className="border rounded-lg p-3 space-y-2">
+                            <div key={part.id} className="border rounded-lg p-3 space-y-2 shadow-sm">
                               <div className="flex items-center gap-3">
                                 <Checkbox checked={sel} onCheckedChange={() => toggleItem("part", part.id)} />
                                 <div className="flex-1 min-w-0">
@@ -933,7 +933,7 @@ export default function ProjectsPage() {
                   onChange={(e) => setProjectFinalPrice(e.target.value)}
                 />
               </div>
-              <div className="border rounded-lg p-4 space-y-2 bg-muted/50">
+              <div className="border rounded-lg p-4 space-y-2 bg-muted/50 shadow-sm">
                 <p className="font-medium">{t("projects.summary")}</p>
                 <p className="text-sm">
                   {t("common.type")}: {isPersonal ? t("projects.personal") : getCompanyName(selectedCompanyId)}

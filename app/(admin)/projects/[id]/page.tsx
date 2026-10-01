@@ -169,7 +169,7 @@ function ProductionCardComponent({
       : t('projects.prod.stepsProgress', { done: String(ownDone), total: String(ownTotal) })
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-lg border bg-card shadow-sm">
       <div className="flex items-center">
         <button
           type="button"
@@ -253,7 +253,7 @@ function ProductionCardComponent({
                   {t('projects.prod.noDependencies')}
                 </p>
               ) : (
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-hidden shadow-sm">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/30 border-b">
@@ -322,7 +322,7 @@ function ProductionCardComponent({
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
                 {t('projects.prod.usedIn')}
               </p>
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-hidden shadow-sm">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/30 border-b">
@@ -1177,7 +1177,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               {project.issues.map((issue) => (
                 <div
                   key={issue.id}
-                  className={`flex items-center justify-between rounded-md border p-3 ${
+                  className={`flex items-center justify-between rounded-md border p-3 shadow-sm ${
                     issue.solved ? "bg-muted/30" : ""
                   }`}
                 >
@@ -1985,7 +1985,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         {asmEntries.length > 0 && (
                           <div>
                             <p className="text-xs font-medium text-muted-foreground mb-2">{t('projects.entity.assemblies')}</p>
-                            <div className="rounded-md border">
+                            <div className="rounded-md border shadow-sm">
                               <Table>
                                 <TableHeader>
                                   <TableRow>
@@ -2014,7 +2014,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         {partEntries.length > 0 && (
                           <div>
                             <p className="text-xs font-medium text-muted-foreground mb-2">{t('projects.entity.directParts')}</p>
-                            <div className="rounded-md border">
+                            <div className="rounded-md border shadow-sm">
                               <Table>
                                 <TableHeader>
                                   <TableRow>
@@ -2053,7 +2053,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   ) : (
                     <div className="space-y-2">
                       {(viewedProduct.productionSteps ?? viewedProduct.assemblySteps ?? []).map((step, idx) => (
-                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm shadow-sm">
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                             <span className="font-medium flex-1">{step.name}</span>
@@ -2144,7 +2144,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   {viewedAssembly.parts?.length === 0 ? (
                     <p className="text-sm text-muted-foreground">{t('projects.entity.noParts')}</p>
                   ) : (
-                    <div className="rounded-md border">
+                    <div className="rounded-md border shadow-sm">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -2178,7 +2178,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   {(viewedAssembly.childAssemblies?.length ?? 0) > 0 && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2">{t('projects.entity.subAssemblies')}</p>
-                      <div className="rounded-md border">
+                      <div className="rounded-md border shadow-sm">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -2210,7 +2210,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   ) : (
                     <div className="space-y-2">
                       {viewedAssembly.productionSteps.map((step, idx) => (
-                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm shadow-sm">
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                             <span className="font-medium flex-1">{step.name}</span>
@@ -2317,7 +2317,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   ) : (
                     <div className="space-y-2">
                       {viewedPart.productionSteps.map((step, idx) => (
-                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                        <div key={step.id} className="rounded-md border px-3 py-2 text-sm shadow-sm">
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                             <span className="font-medium flex-1">{step.name}</span>

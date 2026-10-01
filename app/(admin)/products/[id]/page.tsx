@@ -519,7 +519,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-4">
                   {/* Product-level steps */}
                   {hierarchy.productSteps.length > 0 && (
-                    <div className="rounded-lg border">
+                    <div className="rounded-lg border shadow-sm">
                       <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 rounded-t-lg border-b">
                         <Package className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-semibold">{product.name}</span>
@@ -535,7 +535,7 @@ export default function ProductDetailPage() {
 
                   {/* Assembly nodes */}
                   {hierarchy.assemblies.map((asmNode) => (
-                    <div key={asmNode.id} className="rounded-lg border">
+                    <div key={asmNode.id} className="rounded-lg border shadow-sm">
                       <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 rounded-t-lg border-b">
                         <Boxes className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-semibold">{asmNode.name}</span>
@@ -555,7 +555,7 @@ export default function ProductDetailPage() {
                         {/* Parts inside assembly */}
                         {asmNode.parts.map((pNode) => (
                           pNode.steps.length > 0 && (
-                            <div key={pNode.id} className="ml-4 my-2 rounded-md border">
+                            <div key={pNode.id} className="ml-4 my-2 rounded-md border shadow-sm">
                               <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/20 rounded-t-md border-b">
                                 <Wrench className="h-3 w-3 text-muted-foreground" />
                                 <span className="text-xs font-medium">{pNode.name}</span>
@@ -579,7 +579,7 @@ export default function ProductDetailPage() {
 
                   {/* Direct parts */}
                   {hierarchy.directParts.filter((p) => p.steps.length > 0).map((pNode) => (
-                    <div key={pNode.id} className="rounded-lg border">
+                    <div key={pNode.id} className="rounded-lg border shadow-sm">
                       <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 rounded-t-lg border-b">
                         <Wrench className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-semibold">{pNode.name}</span>

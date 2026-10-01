@@ -122,7 +122,7 @@ export function Sidebar() {
       .join("") || "?"
 
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+    <aside className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-md">
       {/* Brand */}
       <div className="flex flex-col items-center gap-1.5 border-b border-border px-4 py-5">
         <Image
@@ -168,7 +168,7 @@ export function Sidebar() {
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                         active
-                          ? "bg-secondary text-foreground shadow-sm ring-1 ring-border/60"
+                          ? "bg-secondary text-foreground shadow ring-1 ring-border/60"
                           : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                       )}
                     >

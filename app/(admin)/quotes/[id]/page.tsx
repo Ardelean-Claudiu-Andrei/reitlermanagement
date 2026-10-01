@@ -277,7 +277,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="rounded-lg border p-4 space-y-2">
+            <div className="rounded-lg border p-4 space-y-2 shadow-sm">
               <p><strong>{t("common.company")}:</strong> {company?.name || t("quotes.personal")}</p>
               <p><strong>{t("common.total")}:</strong> {grandTotal.toFixed(2)} EUR</p>
               <p><strong>{t("quotes.deliveryTime")}:</strong> {quote.deliveryTimeWeeks} {t("quotes.deliveryWeeks")}</p>

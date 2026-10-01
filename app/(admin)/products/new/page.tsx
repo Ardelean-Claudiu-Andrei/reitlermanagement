@@ -251,7 +251,7 @@ export default function NewProductPage() {
               <CardTitle className="text-base">{t("products.purchase.tab")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-md border p-4 space-y-3">
+              <div className="rounded-md border p-4 space-y-3 shadow-sm">
                 <div className="flex items-center gap-3">
                   <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                   <div className="flex items-center gap-2 flex-1">

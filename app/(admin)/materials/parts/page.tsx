@@ -585,7 +585,7 @@ export default function PartsPage() {
 
             {/* Laser & Drawings tab */}
             <TabsContent value="laser" className="space-y-4">
-              <div className="flex items-center gap-3 rounded-md border p-3">
+              <div className="flex items-center gap-3 rounded-md border p-3 shadow-sm">
                 <Checkbox
                   id="requiresLaser"
                   checked={form.requiresLaserCutting}
@@ -645,7 +645,7 @@ export default function PartsPage() {
 
             {/* Purchase tab */}
             <TabsContent value="purchase" className="space-y-4">
-              <div className="flex items-center gap-3 rounded-md border p-3">
+              <div className="flex items-center gap-3 rounded-md border p-3 shadow-sm">
                 <Checkbox
                   id="requiresPurchase"
                   checked={form.requiresPurchase}
@@ -701,7 +701,7 @@ export default function PartsPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 rounded-md border p-3">
+                <div className="flex items-center gap-4 rounded-md border p-3 shadow-sm">
                   <Checkbox
                     id="purchaseVatIncluded"
                     checked={form.purchaseVatIncluded}
@@ -923,7 +923,7 @@ export default function PartsPage() {
                 ) : (
                   <div className="space-y-2">
                     {viewPart.productionSteps.map((step, idx) => (
-                      <div key={step.id} className="rounded-md border px-3 py-2 text-sm">
+                      <div key={step.id} className="rounded-md border px-3 py-2 text-sm shadow-sm">
                         <div className="flex items-center gap-2">
                           <span className="text-muted-foreground w-5 shrink-0">{idx + 1}.</span>
                           <span className="font-medium flex-1">{step.name}</span>

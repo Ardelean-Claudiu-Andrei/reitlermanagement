@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AppProvider>
       <div className="flex h-screen gap-3 overflow-hidden bg-muted/60 p-3">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-sm">
+        <main className="flex-1 overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-md">
           <RouteGuard>{children}</RouteGuard>
         </main>
       </div>

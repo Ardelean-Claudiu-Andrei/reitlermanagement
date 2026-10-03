@@ -31,7 +31,7 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppProvider>
-      <div className="flex h-screen gap-3 overflow-hidden bg-muted/60 p-3">
+      <div className="flex h-screen gap-3 overflow-hidden bg-frame p-3">
         <Sidebar />
         <main className="flex-1 overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-md">
           <RouteGuard>{children}</RouteGuard>

@@ -21,6 +21,7 @@ import {
   Monitor,
   LogOut,
   Languages,
+  ChevronLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
@@ -36,6 +37,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLocale } from "@/lib/locale-context"
 import { locales, localeNames, type Locale } from "@/lib/i18n"
 import { apiLogout, getCurrentUser } from "@/lib/api"
@@ -45,12 +47,15 @@ import type { AppRole } from "@/lib/permissions"
 type NavItem = { href: string; icon: React.ElementType; label: string; show?: boolean }
 type NavSection = { label?: string; items: NavItem[] }
 
+const COLLAPSED_KEY = "sidebar-collapsed"
+
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { setTheme, theme } = useTheme()
   const { locale, setLocale, t } = useLocale()
   const [mounted, setMounted] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [user, setUser] = useState<{ name: string; email: string; role: AppRole }>({
     name: "",
     email: "",
@@ -59,6 +64,9 @@ export function Sidebar() {
 
   useEffect(() => {
     setMounted(true)
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1")
+    } catch {}
     const raw = getCurrentUser()
     if (raw) {
       const full = `${raw.firstName || ""} ${raw.lastName || ""}`.trim()
@@ -68,6 +76,28 @@ export function Sidebar() {
         role: (raw.role ?? "employee") as AppRole,
       })
     }
+  }, [])
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0")
+      } catch {}
+      return next
+    })
+  }
+
+  // Ctrl/Cmd + B toggles the sidebar
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "b" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        toggleCollapsed()
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
   const role = user.role
@@ -122,16 +152,33 @@ export function Sidebar() {
       .join("") || "?"
 
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-md">
+    <aside
+      className={cn(
+        "flex h-full shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-md transition-[width] duration-200 ease-in-out",
+        collapsed ? "w-[72px]" : "w-[260px]"
+      )}
+    >
       {/* Brand */}
-      <div className="flex flex-col items-center gap-1.5 border-b border-border px-4 py-5">
+      <div className={cn("relative flex flex-col items-center gap-1.5 border-b border-border", collapsed ? "px-2 pb-5 pt-2" : "px-4 py-5")}>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand (Ctrl+B)" : "Collapse (Ctrl+B)"}
+          className={cn(
+            "rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+            collapsed ? "mb-1" : "absolute right-2 top-2"
+          )}
+        >
+          <ChevronLeft className={cn("h-4 w-4 transition-transform duration-200", collapsed && "rotate-180")} />
+        </button>
         <Image
           src="/branding/logo-black-text.jpg"
           alt="SMS Reitler logo"
           width={120}
           height={87}
           priority
-          className="h-14 w-auto object-contain dark:hidden"
+          className={cn("w-auto object-contain transition-[height] duration-200 dark:hidden", collapsed ? "h-8" : "h-14")}
         />
         <Image
           src="/branding/sms-reitler.png"
@@ -139,42 +186,58 @@ export function Sidebar() {
           width={120}
           height={87}
           priority
-          className="hidden h-14 w-auto object-contain dark:block"
+          className={cn("hidden w-auto object-contain transition-[height] duration-200 dark:block", collapsed ? "h-8" : "h-14")}
         />
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Offers &amp; Production
-        </p>
+        {!collapsed && (
+          <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Offers &amp; Production
+          </p>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {sections.map((section, i) => {
           const items = section.items.filter((item) => item.show !== false)
           if (items.length === 0) return null
           return (
             <div key={i} className={cn(i > 0 && "mt-4")}>
-              {section.label && (
-                <p className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                  {section.label}
-                </p>
-              )}
+              {section.label &&
+                (collapsed ? (
+                  <div className="mx-2 mb-2 h-px bg-border" />
+                ) : (
+                  <p className="mb-1 truncate px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                    {section.label}
+                  </p>
+                ))}
               <div className="flex flex-col gap-1">
                 {items.map(({ href, icon: Icon, label }) => {
                   const active = isActive(href)
-                  return (
+                  const link = (
                     <Link
                       key={href}
                       href={href}
+                      aria-label={collapsed ? label : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                        "flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors",
+                        collapsed ? "justify-center px-0" : "px-3",
                         active
                           ? "bg-secondary text-foreground shadow ring-1 ring-border/60"
                           : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
-                      {label}
+                      {!collapsed && <span className="truncate">{label}</span>}
                     </Link>
+                  )
+                  if (!collapsed) return link
+                  return (
+                    <Tooltip key={href}>
+                      <TooltipTrigger asChild>{link}</TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={8}>
+                        {label}
+                      </TooltipContent>
+                    </Tooltip>
                   )
                 })}
               </div>
@@ -184,18 +247,31 @@ export function Sidebar() {
       </nav>
 
       {/* User footer */}
-      <div className="flex items-center gap-3 border-t border-border px-4 py-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{user.name || "..."}</p>
-          {user.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
-        </div>
+      <div className={cn("flex items-center gap-3 border-t border-border py-3", collapsed ? "justify-center px-2" : "px-4")}>
+        {!collapsed && (
+          <>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{user.name || "..."}</p>
+              {user.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
+            </div>
+          </>
+        )}
         <DropdownMenu>
-          <DropdownMenuTrigger className="rounded-md p-1.5 text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground">
-            <MoreHorizontal className="h-4 w-4" />
-          </DropdownMenuTrigger>
+          {collapsed ? (
+            <DropdownMenuTrigger
+              aria-label={user.name || "Account"}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground outline-none transition-colors hover:text-foreground hover:ring-2 hover:ring-border"
+            >
+              {initials}
+            </DropdownMenuTrigger>
+          ) : (
+            <DropdownMenuTrigger className="rounded-md p-1.5 text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenuTrigger>
+          )}
           <DropdownMenuContent side="right" align="end" className="w-52">
             {showSettings && (
               <>
@@ -247,5 +323,6 @@ export function Sidebar() {
         </DropdownMenu>
       </div>
     </aside>
+
   )
 }

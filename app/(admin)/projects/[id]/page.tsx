@@ -535,6 +535,79 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directAsmIdsKey, directPartIdsKey])
 
+  // Merge global context with directly-fetched entities so cards resolve even when
+  // context hasn't loaded yet. Directly-fetched data takes precedence on collision.
+  const mergedAssemblies: Assembly[] = [...(assemblies ?? []), ...directAssemblies.filter(a => !(assemblies ?? []).some(ca => ca.id === a.id))]
+  const mergedParts: Part[] = [...(parts ?? []), ...directParts.filter(p => !(parts ?? []).some(cp => cp.id === p.id))]
+
+  // Flatten the full recursive tree into one card per unique entity
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const productionCards: ProductionCardVM[] = useMemo(
+    () => buildProductionCards(consolidatedProjectItems, products ?? [], mergedAssemblies, mergedParts),
+    // Depend on the consolidated items so production cards reflect merged quantities.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project?.id, consolidatedProjectItems, products, mergedAssemblies, mergedParts],
+  )
+
+  const purchaseItems = useMemo(() => {
+    const partItems = productionCards
+      .filter((card) => card.itemType === 'part')
+      .flatMap((card) => {
+        const part = mergedParts.find((p) => p.id === card.entityId)
+        if (!part?.requiresPurchase) return []
+        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'part' as const, entity: part }]
+      })
+    const assemblyItems = productionCards
+      .filter((card) => card.itemType === 'assembly')
+      .flatMap((card) => {
+        const asm = mergedAssemblies.find((a) => a.id === card.entityId)
+        if (!asm?.requiresPurchase) return []
+        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'assembly' as const, entity: asm }]
+      })
+    const productItems = productionCards
+      .filter((card) => card.itemType === 'product')
+      .flatMap((card) => {
+        const prod = (products ?? []).find((p) => p.id === card.entityId)
+        if (!prod?.requiresPurchase) return []
+        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'product' as const, entity: prod }]
+      })
+    return [...partItems, ...assemblyItems, ...productItems].sort((a, b) => a.name.localeCompare(b.name))
+  }, [productionCards, mergedParts, mergedAssemblies, products])
+
+  // ─── Activity log (server-side paginated) ─────────────────────────────────
+
+  const loadActivity = useCallback(async (page: number) => {
+    if (!project?.id) return
+    const requestId = ++activityRequestRef.current
+    setActivityLoading(true)
+    setActivityError(null)
+    try {
+      const result: PaginatedActivityResponse = await projectsApi.getActivity(project.id, page)
+      if (activityRequestRef.current !== requestId) return
+      setActivityItems(result.items)
+      setActivityTotal(result.total)
+      setActivityTotalPages(result.totalPages)
+      setActivityPage(result.page)
+    } catch {
+      if (activityRequestRef.current !== requestId) return
+      setActivityError(t('projects.detail.activityLoadError'))
+    } finally {
+      if (activityRequestRef.current === requestId) setActivityLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id])
+
+  const refreshActivityFromFirstPage = useCallback(async () => {
+    setActivityPage(1)
+    await loadActivity(1)
+  }, [loadActivity])
+
+  useEffect(() => {
+    if (!project?.id) return
+    loadActivity(activityPage)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, activityPage])
+
   if (!project && fetchLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -600,44 +673,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const openIssues = project.issues.filter((i) => !i.solved)
   const isPersonal = project.companyId === null
 
-  // Merge global context with directly-fetched entities so cards resolve even when
-  // context hasn't loaded yet. Directly-fetched data takes precedence on collision.
-  const mergedAssemblies: Assembly[] = [...(assemblies ?? []), ...directAssemblies.filter(a => !(assemblies ?? []).some(ca => ca.id === a.id))]
-  const mergedParts: Part[] = [...(parts ?? []), ...directParts.filter(p => !(parts ?? []).some(cp => cp.id === p.id))]
-
-  // Flatten the full recursive tree into one card per unique entity
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const productionCards: ProductionCardVM[] = useMemo(
-    () => buildProductionCards(consolidatedProjectItems, products ?? [], mergedAssemblies, mergedParts),
-    // Depend on the consolidated items so production cards reflect merged quantities.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [project.id, consolidatedProjectItems, products, mergedAssemblies, mergedParts],
-  )
-
-  const purchaseItems = useMemo(() => {
-    const partItems = productionCards
-      .filter((card) => card.itemType === 'part')
-      .flatMap((card) => {
-        const part = mergedParts.find((p) => p.id === card.entityId)
-        if (!part?.requiresPurchase) return []
-        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'part' as const, entity: part }]
-      })
-    const assemblyItems = productionCards
-      .filter((card) => card.itemType === 'assembly')
-      .flatMap((card) => {
-        const asm = mergedAssemblies.find((a) => a.id === card.entityId)
-        if (!asm?.requiresPurchase) return []
-        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'assembly' as const, entity: asm }]
-      })
-    const productItems = productionCards
-      .filter((card) => card.itemType === 'product')
-      .flatMap((card) => {
-        const prod = (products ?? []).find((p) => p.id === card.entityId)
-        if (!prod?.requiresPurchase) return []
-        return [{ id: card.entityId, name: card.name, code: card.code, quantity: card.quantity, entityType: 'product' as const, entity: prod }]
-      })
-    return [...partItems, ...assemblyItems, ...productItems].sort((a, b) => a.name.localeCompare(b.name))
-  }, [productionCards, mergedParts, mergedAssemblies, products])
 
   const totalStepCount = productionCards.reduce((s, c) => s + c.ownSteps.length, 0)
   const completedStepCount = productionCards.reduce(
@@ -743,40 +778,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     setViewedAssembly(null)
     setViewedPart(null)
   }
-
-  // ─── Activity log (server-side paginated) ─────────────────────────────────
-
-  const loadActivity = useCallback(async (page: number) => {
-    if (!project?.id) return
-    const requestId = ++activityRequestRef.current
-    setActivityLoading(true)
-    setActivityError(null)
-    try {
-      const result: PaginatedActivityResponse = await projectsApi.getActivity(project.id, page)
-      if (activityRequestRef.current !== requestId) return
-      setActivityItems(result.items)
-      setActivityTotal(result.total)
-      setActivityTotalPages(result.totalPages)
-      setActivityPage(result.page)
-    } catch {
-      if (activityRequestRef.current !== requestId) return
-      setActivityError(t('projects.detail.activityLoadError'))
-    } finally {
-      if (activityRequestRef.current === requestId) setActivityLoading(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project?.id])
-
-  const refreshActivityFromFirstPage = useCallback(async () => {
-    setActivityPage(1)
-    await loadActivity(1)
-  }, [loadActivity])
-
-  useEffect(() => {
-    if (!project?.id) return
-    loadActivity(activityPage)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project?.id, activityPage])
 
   // ─── Items: shared save helper ────────────────────────────────────────────
 
